@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
@@ -7,7 +7,7 @@ use bioimg_zoo::collection::ZooNickname;
 use indoc::indoc;
 
 use bioimg_runtime as rt;
-use bioimg_runtime::zoo_model::{ModelPackingError, ZooModel};
+use bioimg_runtime::zoo_model::ZooModel;
 use bioimg_spec::rdf;
 use bioimg_spec::rdf::ResourceId;
 use bioimg_spec::rdf::bounded_string::BoundedString;
@@ -43,16 +43,6 @@ use crate::widgets::{
     icon_widget::IconWidget, maintainer_widget::MaintainerWidget, url_widget::StagingUrl,
     util::group_frame, StatefulWidget,
 };
-
-#[derive(Default)]
-enum PackingStatus {
-    #[default]
-    Done,
-    Packing {
-        path: PathBuf,
-        task: poll_promise::Promise<Result<(), ModelPackingError>>,
-    },
-}
 
 pub enum TaskResult{
     Notification(Result<String, String>),
@@ -121,8 +111,6 @@ pub struct AppState1 {
     #[restore_default]
     pub notifications_channel: TaskChannel<TaskResult>,
     #[restore_default]
-    model_packing_status: PackingStatus,
-    #[restore_default]
     close_confirmed: bool,
     #[restore_default]
     show_confirmation_dialog: bool,
@@ -180,8 +168,6 @@ impl ValueWidget for AppState1{
         self.model_interface_widget.set_value(zoo_model.interface);
 
         self.weights_widget.set_value(zoo_model.weights);
-
-        self.model_packing_status = PackingStatus::default();
     }
 }
 
@@ -207,7 +193,6 @@ impl Default for AppState1 {
 
             model_interface_widget: Default::default(),
 
-            model_packing_status: PackingStatus::default(),
             weights_widget: Default::default(),
             notifications_widget: NotificationsWidget::new(),
             notifications_channel: Default::default(),

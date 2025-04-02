@@ -54,19 +54,6 @@ where
     .collect()
 }
 
-pub fn opt_widget_from_value<Val, W>(val: Option<Val>) -> Option<W>
-where
-    W: Default,
-    W: for<'a> ValueWidget<Value<'a> = Val>,
-{
-    val.map(|v|{
-        let mut widget = W::default();
-        widget.set_value(v);
-        widget
-    })
-}
-
-
 pub fn draw_vertical_brackets(ui: &mut egui::Ui, rect: egui::Rect){
     let stroke = ui.visuals().window_stroke();
     let min_to_max = rect.max - rect.min;
