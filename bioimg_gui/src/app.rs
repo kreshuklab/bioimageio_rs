@@ -338,22 +338,22 @@ impl AppState1{
         Ok(())
     }
     pub fn launch_model_saving(&mut self, zoo_model: ZooModel) {
-        let Some(mut path) = rfd::FileDialog::new().save_file() else {
-            return;
-        };
-        if let Some(ext) = path.extension().map(|ex| ex.to_string_lossy()){
-            if ext != "zip"{
-                self.notifications_widget.push_message(Err(format!("Model extension must be '.zip'. Provided '.{ext}'")));
-                return
-            }
-        }
-        path.set_extension("zip");
-        let notification_message = format!("Packing into {}...", path.to_string_lossy());
-        self.notifications_widget.push_message(Ok(notification_message));
-
         let sender = self.notifications_channel.sender().clone();
-
         std::thread::spawn(move || {
+            let Some(mut path) = rfd::FileDialog::new().save_file() else {
+                return;
+            };
+            if let Some(ext) = path.extension().map(|ex| ex.to_string_lossy()){
+                if ext != "zip"{
+                    let msg = TaskResult::err_message(format!("Model extension must be '.zip'. Provided '.{ext}'"));
+                    sender.send(msg).unwrap();
+                    return
+                }
+            }
+            path.set_extension("zip");
+            let notification_message = format!("Packing into {}...", path.to_string_lossy());
+            sender.send(TaskResult::ok_message(notification_message)).unwrap();
+
             let file = match std::fs::File::create(&path){
                 Ok(f) => f,
                 Err(err) => {
