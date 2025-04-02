@@ -693,62 +693,59 @@ impl eframe::App for AppState1 {
                 });
                 ui.add_space(20.0);
 
-
                 ui.separator();
-                ui.horizontal(|ui| {
-                    let save_button_clicked = ui.button("Save Model")
-                        .on_hover_text("Save this model to a .zip file, ready to be used or uploaded to the Model Zoo")
-                        .clicked();
 
+                let save_button_clicked = ui.button("Save Model")
+                    .on_hover_text("Save this model to a .zip file, ready to be used or uploaded to the Model Zoo")
+                    .clicked();
 
-                    self.model_packing_status = match std::mem::take(&mut self.model_packing_status) {
-                        PackingStatus::Done => 'done: {
-                            if !save_button_clicked {
+                self.model_packing_status = match std::mem::take(&mut self.model_packing_status) {
+                    PackingStatus::Done => 'done: {
+                        if !save_button_clicked {
+                            break 'done PackingStatus::Done;
+                        }
+                        let zoo_model = match self.create_model(){
+                            Ok(zoo_model) => zoo_model,
+                            Err(err) => {
+                                self.notifications_widget.push_gui_error(err);
                                 break 'done PackingStatus::Done;
                             }
-                            let zoo_model = match self.create_model(){
-                                Ok(zoo_model) => zoo_model,
-                                Err(err) => {
-                                    self.notifications_widget.push_gui_error(err);
-                                    break 'done PackingStatus::Done;
-                                }
-                            };
-                            ui.ctx().request_repaint();
-                            let Some(mut path) = rfd::FileDialog::new().save_file() else {
+                        };
+                        ui.ctx().request_repaint();
+                        let Some(mut path) = rfd::FileDialog::new().save_file() else {
+                            break 'done PackingStatus::Done;
+                        };
+                        if let Some(ext) = path.extension().map(|ex| ex.to_string_lossy()){
+                            if ext != "zip"{
+                                self.notifications_widget.push_message(Err(format!("Model extension must be '.zip'. Provided '.{ext}'")));
                                 break 'done PackingStatus::Done;
-                            };
-                            if let Some(ext) = path.extension().map(|ex| ex.to_string_lossy()){
-                                if ext != "zip"{
-                                    self.notifications_widget.push_message(Err(format!("Model extension must be '.zip'. Provided '.{ext}'")));
-                                    break 'done PackingStatus::Done;
-                                }
-                            }
-                            path.set_extension("zip");
-                            let notification_message = format!("Packing into {}...", path.to_string_lossy());
-                            self.notifications_widget.push_message(Ok(notification_message));
-                            PackingStatus::Packing {
-                                path: path.clone(),
-                                task: poll_promise::Promise::spawn_thread("dumping_to_zip", move || {
-                                    let file = std::fs::File::create(path)?;
-                                    zoo_model.pack_into(file)
-                                }),
                             }
                         }
-                        PackingStatus::Packing { path, task } => match task.try_take() {
-                            Ok(value) => {
-                                self.notifications_widget.push_message(match &value{
-                                    Ok(_) => Ok(format!("Model saved to {}", path.to_string_lossy())),
-                                    Err(err) => Err(format!("Error saving model: {err}")),
-                                });
-                                PackingStatus::Done
-                            },
-                            Err(task) => {
-                                ui.ctx().request_repaint();
-                                PackingStatus::Packing { path, task }
-                            }
-                        },
+                        path.set_extension("zip");
+                        let notification_message = format!("Packing into {}...", path.to_string_lossy());
+                        self.notifications_widget.push_message(Ok(notification_message));
+                        PackingStatus::Packing {
+                            path: path.clone(),
+                            task: poll_promise::Promise::spawn_thread("dumping_to_zip", move || {
+                                let file = std::fs::File::create(path)?;
+                                zoo_model.pack_into(file)
+                            }),
+                        }
                     }
-                })
+                    PackingStatus::Packing { path, task } => match task.try_take() {
+                        Ok(value) => {
+                            self.notifications_widget.push_message(match &value{
+                                Ok(_) => Ok(format!("Model saved to {}", path.to_string_lossy())),
+                                Err(err) => Err(format!("Error saving model: {err}")),
+                            });
+                            PackingStatus::Done
+                        },
+                        Err(task) => {
+                            ui.ctx().request_repaint();
+                            PackingStatus::Packing { path, task }
+                        }
+                    },
+                }
             });
         });
 
