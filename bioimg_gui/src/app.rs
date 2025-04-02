@@ -354,53 +354,53 @@ impl eframe::App for AppState1 {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
-                // ui.menu_button("Zoo", |ui|{
-                //     self.zoo_login_widget.draw_and_parse(ui, egui::Id::from("zoo login"));
+                ui.menu_button("Zoo", |ui|{ ui.add_enabled_ui(false, |ui|{
+                    self.zoo_login_widget.draw_and_parse(ui, egui::Id::from("zoo login"));
 
-                //     let upload_button = egui::Button::new("⬆ Upload Model");
-                //     let Ok(user_token) = self.zoo_login_widget.state() else {
-                //         ui.add_enabled_ui(false, |ui|{
-                //             ui.add(upload_button).on_disabled_hover_text("Please login first");
-                //         });
-                //         return;
-                //     };
-                //     let Some(packing_task) = self.zoo_model_creation_task.take() else {
-                //         if !ui.add(upload_button).clicked(){
-                //             return;
-                //         }
-                //         let model = match self.create_model(){
-                //             Ok(model) => model,
-                //             Err(err) => {
-                //                 self.notifications_widget.push_message(Err(err.to_string()));
-                //                 return;
-                //             }
-                //         };
-                //         let user_token = user_token.as_ref().clone();
-                //         let sender = self.notifications_channel.sender().clone();
-                //         let on_progress = move |msg: String|{
-                //             sender.send(TaskResult::Notification(Ok(msg))).unwrap(); //FIXME: is there anything sensible to do if this fails?
-                //         };
-                //         self.zoo_model_creation_task = Some(
-                //             std::thread::spawn(|| upload_model(user_token, model, on_progress))
-                //         );
-                //         return
-                //     };
-                //     if !packing_task.is_finished() {
-                //         ui.add_enabled_ui(false, |ui|{
-                //             ui.add(upload_button).on_disabled_hover_text("Uploading model...");
-                //         });
-                //         self.zoo_model_creation_task = Some(packing_task);
-                //         return;
-                //     }
-                //     match packing_task.join().unwrap(){
-                //         Ok(nickname) => self.notifications_widget.push_message(
-                //             Ok(format!("Model successfully uploaded: {nickname}"))
-                //         ),
-                //         Err(upload_err) => self.notifications_widget.push_message(
-                //             Err(format!("Could not upload model: {upload_err}"))
-                //         ),
-                //     };
-                // });
+                    let upload_button = egui::Button::new("⬆ Upload Model");
+                    let Ok(user_token) = self.zoo_login_widget.state() else {
+                        ui.add_enabled_ui(false, |ui|{
+                            ui.add(upload_button).on_disabled_hover_text("Please login first");
+                        });
+                        return;
+                    };
+                    let Some(packing_task) = self.zoo_model_creation_task.take() else {
+                        if !ui.add(upload_button).clicked(){
+                            return;
+                        }
+                        let model = match self.create_model(){
+                            Ok(model) => model,
+                            Err(err) => {
+                                self.notifications_widget.push_message(Err(err.to_string()));
+                                return;
+                            }
+                        };
+                        let user_token = user_token.as_ref().clone();
+                        let sender = self.notifications_channel.sender().clone();
+                        let on_progress = move |msg: String|{
+                            sender.send(TaskResult::Notification(Ok(msg))).unwrap(); //FIXME: is there anything sensible to do if this fails?
+                        };
+                        self.zoo_model_creation_task = Some(
+                            std::thread::spawn(|| upload_model(user_token, model, on_progress))
+                        );
+                        return
+                    };
+                    if !packing_task.is_finished() {
+                        ui.add_enabled_ui(false, |ui|{
+                            ui.add(upload_button).on_disabled_hover_text("Uploading model...");
+                        });
+                        self.zoo_model_creation_task = Some(packing_task);
+                        return;
+                    }
+                    match packing_task.join().unwrap(){
+                        Ok(nickname) => self.notifications_widget.push_message(
+                            Ok(format!("Model successfully uploaded: {nickname}"))
+                        ),
+                        Err(upload_err) => self.notifications_widget.push_message(
+                            Err(format!("Could not upload model: {upload_err}"))
+                        ),
+                    };
+                })});
                 ui.menu_button("File", |ui| {
                     if ui.button("Import Model").clicked() {
                         ui.close_menu();
