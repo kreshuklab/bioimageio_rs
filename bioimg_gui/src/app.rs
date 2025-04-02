@@ -464,6 +464,16 @@ impl eframe::App for AppState1 {
             });
         });
         egui::CentralPanel::default().show(ctx, |ui| {
+            while let Ok(msg) = self.notifications_channel.receiver().try_recv(){
+                match msg{
+                    TaskResult::Notification(msg) => self.notifications_widget.push_message(msg),
+                    TaskResult::ModelImport(model) => self.set_value(*model),
+                }
+            }
+            if let Some(error_rect) = self.notifications_widget.draw(ui, egui::Id::from("messages_widget")){
+                ui.scroll_to_rect(error_rect, None);
+            }
+
             ui.style_mut().spacing.item_spacing = egui::Vec2 { x: 10.0, y: 10.0 };
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.heading("Model Metadata");
@@ -690,15 +700,6 @@ impl eframe::App for AppState1 {
                         .on_hover_text("Save this model to a .zip file, ready to be used or uploaded to the Model Zoo")
                         .clicked();
 
-                    while let Ok(msg) = self.notifications_channel.receiver().try_recv(){
-                        match msg{
-                            TaskResult::Notification(msg) => self.notifications_widget.push_message(msg),
-                            TaskResult::ModelImport(model) => self.set_value(*model),
-                        }
-                    }
-                    if let Some(error_rect) = self.notifications_widget.draw(ui, egui::Id::from("messages_widget")){
-                        ui.scroll_to_rect(error_rect, None);
-                    }
 
                     self.model_packing_status = match std::mem::take(&mut self.model_packing_status) {
                         PackingStatus::Done => 'done: {
