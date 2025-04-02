@@ -454,8 +454,9 @@ impl eframe::App for AppState1 {
                         }
                     }}
                 });
-                ui.add_space(16.0);
-                egui::widgets::global_theme_preference_buttons(ui);
+                ui.menu_button("View", |ui|{
+                    egui::widgets::global_theme_preference_buttons(ui);
+                })
             });
         });
         egui::CentralPanel::default().show(ctx, |ui| {
