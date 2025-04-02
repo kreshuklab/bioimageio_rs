@@ -408,6 +408,10 @@ impl eframe::App for AppState1 {
 
                         #[cfg(target_arch="wasm32")]
                         wasm_bindgen_futures::spawn_local(async move {
+                            use zip::ZipArchive;
+                            use bioimg_runtime::zip_archive_ext::SeekReadSend;
+                            use bioimg_runtime::zip_archive_ext::{ZipArchiveIdentifier, SharedZipArchive};
+
                             if let Some(file) = rfd::AsyncFileDialog::new().add_filter("bioimage model", &["zip"],).pick_file().await {
                                 let contents = file.read().await;
                                 let reader: Box<dyn SeekReadSend + 'static> = Box::new(std::io::Cursor::new(contents));
