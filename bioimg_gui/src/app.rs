@@ -485,7 +485,10 @@ impl eframe::App for AppState1 {
                 });
                 ui.menu_button("View", |ui|{
                     egui::widgets::global_theme_preference_buttons(ui);
-                })
+                });
+                ui.menu_button("About", |ui|{
+                    ui.label(format!("bioimage.io model builder version {}", env!("CARGO_PKG_VERSION")))
+                });
             });
         });
         egui::CentralPanel::default().show(ctx, |ui| {
