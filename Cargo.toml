@@ -3,7 +3,7 @@ members = ["bioimg_codegen", "bioimg_gui", "bioimg_spec", "bioimg_runtime", "bio
 resolver = "2"
 
 [workspace.package]
-version = "0.1.14"
+version = "0.2.1"
 authors = ["Tomaz Vieira<tom.fogaca@gmail.com>"]
 edition = "2021"
 rust-version="1.79"
