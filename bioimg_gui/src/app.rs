@@ -325,36 +325,47 @@ impl AppState1{
         }
         Ok(())
     }
-    pub fn launch_model_saving(&mut self, zoo_model: ZooModel) {
+    fn launch_model_saving(&mut self, zoo_model: ZooModel) {
         let sender = self.notifications_channel.sender().clone();
-        std::thread::spawn(move || {
-            let Some(mut path) = rfd::FileDialog::new().save_file() else {
+        let fut = async move {
+            let Some(file_handle) = rfd::AsyncFileDialog::new().save_file().await else {
+                println!("Returned with nothing");
                 return;
             };
-            if let Some(ext) = path.extension().map(|ex| ex.to_string_lossy()){
-                if ext != "zip"{
-                    let msg = TaskResult::err_message(format!("Model extension must be '.zip'. Provided '.{ext}'"));
-                    sender.send(msg).unwrap();
-                    return
-                }
+            let file_name = file_handle.file_name();
+            if !file_name.ends_with(".zip"){
+                let msg = TaskResult::err_message(format!("Model extension must be '.zip'. Provided '{file_name}'"));
+                sender.send(msg).unwrap();
+                return
             }
-            path.set_extension("zip");
-            let notification_message = format!("Packing into {}...", path.to_string_lossy());
+            let notification_message = format!("Packing into {file_name}...");
             sender.send(TaskResult::ok_message(notification_message)).unwrap();
 
-            let file = match std::fs::File::create(&path){
-                Ok(f) => f,
+            #[cfg(target_arch="wasm32")]
+            let pack_result = {
+                let mut file_bytes = Vec::<u8>::new(); //FIXME: check FileSystemWritableFileStream: seek() 
+                let mut file = std::io::Cursor::new(&mut file_bytes);
+                zoo_model.pack_into(file)
+            };
+            #[cfg(not(target_arch="wasm32"))]
+            let pack_result = match std::fs::File::create(file_handle.path()){
+                Ok(file) => zoo_model.pack_into(file),
                 Err(err) => {
                     sender.send(TaskResult::err_message(format!("Could not create zip file: {err}"))).unwrap();
                     return;
                 }
             };
-            let value = zoo_model.pack_into(file);
-            sender.send(match &value{
-                Ok(_) => TaskResult::ok_message(format!("Model saved to {}", path.to_string_lossy())),
+
+            sender.send(match &pack_result{
+                Ok(_) => TaskResult::ok_message(format!("Model saved to {file_name}")),
                 Err(err) => TaskResult::err_message(format!("Error saving model: {err}")),
             }).unwrap();
-        });
+        };
+
+        #[cfg(target_arch="wasm32")]
+        wasm_bindgen_futures::spawn_local(fut);
+        #[cfg(not(target_arch="wasm32"))]
+        std::thread::spawn(move || smol::block_on(fut));
     }
 }
 
