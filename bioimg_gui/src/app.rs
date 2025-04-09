@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
@@ -7,7 +7,7 @@ use bioimg_zoo::collection::ZooNickname;
 use indoc::indoc;
 
 use bioimg_runtime as rt;
-use bioimg_runtime::zoo_model::{ModelPackingError, ZooModel};
+use bioimg_runtime::zoo_model::ZooModel;
 use bioimg_spec::rdf;
 use bioimg_spec::rdf::ResourceId;
 use bioimg_spec::rdf::bounded_string::BoundedString;
@@ -44,19 +44,18 @@ use crate::widgets::{
     util::group_frame, StatefulWidget,
 };
 
-#[derive(Default)]
-enum PackingStatus {
-    #[default]
-    Done,
-    Packing {
-        path: PathBuf,
-        task: poll_promise::Promise<Result<(), ModelPackingError>>,
-    },
-}
-
 pub enum TaskResult{
     Notification(Result<String, String>),
     ModelImport(Box<rt::zoo_model::ZooModel>),
+}
+
+impl TaskResult{
+    pub fn ok_message(msg: impl Into<String>) -> Self{
+        Self::Notification(Ok(msg.into()))
+    }
+    pub fn err_message(msg: impl Into<String>) -> Self{
+        Self::Notification(Err(msg.into()))
+    }
 }
 
 pub struct MyWidget{
@@ -111,8 +110,6 @@ pub struct AppState1 {
     pub notifications_widget: NotificationsWidget,
     #[restore_default]
     pub notifications_channel: TaskChannel<TaskResult>,
-    #[restore_default]
-    model_packing_status: PackingStatus,
     #[restore_default]
     close_confirmed: bool,
     #[restore_default]
@@ -171,8 +168,6 @@ impl ValueWidget for AppState1{
         self.model_interface_widget.set_value(zoo_model.interface);
 
         self.weights_widget.set_value(zoo_model.weights);
-
-        self.model_packing_status = PackingStatus::default();
     }
 }
 
@@ -198,7 +193,6 @@ impl Default for AppState1 {
 
             model_interface_widget: Default::default(),
 
-            model_packing_status: PackingStatus::default(),
             weights_widget: Default::default(),
             notifications_widget: NotificationsWidget::new(),
             notifications_channel: Default::default(),
@@ -343,6 +337,37 @@ impl AppState1{
         }
         Ok(())
     }
+    pub fn launch_model_saving(&mut self, zoo_model: ZooModel) {
+        let sender = self.notifications_channel.sender().clone();
+        std::thread::spawn(move || {
+            let Some(mut path) = rfd::FileDialog::new().save_file() else {
+                return;
+            };
+            if let Some(ext) = path.extension().map(|ex| ex.to_string_lossy()){
+                if ext != "zip"{
+                    let msg = TaskResult::err_message(format!("Model extension must be '.zip'. Provided '.{ext}'"));
+                    sender.send(msg).unwrap();
+                    return
+                }
+            }
+            path.set_extension("zip");
+            let notification_message = format!("Packing into {}...", path.to_string_lossy());
+            sender.send(TaskResult::ok_message(notification_message)).unwrap();
+
+            let file = match std::fs::File::create(&path){
+                Ok(f) => f,
+                Err(err) => {
+                    sender.send(TaskResult::err_message(format!("Could not create zip file: {err}"))).unwrap();
+                    return;
+                }
+            };
+            let value = zoo_model.pack_into(file);
+            sender.send(match &value{
+                Ok(_) => TaskResult::ok_message(format!("Model saved to {}", path.to_string_lossy())),
+                Err(err) => TaskResult::err_message(format!("Error saving model: {err}")),
+            }).unwrap();
+        });
+    }
 }
 
 
@@ -354,7 +379,7 @@ impl eframe::App for AppState1 {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
-                ui.menu_button("Zoo", |ui|{
+                ui.menu_button("Zoo", |ui|{ ui.add_enabled_ui(false, |ui|{
                     self.zoo_login_widget.draw_and_parse(ui, egui::Id::from("zoo login"));
 
                     let upload_button = egui::Button::new("⬆ Upload Model");
@@ -400,7 +425,7 @@ impl eframe::App for AppState1 {
                             Err(format!("Could not upload model: {upload_err}"))
                         ),
                     };
-                });
+                })});
                 ui.menu_button("File", |ui| {
                     if ui.button("Import Model").clicked() {
                         ui.close_menu();
@@ -408,6 +433,10 @@ impl eframe::App for AppState1 {
 
                         #[cfg(target_arch="wasm32")]
                         wasm_bindgen_futures::spawn_local(async move {
+                            use zip::ZipArchive;
+                            use bioimg_runtime::zip_archive_ext::SeekReadSend;
+                            use bioimg_runtime::zip_archive_ext::{ZipArchiveIdentifier, SharedZipArchive};
+
                             if let Some(file) = rfd::AsyncFileDialog::new().add_filter("bioimage model", &["zip"],).pick_file().await {
                                 let contents = file.read().await;
                                 let reader: Box<dyn SeekReadSend + 'static> = Box::new(std::io::Cursor::new(contents));
@@ -454,11 +483,25 @@ impl eframe::App for AppState1 {
                         }
                     }}
                 });
-                ui.add_space(16.0);
-                egui::widgets::global_theme_preference_buttons(ui);
+                ui.menu_button("View", |ui|{
+                    egui::widgets::global_theme_preference_buttons(ui);
+                });
+                ui.menu_button("About", |ui|{
+                    ui.label(format!("bioimage.io model builder version {}", env!("CARGO_PKG_VERSION")))
+                });
             });
         });
         egui::CentralPanel::default().show(ctx, |ui| {
+            while let Ok(msg) = self.notifications_channel.receiver().try_recv(){
+                match msg{
+                    TaskResult::Notification(msg) => self.notifications_widget.push_message(msg),
+                    TaskResult::ModelImport(model) => self.set_value(*model),
+                }
+            }
+            if let Some(error_rect) = self.notifications_widget.draw(ui, egui::Id::from("messages_widget")){
+                ui.scroll_to_rect(error_rect, None);
+            }
+
             ui.style_mut().spacing.item_spacing = egui::Vec2 { x: 10.0, y: 10.0 };
             egui::ScrollArea::vertical().show(ui, |ui| {
                 ui.heading("Model Metadata");
@@ -678,71 +721,20 @@ impl eframe::App for AppState1 {
                 });
                 ui.add_space(20.0);
 
-
                 ui.separator();
-                ui.horizontal(|ui| {
-                    let save_button_clicked = ui.button("Save Model")
-                        .on_hover_text("Save this model to a .zip file, ready to be used or uploaded to the Model Zoo")
-                        .clicked();
 
-                    while let Ok(msg) = self.notifications_channel.receiver().try_recv(){
-                        match msg{
-                            TaskResult::Notification(msg) => self.notifications_widget.push_message(msg),
-                            TaskResult::ModelImport(model) => self.set_value(*model),
-                        }
-                    }
-                    if let Some(error_rect) = self.notifications_widget.draw(ui, egui::Id::from("messages_widget")){
-                        ui.scroll_to_rect(error_rect, None);
-                    }
+                let save_button_clicked = ui.button("Save Model")
+                    .on_hover_text("Save this model to a .zip file, ready to be used or uploaded to the Model Zoo")
+                    .clicked();
 
-                    self.model_packing_status = match std::mem::take(&mut self.model_packing_status) {
-                        PackingStatus::Done => 'done: {
-                            if !save_button_clicked {
-                                break 'done PackingStatus::Done;
-                            }
-                            let zoo_model = match self.create_model(){
-                                Ok(zoo_model) => zoo_model,
-                                Err(err) => {
-                                    self.notifications_widget.push_gui_error(err);
-                                    break 'done PackingStatus::Done;
-                                }
-                            };
-                            ui.ctx().request_repaint();
-                            let Some(mut path) = rfd::FileDialog::new().save_file() else {
-                                break 'done PackingStatus::Done;
-                            };
-                            if let Some(ext) = path.extension().map(|ex| ex.to_string_lossy()){
-                                if ext != "zip"{
-                                    self.notifications_widget.push_message(Err(format!("Model extension must be '.zip'. Provided '.{ext}'")));
-                                    break 'done PackingStatus::Done;
-                                }
-                            }
-                            path.set_extension("zip");
-                            let notification_message = format!("Packing into {}...", path.to_string_lossy());
-                            self.notifications_widget.push_message(Ok(notification_message));
-                            PackingStatus::Packing {
-                                path: path.clone(),
-                                task: poll_promise::Promise::spawn_thread("dumping_to_zip", move || {
-                                    let file = std::fs::File::create(path)?;
-                                    zoo_model.pack_into(file)
-                                }),
-                            }
-                        }
-                        PackingStatus::Packing { path, task } => match task.try_take() {
-                            Ok(value) => {
-                                self.notifications_widget.push_message(match &value{
-                                    Ok(_) => Ok(format!("Model saved to {}", path.to_string_lossy())),
-                                    Err(err) => Err(format!("Error saving model: {err}")),
-                                });
-                                PackingStatus::Done
-                            },
-                            Err(task) => {
-                                ui.ctx().request_repaint();
-                                PackingStatus::Packing { path, task }
-                            }
-                        },
+                if save_button_clicked {
+                    match self.create_model(){
+                        Ok(zoo_model) => self.launch_model_saving(zoo_model),
+                        Err(err) => self.notifications_widget.push_gui_error(
+                            GuiError::new(format!("Could not create zoo model: {err}"))
+                        ),
                     }
-                })
+                }
             });
         });
 

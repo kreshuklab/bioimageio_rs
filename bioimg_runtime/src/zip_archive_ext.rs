@@ -9,9 +9,13 @@ impl<T: Seek + Read + Send> SeekReadSend for T{}
 
 type AnyZipArchive = zip::ZipArchive<Box<dyn SeekReadSend + 'static>>;
 
+/// Something that uniquely identifies a zip archive
+///
+/// Either its path if it lives in the fs, or a name if its, say, in memory
 #[derive(Clone, Debug)]
 pub enum ZipArchiveIdentifier{
     Path(PathBuf),
+    /// For archives that don't live in the file system, like on memory or other web abstraction
     Name(String),
 }
 
