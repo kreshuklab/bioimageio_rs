@@ -58,18 +58,6 @@ impl TaskResult{
     }
 }
 
-pub struct MyWidget{
-    id: egui::Id,
-    #[allow(dead_code)]
-    text: String,
-}
-
-impl std::hash::Hash for MyWidget{
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.id.hash(state)
-    }
-}
-
 #[derive(Restore)]
 pub struct AppState1 {
     pub staging_name: StagingString<ModelRdfName>,
