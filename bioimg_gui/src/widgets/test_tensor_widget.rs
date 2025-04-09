@@ -88,7 +88,23 @@ impl TestTensorWidget{
     pub fn state(&self) -> pl::MutexGuard<'_, GenCell<TestTensorWidgetState>>{
         self.state.lock()
     }
-
+    pub fn launch_test_tensor_picker(&mut self){
+        let timestamp = Instant::now();
+        let current_state = Arc::clone(&self.state);
+        let fut  = async {
+            let Some(file_handle) = rfd::AsyncFileDialog::new().add_filter("numpy array", &["npy"],).pick_file().await else {
+                current_state.lock().maybe_set(timestamp, TestTensorWidgetState::Empty);
+                return
+            };
+            let file_data = file_handle.read().await;
+            let reader = std::io::BufReader::new(std::io::Cursor::new(&file_data));
+            let new_state = match Self::try_load(reader){
+                Ok(data) => TestTensorWidgetState::Loaded { path: Some(file_handle.to_owned()), data },
+                Err(e) => TestTensorWidgetState::Error { message: e.to_string() }
+            };
+            current_state.lock().maybe_set(timestamp, new_state);
+        };
+    }
 }
 
 impl StatefulWidget for TestTensorWidget{
