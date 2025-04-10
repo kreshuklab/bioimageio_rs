@@ -18,7 +18,7 @@ bioimg_zoo = {path = "../bioimg_zoo"}
 # You only need serde if you want app persistence:
 serde = { version = "1", features = ["derive"] }
 thiserror = "1.0.50"
-rfd = { version = "0.15.1", default-features=false, features=["gtk3"] }
+rfd = { version = "0.15.1" }
 parking_lot = "0.12.1"
 image = "0.24.8"
 egui_extras = { version = "0.31.0", features = ["all_loaders", "syntect"] }
