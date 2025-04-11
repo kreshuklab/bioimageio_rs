@@ -16,6 +16,8 @@ pub enum FileSourceError{
 
 #[derive(Clone, Debug)]
 pub enum FileSource{
+    Data{data: Vec<u8>, name: Option<String>},
+    #[cfg(not(target_arch="wasm32"))]
     LocalFile{path: Arc<Path>},
     FileInZipArchive{archive: SharedZipArchive, inner_path: Arc<str>},
     HttpUrl(Arc<HttpUrl>),
@@ -44,6 +46,12 @@ impl Eq for FileSource{}
 impl Display for FileSource{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self{
+            Self::Data{name, data} => {
+                if let Some(name) = name {
+                    write!(f, "{name} ")?;
+                }
+                write!(f, "{} bytes", data.len()) //FIXME: KB, MB, GB ?
+            },
             Self::LocalFile { path } => write!(f, "{}", path.to_string_lossy()),
             Self::FileInZipArchive { inner_path, .. } => write!(f, "*.zip/{inner_path}"), //FIXME? *.zip?
             Self::HttpUrl(http_url) => write!(f, "{}", http_url.as_str()),
@@ -58,6 +66,11 @@ impl FileSource{
         zip_file: &mut ModelZipWriter<impl Write + Seek>,
     ) -> Result<rdf::FsPath, ModelPackingError> {
         let extension = match self{
+            Self::Data{name, ..} => if let Some(name) = name {
+                name.split(".").last().map(|s| s.to_owned())
+            } else {
+                None
+            }
             Self::LocalFile { path } => path.extension().map(|ex| ex.to_string_lossy().to_string()),
             Self::FileInZipArchive { inner_path, .. } => {
                 inner_path.split(".").last().map(|s| s.to_owned())
@@ -72,6 +85,10 @@ impl FileSource{
         };
         zip_file.write_file(&output_inner_path, |writer| -> Result<u64, ModelPackingError>{
             let copied_bytes: u64 = match self{
+                Self::Data{ data, .. } => {
+                    let mut reader = std::io::Cursor::new(&data);
+                    std::io::copy(&mut reader, writer)?
+                },
                 Self::LocalFile { path } => {
                     std::io::copy(&mut std::fs::File::open(path)?, writer)?
                 },
@@ -82,7 +99,7 @@ impl FileSource{
                 },
                 #[cfg(target_arch = "wasm32")]
                 Self::HttpUrl(_http_url) => {
-                    panic!("can't download in wasm yet. This'd need to be async")
+                    return Err(ModelPackingError::HttpErro { reason: "Downloading in wasm not implemented yet" })
                 }
                 #[cfg(not(target_arch = "wasm32"))]
                 Self::HttpUrl(http_url) => {
@@ -149,6 +166,10 @@ impl FileSource{
 
     pub fn read_to_end(&self, buf: &mut Vec<u8>) -> Result<usize, FileSourceError>{
         match self{
+            Self::Data { data, .. } => {
+                let mut reader = std::io::Cursor::new(data);
+                Ok(reader.read_to_end(buf)?)
+            }
             Self::LocalFile { path } => Ok(std::fs::File::open(path)?.read_to_end(buf)?),
             Self::FileInZipArchive { archive, inner_path } => {
                 let bytes_read = archive.with_entry(&inner_path, |entry| entry.read_to_end(buf))
