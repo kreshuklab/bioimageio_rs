@@ -1,3 +1,4 @@
+use std::fmt::Write;
 use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::sync::Arc;
@@ -28,8 +29,9 @@ pub enum LocalFileState{
     #[default]
     Empty,
     Failed(GuiError),
+    InMemoryFile{name: Option<String>, data: Arc<[u8]>},
+    #[cfg(not(target_arch="wasm32"))]
     PickedNormalFile{path: Arc<Path>},
-    PickedEmptyZip{path: Arc<Path>},
     PickingInner{archive: SharedZipArchive, inner_options_widget: SearchAndPickWidget<String>}
 }
 
@@ -48,7 +50,16 @@ impl SummarizableWidget for LocalFileSourceWidget{
             LocalFileState::Failed(err) => {
                 show_error(ui, err);
             },
-            LocalFileState::PickedNormalFile{path} | LocalFileState::PickedEmptyZip{path} => {
+            LocalFileState::InMemoryFile{ name, data } => {
+                let mut label = String::with_capacity(32);
+                if let Some(name) = name {
+                    write!(&mut label, "{name} ").unwrap();
+                }
+                write!(&mut label, "{} bytes", data.len()).unwrap();
+                ui.label(label);
+            },
+            #[cfg(not(target_arch="wasm32"))]
+            LocalFileState::PickedNormalFile{path} => {
                 ui.label(path.to_string_lossy());
             },
             LocalFileState::PickingInner{ archive, inner_options_widget} => {
@@ -76,7 +87,11 @@ impl Restore for LocalFileSourceWidget{
         let gen_state: &(i64, LocalFileState) = &*guard;
         match &gen_state.1{
             LocalFileState::Empty | LocalFileState::Failed(_) => Self::RawData::Empty,
-            LocalFileState::PickedNormalFile {path} | LocalFileState::PickedEmptyZip {path} => {
+            LocalFileState::InMemoryFile{name, data} => {
+                let data = Arc::clone(data);
+                Self::RawData::InMemoryData{name: name.clone(), data }
+            },
+            LocalFileState::PickedNormalFile {path} => {
                 Self::RawData::AboutToLoad{path: path.to_string_lossy().into(), inner_path: None}
             },
             LocalFileState::PickingInner { archive, inner_options_widget, .. } => {
@@ -94,6 +109,12 @@ impl Restore for LocalFileSourceWidget{
         match raw{
             Self::RawData::Empty => {
                 self.state = Arc::new(pl::Mutex::new((0, LocalFileState::Empty)));
+                return
+            },
+            Self::RawData::InMemoryData{name, data} => {
+                self.state = Arc::new(pl::Mutex::new(
+                    (0, LocalFileState::InMemoryFile { name, data })
+                ));
                 return
             },
             Self::RawData::AboutToLoad{path, inner_path} => {
@@ -126,6 +147,19 @@ impl LocalFileSourceWidget{
         );
         out
     }
+    pub fn from_data(name: Option<String>, data: Arc<[u8]>) -> Self{
+        Self{
+            state: Arc::new(pl::Mutex::new(
+                (
+                    0,
+                    LocalFileState::InMemoryFile {
+                        name,
+                        data,
+                    }
+                )
+            ))
+        }
+    }
 }
 
 
@@ -156,7 +190,7 @@ pub fn spawn_load_file_task(
             });
             inner_options.sort();
             let selected_inner_path = match inner_options.first(){
-                None => break 'next LocalFileState::PickedEmptyZip { path: path.clone() },
+                None => break 'next LocalFileState::Failed(GuiError::new("Empty zip file")),
                 Some(first) => inner_path.unwrap_or(first.clone())
             };
             LocalFileState::PickingInner {
@@ -200,11 +234,16 @@ impl StatefulWidget for LocalFileSourceWidget{
                     LocalFileState::Failed(err) => {
                         show_error(ui, err);
                     },
+                    LocalFileState::InMemoryFile { name, data } => {
+                        let mut label = String::new();
+                        if let Some(name) = name {
+                            write!(&mut label, "{name} ").unwrap();
+                        }
+                        write!(&mut label, "({} bytes)", data.len()).unwrap();
+                        ui.weak(label);
+                    },
                     LocalFileState::PickedNormalFile{path} => {
                         ui.weak(path.to_string_lossy());
-                    },
-                    LocalFileState::PickedEmptyZip{path} => {
-                        show_error(ui, format!("Empty zip file: {}", path.to_string_lossy()));
                     },
                     LocalFileState::PickingInner{archive, ..} => {
                         ui.weak(archive.identifier().to_string());
@@ -226,8 +265,12 @@ impl StatefulWidget for LocalFileSourceWidget{
 
         match state{
             LocalFileState::Failed(err) => Err(err.clone()),
-            LocalFileState::Empty | LocalFileState::PickedEmptyZip{..} => {
+            LocalFileState::Empty => {
                 Err(GuiError::new("Empty"))
+            },
+            LocalFileState::InMemoryFile { name, data } => {
+                let data = Arc::clone(data);
+                Ok(rt::FileSource::Data { data, name: name.clone() })
             },
             LocalFileState::PickingInner{archive, inner_options_widget, ..} => Ok(
                 rt::FileSource::FileInZipArchive {
@@ -296,6 +339,10 @@ impl ValueWidget for FileSourceWidget{
 
     fn set_value(&mut self, value: rt::FileSource){
         match value{
+            rt::FileSource::Data { data, name } => {
+                self.mode = FileSourceWidgetMode::Local; //FIXME: double check
+                self.local_file_source_widget = LocalFileSourceWidget::from_data(name.clone(), data);
+            },
             rt::FileSource::LocalFile { path } => {
                 self.mode = FileSourceWidgetMode::Local;
                 self.local_file_source_widget = LocalFileSourceWidget::from_outer_path(path, None, None);

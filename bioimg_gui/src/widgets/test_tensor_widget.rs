@@ -1,4 +1,4 @@
-use std::io::{Cursor, Read};
+use std::io::Cursor;
 use std::ops::Deref;
 use std::time::Instant;
 use std::path::PathBuf;

@@ -16,7 +16,7 @@ pub enum FileSourceError{
 
 #[derive(Clone, Debug)]
 pub enum FileSource{
-    Data{data: Vec<u8>, name: Option<String>},
+    Data{data: Arc<[u8]>, name: Option<String>},
     #[cfg(not(target_arch="wasm32"))]
     LocalFile{path: Arc<Path>},
     FileInZipArchive{archive: SharedZipArchive, inner_path: Arc<str>},
