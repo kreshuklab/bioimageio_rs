@@ -35,6 +35,7 @@ use crate::widgets::staging_vec::StagingVec;
 use crate::widgets::util::{widget_vec_from_values, TaskChannel, VecItemRender, VecWidget};
 use crate::widgets::version_widget::VersionWidget;
 use crate::widgets::weights_widget::WeightsWidget;
+#[cfg(not(target_arch="wasm32"))]
 use crate::widgets::zoo_widget::{upload_model, ZooLoginWidget};
 use crate::widgets::ValueWidget;
 use crate::widgets::Restore;
@@ -89,6 +90,7 @@ pub struct AppState1 {
 
 
 
+    #[cfg(not(target_arch="wasm32"))]
     #[restore_default]
     pub zoo_login_widget: ZooLoginWidget,
     #[restore_default]
@@ -184,6 +186,7 @@ impl Default for AppState1 {
             weights_widget: Default::default(),
             notifications_widget: NotificationsWidget::new(),
             notifications_channel: Default::default(),
+            #[cfg(not(target_arch="wasm32"))]
             zoo_login_widget: Default::default(),
             zoo_model_creation_task: Default::default(),
             pipeline_widget: Default::default(),
@@ -298,6 +301,7 @@ impl AppState1{
         })
     }
 
+    #[cfg(not(target_arch="wasm32"))]
     fn save_project(&self, project_file: &Path) -> Result<String, String>{
         let writer = std::fs::File::options()
             .write(true)
@@ -309,6 +313,7 @@ impl AppState1{
             .map(|_| format!("Saved project to {}", project_file.to_string_lossy()))
     }
 
+    #[cfg(not(target_arch="wasm32"))]
     fn load_project(&mut self, project_file: &Path) -> Result<(), String>{
         let reader = std::fs::File::open(&project_file).map_err(|err| format!("Could not open project file: {err}"))?;
         let proj_data = match AppStateRawData::load(reader){
@@ -344,7 +349,7 @@ impl AppState1{
             #[cfg(target_arch="wasm32")]
             let pack_result = {
                 let mut file_bytes = Vec::<u8>::new(); //FIXME: check FileSystemWritableFileStream: seek() 
-                let mut file = std::io::Cursor::new(&mut file_bytes);
+                let file = std::io::Cursor::new(&mut file_bytes);
                 zoo_model.pack_into(file)
             };
             #[cfg(not(target_arch="wasm32"))]
@@ -378,6 +383,7 @@ impl eframe::App for AppState1 {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
+                #[cfg(not(target_arch="wasm32"))]
                 ui.menu_button("Zoo", |ui|{ ui.add_enabled_ui(false, |ui|{
                     self.zoo_login_widget.draw_and_parse(ui, egui::Id::from("zoo login"));
 
