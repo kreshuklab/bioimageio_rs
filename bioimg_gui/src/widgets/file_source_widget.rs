@@ -8,6 +8,7 @@ use parking_lot as pl;
 
 use bioimg_runtime as rt;
 use bioimg_runtime::zip_archive_ext::ZipArchiveIdentifier;
+#[cfg(not(target_arch="wasm32"))]
 use bioimg_runtime::zip_archive_ext::SharedZipArchive;
 
 use crate::project_data::{FileSourceWidgetRawData, LocalFileSourceWidgetRawData};
@@ -95,6 +96,7 @@ impl SummarizableWidget for LocalFileSourceWidget{
             LocalFileState::PickedNormalFile{path} => {
                 ui.label(path.to_string_lossy());
             },
+            #[cfg(not(target_arch="wasm32"))]
             LocalFileState::PickingInner{ archive, inner_options_widget} => {
                 ui.label(format!(
                     "{}/{}",
@@ -128,6 +130,7 @@ impl Restore for LocalFileSourceWidget{
             LocalFileState::PickedNormalFile {path} => {
                 Self::RawData::AboutToLoad{path: path.to_string_lossy().into(), inner_path: None}
             },
+            #[cfg(not(target_arch="wasm32"))]
             LocalFileState::PickingInner { archive, inner_options_widget, .. } => {
                 match archive.identifier(){
                     ZipArchiveIdentifier::Path(path) => Self::RawData::AboutToLoad{
@@ -356,10 +359,12 @@ impl ValueWidget for FileSourceWidget{
                 self.mode = FileSourceWidgetMode::Local; //FIXME: double check
                 self.local_file_source_widget = LocalFileSourceWidget::from_data(name.clone(), data);
             },
+            #[cfg(not(target_arch="wasm32"))]
             rt::FileSource::LocalFile { path } => {
                 self.mode = FileSourceWidgetMode::Local;
                 self.local_file_source_widget = LocalFileSourceWidget::from_outer_path(path, None, None);
             },
+            #[cfg(not(target_arch="wasm32"))]
             rt::FileSource::FileInZipArchive { inner_path, archive} => {
                 self.mode = FileSourceWidgetMode::Local;
                 self.local_file_source_widget = {
