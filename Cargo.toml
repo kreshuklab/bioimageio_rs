@@ -6,7 +6,7 @@ resolver = "2"
 version = "0.2.1"
 authors = ["Tomaz Vieira<tom.fogaca@gmail.com>"]
 edition = "2021"
-rust-version="1.79"
+rust-version="1.86"
 license = "MIT"
 repository = "https://github.com/kreshuklab/bioimg_rs"
 
