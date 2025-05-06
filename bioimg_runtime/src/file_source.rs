@@ -26,6 +26,7 @@ pub enum FileSource{
 impl PartialEq for FileSource{
     fn eq(&self, other: &Self) -> bool {
         match (self, other){
+            #[cfg(not(target_arch="wasm32"))]
             (
                 Self::LocalFile{path: p_self},
                 Self::LocalFile { path: p_other }
@@ -52,6 +53,7 @@ impl Display for FileSource{
                 }
                 write!(f, "{} bytes", data.len()) //FIXME: KB, MB, GB ?
             },
+            #[cfg(not(target_arch="wasm32"))]
             Self::LocalFile { path } => write!(f, "{}", path.to_string_lossy()),
             Self::FileInZipArchive { inner_path, .. } => write!(f, "*.zip/{inner_path}"), //FIXME? *.zip?
             Self::HttpUrl(http_url) => write!(f, "{}", http_url.as_str()),
@@ -71,6 +73,7 @@ impl FileSource{
             } else {
                 None
             }
+            #[cfg(not(target_arch="wasm32"))]
             Self::LocalFile { path } => path.extension().map(|ex| ex.to_string_lossy().to_string()),
             Self::FileInZipArchive { inner_path, .. } => {
                 inner_path.split(".").last().map(|s| s.to_owned())
@@ -89,6 +92,7 @@ impl FileSource{
                     let mut reader = std::io::Cursor::new(&data);
                     std::io::copy(&mut reader, writer)?
                 },
+                #[cfg(not(target_arch="wasm32"))]
                 Self::LocalFile { path } => {
                     std::io::copy(&mut std::fs::File::open(path)?, writer)?
                 },
@@ -99,7 +103,7 @@ impl FileSource{
                 },
                 #[cfg(target_arch = "wasm32")]
                 Self::HttpUrl(_http_url) => {
-                    return Err(ModelPackingError::HttpErro { reason: "Downloading in wasm not implemented yet" })
+                    return Err(ModelPackingError::HttpErro { reason: "Downloading in wasm not implemented yet".to_owned() })
                 }
                 #[cfg(not(target_arch = "wasm32"))]
                 Self::HttpUrl(http_url) => {
@@ -170,6 +174,7 @@ impl FileSource{
                 let mut reader = std::io::Cursor::new(data);
                 Ok(reader.read_to_end(buf)?)
             }
+            #[cfg(not(target_arch="wasm32"))]
             Self::LocalFile { path } => Ok(std::fs::File::open(path)?.read_to_end(buf)?),
             Self::FileInZipArchive { archive, inner_path } => {
                 let bytes_read = archive.with_entry(&inner_path, |entry| entry.read_to_end(buf))
@@ -178,7 +183,7 @@ impl FileSource{
             },
             #[cfg(target_arch = "wasm32")]
             Self::HttpUrl(_http_url) => {
-                panic!("Can't download on wasm yet. This'd need to be async")
+                Err(FileSourceError::HttpError { reason: "Can't download on was yet; needs to be async".to_owned() })
             },
             #[cfg(not(target_arch = "wasm32"))]
             Self::HttpUrl(http_url) => {
