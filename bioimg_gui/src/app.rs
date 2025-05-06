@@ -432,18 +432,11 @@ impl eframe::App for AppState1 {
 
                         #[cfg(target_arch="wasm32")]
                         wasm_bindgen_futures::spawn_local(async move {
-                            use zip::ZipArchive;
-                            use bioimg_runtime::zip_archive_ext::SeekReadSend;
-                            use bioimg_runtime::zip_archive_ext::{ZipArchiveIdentifier, SharedZipArchive};
+                            use bioimg_runtime::zip_archive_ext::SharedZipArchive;
 
-                            if let Some(file) = rfd::AsyncFileDialog::new().add_filter("bioimage model", &["zip"],).pick_file().await {
-                                let contents = file.read().await;
-                                let reader: Box<dyn SeekReadSend + 'static> = Box::new(std::io::Cursor::new(contents));
-                                let archive = ZipArchive::new(reader).unwrap();
-                                let shared_archive = SharedZipArchive::new(
-                                    ZipArchiveIdentifier::Name(file.file_name()),
-                                    archive
-                                );
+                            if let Some(handle) = rfd::AsyncFileDialog::new().add_filter("bioimage model", &["zip"],).pick_file().await {
+                                let contents = handle.read().await;
+                                let shared_archive = SharedZipArchive::from_raw_data(contents, handle.file_name());
                                 let message = match rt::zoo_model::ZooModel::try_load_archive(shared_archive){
                                     Err(err) => TaskResult::Notification(Err(format!("Could not import model: {err}"))),
                                     Ok(zoo_model) => TaskResult::ModelImport(Box::new(zoo_model)),

@@ -19,6 +19,18 @@ pub enum ZipArchiveIdentifier{
     Name(String),
 }
 
+impl From<PathBuf> for ZipArchiveIdentifier{
+    fn from(value: PathBuf) -> Self {
+        Self::Path(value)
+    }
+}
+
+impl From<String> for ZipArchiveIdentifier{
+    fn from(value: String) -> Self {
+        Self::Name(value)
+    }
+}
+
 impl Display for ZipArchiveIdentifier{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self{
@@ -74,6 +86,14 @@ impl SharedZipArchive{
     }
     pub fn new(identif: ZipArchiveIdentifier, archive: AnyZipArchive) -> Self{
         Self{identif, archive: Arc::new(Mutex::new(archive))}
+    }
+    pub fn from_raw_data(contents: Vec<u8>, ident: impl Into<ZipArchiveIdentifier>) -> Self{
+        let reader: Box<dyn SeekReadSend + 'static> = Box::new(std::io::Cursor::new(contents));
+        let archive = zip::ZipArchive::new(reader).unwrap();
+        SharedZipArchive::new(
+            ident.into(),
+            archive
+        )
     }
     pub fn with_entry<F, Out>(&self, name: &str, entry_reader: F) -> Result<Out, zip::result::ZipError>
     where

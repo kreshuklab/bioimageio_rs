@@ -218,13 +218,7 @@ pub fn spawn_load_file_task(
             {
                 let contents = handle.read().await; //FIXME: read can panic
                 if matches!(PathBuf::from(handle.file_name()).extension(), Some(ext) if ext == "zip"){
-                    use bioimg_runtime::zip_archive_ext::SeekReadSend;
-                    let reader: Box<dyn SeekReadSend + 'static> = Box::new(std::io::Cursor::new(contents));
-                    let archive = zip::ZipArchive::new(reader).unwrap();
-                    let archive = SharedZipArchive::new(
-                        ZipArchiveIdentifier::Name(handle.file_name()),
-                        archive
-                    );
+                    let archive = SharedZipArchive::from_raw_data(contents, handle.file_name());
                     break 'next LocalFileState::from_zip(archive, inner_path)
                 } else {
                     let data: Arc<[u8]> = Arc::from(contents.as_slice());
