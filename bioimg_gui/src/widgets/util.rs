@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, ops::{Deref, Sub}, sync::mpsc::{Receiver, Sender}, time::Instant};
+use std::{future::Future, marker::PhantomData, ops::{Deref, Sub}, sync::mpsc::{Receiver, Sender}, time::Instant};
 
 use egui::InnerResponse;
 use egui::PopupCloseBehavior::CloseOnClickOutside;
@@ -6,6 +6,16 @@ use egui::PopupCloseBehavior::CloseOnClickOutside;
 use crate::widgets::error_display::show_error;
 
 use super::ValueWidget;
+
+pub fn fire_and_forget<F>(fut: F)
+where
+    F: Future<Output=()> + Send + 'static,
+{
+    #[cfg(target_arch="wasm32")]
+    wasm_bindgen_futures::spawn_local(fut);
+    #[cfg(not(target_arch="wasm32"))]
+    std::thread::spawn(move || smol::block_on(fut));
+}
 
 pub trait DynamicImageExt {
     fn to_egui_texture_handle(&self, name: impl Into<String>, ctx: &egui::Context) -> egui::TextureHandle;
