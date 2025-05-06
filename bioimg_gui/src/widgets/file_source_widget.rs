@@ -2,13 +2,13 @@ use std::fmt::Write;
 use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::sync::Arc;
+#[cfg(not(target_arch="wasm32"))]
 use std::path::Path;
 
 use parking_lot as pl;
 
 use bioimg_runtime as rt;
 use bioimg_runtime::zip_archive_ext::ZipArchiveIdentifier;
-#[cfg(not(target_arch="wasm32"))]
 use bioimg_runtime::zip_archive_ext::SharedZipArchive;
 
 use crate::project_data::{FileSourceWidgetRawData, LocalFileSourceWidgetRawData};
@@ -16,7 +16,7 @@ use crate::result::{GuiError, Result};
 use crate::widgets::popup_widget::draw_fullscreen_popup;
 
 use super::collapsible_widget::SummarizableWidget;
-use super::util::fire_and_forget;
+
 use super::{
     error_display::show_error,
     popup_widget::PopupResult,
@@ -34,7 +34,6 @@ pub enum LocalFileState{
     InMemoryFile{name: Option<String>, data: Arc<[u8]>},
     #[cfg(not(target_arch="wasm32"))]
     PickedNormalFile{path: Arc<Path>},
-    #[cfg(not(target_arch="wasm32"))]
     PickingInner{archive: SharedZipArchive, inner_options_widget: SearchAndPickWidget<String>}
 }
 
@@ -51,6 +50,9 @@ impl LocalFileState{
             Ok(arch) => arch,
             Err(err) => return LocalFileState::Failed(GuiError::from(err))
         };
+        Self::from_zip(archive, inner_path)
+    }
+    fn from_zip(archive: SharedZipArchive, inner_path: Option<String>) -> Self{
         let mut inner_options: Vec<String> = archive.with_file_names(|file_names| {
             file_names
                 .filter(|fname| !fname.ends_with('/') && !fname.ends_with('\\'))
@@ -96,7 +98,6 @@ impl SummarizableWidget for LocalFileSourceWidget{
             LocalFileState::PickedNormalFile{path} => {
                 ui.label(path.to_string_lossy());
             },
-            #[cfg(not(target_arch="wasm32"))]
             LocalFileState::PickingInner{ archive, inner_options_widget} => {
                 ui.label(format!(
                     "{}/{}",
@@ -130,7 +131,6 @@ impl Restore for LocalFileSourceWidget{
             LocalFileState::PickedNormalFile {path} => {
                 Self::RawData::AboutToLoad{path: path.to_string_lossy().into(), inner_path: None}
             },
-            #[cfg(not(target_arch="wasm32"))]
             LocalFileState::PickingInner { archive, inner_options_widget, .. } => {
                 match archive.identifier(){
                     ZipArchiveIdentifier::Path(path) => Self::RawData::AboutToLoad{
@@ -155,13 +155,17 @@ impl Restore for LocalFileSourceWidget{
                 return
             },
             Self::RawData::AboutToLoad{path, inner_path} => {
-                let pathbuf = PathBuf::from(path);
-                *self = LocalFileSourceWidget::from_outer_path(
-                    Arc::from(pathbuf.as_path()),
-                    inner_path,
-                    None,
-                );
-                return
+                #[cfg(target_arch="wasm32")]
+                eprintln!("Warning: can't load local path {path}/{inner_path:?} in wasm32"); //FIXME
+                #[cfg(not(target_arch="wasm32"))]
+                {
+                    let pathbuf = PathBuf::from(path);
+                    *self = LocalFileSourceWidget::from_outer_path(
+                        Arc::from(pathbuf.as_path()),
+                        inner_path,
+                        None,
+                    );
+                }
             }
         };
     } 
@@ -173,6 +177,7 @@ impl LocalFileSourceWidget{
             state: Arc::new(pl::Mutex::new((0, state)))
         }
     }
+    #[cfg(not(target_arch="wasm32"))]
     pub fn from_outer_path(
         path: Arc<Path>,
         inner_path: Option<String>,
@@ -211,7 +216,20 @@ pub fn spawn_load_file_task(
             };
             #[cfg(target_arch="wasm32")]
             {
-                break 'next LocalFileState::InMemoryFile { name: handle.name(), data: handle.read() } //FIXME: read can panicS
+                let contents = handle.read().await; //FIXME: read can panic
+                if matches!(PathBuf::from(handle.file_name()).extension(), Some(ext) if ext == "zip"){
+                    use bioimg_runtime::zip_archive_ext::SeekReadSend;
+                    let reader: Box<dyn SeekReadSend + 'static> = Box::new(std::io::Cursor::new(contents));
+                    let archive = zip::ZipArchive::new(reader).unwrap();
+                    let archive = SharedZipArchive::new(
+                        ZipArchiveIdentifier::Name(handle.file_name()),
+                        archive
+                    );
+                    break 'next LocalFileState::from_zip(archive, inner_path)
+                } else {
+                    let data: Arc<[u8]> = Arc::from(contents.as_slice());
+                    break 'next LocalFileState::InMemoryFile { name: Some(handle.file_name()), data }
+                }
             }
             #[cfg(not(target_arch="wasm32"))]
             LocalFileState::from_local_path(handle.path(), inner_path) //FIXME: maybe use async/await?
@@ -223,7 +241,11 @@ pub fn spawn_load_file_task(
         drop(guard);
         ctx.as_ref().map(|ctx| ctx.request_repaint());
     };
-    fire_and_forget(fut);
+
+    #[cfg(target_arch="wasm32")]
+    wasm_bindgen_futures::spawn_local(fut);
+    #[cfg(not(target_arch="wasm32"))]
+    std::thread::spawn(move || smol::block_on(fut));
 }
 
 impl StatefulWidget for LocalFileSourceWidget{
@@ -258,6 +280,7 @@ impl StatefulWidget for LocalFileSourceWidget{
                         write!(&mut label, "({} bytes)", data.len()).unwrap();
                         ui.weak(label);
                     },
+                    #[cfg(not(target_arch="wasm32"))]
                     LocalFileState::PickedNormalFile{path} => {
                         ui.weak(path.to_string_lossy());
                     },
@@ -294,6 +317,7 @@ impl StatefulWidget for LocalFileSourceWidget{
                     inner_path: Arc::from(inner_options_widget.value.as_ref())
                 }
             ),
+            #[cfg(not(target_arch="wasm32"))]
             LocalFileState::PickedNormalFile{path} => {
                 Ok(rt::FileSource::LocalFile{path: path.clone()})
             },
@@ -364,7 +388,6 @@ impl ValueWidget for FileSourceWidget{
                 self.mode = FileSourceWidgetMode::Local;
                 self.local_file_source_widget = LocalFileSourceWidget::from_outer_path(path, None, None);
             },
-            #[cfg(not(target_arch="wasm32"))]
             rt::FileSource::FileInZipArchive { inner_path, archive} => {
                 self.mode = FileSourceWidgetMode::Local;
                 self.local_file_source_widget = {
