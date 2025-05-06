@@ -79,8 +79,11 @@ impl Restore for TestTensorWidget{
 }
 
 impl TestTensorWidget{
-    pub async fn try_load_async(mut reader: impl smol::io::AsyncRead + Unpin) -> Result<ArcNpyArray, GuiError>{
+    #[cfg(not(target_arch="wasm32"))]
+    pub async fn try_load_path(path: &std::path::Path) -> Result<ArcNpyArray, GuiError>{
         use smol::io::AsyncReadExt;
+
+        let mut reader = smol::fs::File::open(path).await?;
         let mut data = vec![];
         reader.read_to_end(&mut data).await ?;
         let data = NpyArray::try_load(&mut data.as_slice())?;
@@ -98,22 +101,17 @@ impl TestTensorWidget{
                 return
             };
             #[cfg(target_arch="wasm32")]
-            let (reader, path) = {
+            let (result, path) = {
                 let file_data = file_handle.read().await; //FIXME: This could panic. Read from the JsObj instead
-                (std::io::Cursor::new(file_data), None)
+                let array_result = NpyArray::try_load(&mut file_data.as_slice()).map(Arc::new);
+                (array_result, None)
             };
             #[cfg(not(target_arch="wasm32"))]
-            let (reader, path) = {
-                let file = match smol::fs::File::open(file_handle.path()).await {
-                    Ok(file) => file,
-                    Err(e) => {
-                        current_state.lock().maybe_set(timestamp, TestTensorWidgetState::Error{message: e.to_string()});
-                        return
-                    }
-                };
-                (smol::io::BufReader::new(file), Some(file_handle.path().to_owned()))
+            let (result, path) = {
+                let result = Self::try_load_path(file_handle.path()).await;
+                (result, Some(file_handle.path().to_owned()))
             };
-            let new_state = match Self::try_load_async(reader).await {
+            let new_state = match result {
                 Ok(data) => TestTensorWidgetState::Loaded { path, data },
                 Err(e) => TestTensorWidgetState::Error { message: e.to_string() }
             };
