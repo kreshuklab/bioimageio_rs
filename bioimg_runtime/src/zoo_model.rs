@@ -211,6 +211,7 @@ impl ZooModel{
 }
 
 impl ZooModel {
+    #[cfg(not(target_arch="wasm32"))]
     pub fn pack_into_tmp(self) -> Result<std::fs::File, ModelPackingError>{
         let mut tmp_file = tempfile::tempfile()?;
         self.pack_into(&mut tmp_file)?;

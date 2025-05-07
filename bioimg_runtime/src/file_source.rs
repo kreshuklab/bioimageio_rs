@@ -21,7 +21,7 @@ pub enum FileSourceError{
 pub enum FileSource{
     Data{data: Arc<[u8]>, name: Option<String>},
     #[cfg(not(target_arch="wasm32"))]
-    LocalFile{path: Arc<Path>},
+    LocalFile{path: Arc<std::path::Path>},
     FileInZipArchive{archive: SharedZipArchive, inner_path: Arc<str>},
     HttpUrl(Arc<HttpUrl>),
 }
