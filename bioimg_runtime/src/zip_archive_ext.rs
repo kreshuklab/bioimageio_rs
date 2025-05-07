@@ -7,7 +7,8 @@ use bioimg_spec::rdf;
 pub trait SeekReadSend: Seek + Read + Send{}
 impl<T: Seek + Read + Send> SeekReadSend for T{}
 
-type AnyZipArchive = zip::ZipArchive<Box<dyn SeekReadSend + 'static>>;
+type BoxDynSeekReadSend = Box<dyn SeekReadSend + 'static>;
+type AnyZipArchive = zip::ZipArchive<BoxDynSeekReadSend>;
 
 /// Something that uniquely identifies a zip archive
 ///
@@ -97,7 +98,7 @@ impl SharedZipArchive{
     }
     pub fn with_entry<F, Out>(&self, name: &str, entry_reader: F) -> Result<Out, zip::result::ZipError>
     where
-        F: FnOnce(&mut zip::read::ZipFile<'_>) -> Out,
+        F: FnOnce(&mut zip::read::ZipFile<'_, BoxDynSeekReadSend>) -> Out,
         Out: 'static,
     {
         let mut archive_guard = self.archive.lock().unwrap();
@@ -132,13 +133,13 @@ pub trait RdfFileReferenceExt{
         &self, archive: &SharedZipArchive, reader: F
     ) -> Result<Out, RdfFileReferenceReadError>
     where
-        F: FnOnce(&mut zip::read::ZipFile<'_>) -> Out,
+        F: FnOnce(&mut zip::read::ZipFile<'_, BoxDynSeekReadSend>) -> Out,
         Out: 'static;
 }
 impl RdfFileReferenceExt for rdf::FileReference{
     fn try_read<F, Out>(&self, archive: &SharedZipArchive, reader: F) -> Result<Out, RdfFileReferenceReadError>
     where
-        F: FnOnce(&mut zip::read::ZipFile<'_>) -> Out,
+        F: FnOnce(&mut zip::read::ZipFile<'_, BoxDynSeekReadSend>) -> Out,
         Out: 'static,
     {
         let inner_path: String = match self{
