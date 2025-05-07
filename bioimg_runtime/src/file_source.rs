@@ -1,4 +1,7 @@
-use std::{borrow::Borrow, fmt::Display, io::{Read, Seek, Write}, path::Path, sync::Arc};
+use std::fmt::Display;
+use std::sync::Arc;
+use std::io::{Read, Seek, Write};
+use std::borrow::Borrow;
 
 use bioimg_spec::rdf::{self, FileReference, HttpUrl};
 
