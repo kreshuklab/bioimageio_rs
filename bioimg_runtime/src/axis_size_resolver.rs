@@ -1,4 +1,5 @@
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::{BTreeMap, HashMap};
+use ordermap::OrderSet;
 
 use bioimg_spec::rdf::model::{
     axis_size::{QualifiedAxisId, ResolvedAxisSize}, AnyAxisSize, AxisSizeReference, ParameterizedAxisSize
@@ -33,14 +34,33 @@ pub enum ResolverStatus {
 
 #[derive(thiserror::Error, Debug)]
 pub enum AxisSizeResolutionError {
-    #[error("Loop detected when trying to resolve reference to {0}")]
     Loop(QualifiedAxisId),
-    #[error("Reference to {0} is unresolvable")]
-    Unresolvable(QualifiedAxisId),
-    #[error("Multiple axes with same ID: {0}")]
+    Unresolvable{visited: OrderSet<QualifiedAxisId>},
     DuplicateId(QualifiedAxisId),
-    #[error("Parameterized size not allowed")]
     ParameterizedNotAllowed,
+}
+
+impl std::fmt::Display for AxisSizeResolutionError{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self{
+            Self::Loop(id) => write!(f, "Loop detected when trying to resolve reference to {id}"),
+            Self::Unresolvable { visited } => {
+                let mut ids_path = String::new();
+                let mut ref_components = visited.iter().peekable();
+
+                while let Some(component) = ref_components.next(){
+                    use std::fmt::Write;
+                    write!(&mut ids_path, "{component}")?;
+                    if ref_components.peek().is_some(){
+                        write!(&mut ids_path, " -> ")?;
+                    }
+                }
+                write!(f, "Chain of axis references is unresolvable: {ids_path}")
+            },
+            Self::DuplicateId(id) => write!(f, "Multiple axes with same ID: {id}"),
+            Self::ParameterizedNotAllowed => write!(f, "Parameterized size not allowed")
+        }
+    }
 }
 
 impl SlotResolver {
@@ -69,7 +89,7 @@ impl SlotResolver {
     fn try_resolve(
         &mut self,
         current: QualifiedAxisId,
-        mut visited: HashSet<QualifiedAxisId>,
+        mut visited: OrderSet<QualifiedAxisId>,
     ) -> Result<ResolvedAxisSize, AxisSizeResolutionError> {
         if let Some(resolved) = self.resolved_axes.get(&current) {
             return Ok(resolved.clone());
@@ -78,7 +98,7 @@ impl SlotResolver {
             return Err(AxisSizeResolutionError::Loop(current));
         }
         let Some(size_ref) = self.unresolved_axes.get(&current) else {
-            return Err(AxisSizeResolutionError::Unresolvable(current));
+            return Err(AxisSizeResolutionError::Unresolvable{visited: visited.clone()});
         };
         let resolved = self.try_resolve(size_ref.qualified_axis_id.clone(), visited)?;
         self.unresolved_axes.remove(&current);
@@ -90,7 +110,7 @@ impl SlotResolver {
         let Some((key, _)) = self.unresolved_axes.last_key_value() else{
             return Ok(ResolverStatus::Done(self.resolved_axes));
         };
-        self.try_resolve(key.clone(), HashSet::new())?;
+        self.try_resolve(key.clone(), OrderSet::new())?;
         Ok(ResolverStatus::Resolving(self))
     }
 
