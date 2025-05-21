@@ -35,6 +35,7 @@ use crate::widgets::staging_vec::StagingVec;
 use crate::widgets::util::{widget_vec_from_values, TaskChannel, VecItemRender, VecWidget};
 use crate::widgets::version_widget::VersionWidget;
 use crate::widgets::weights_widget::WeightsWidget;
+#[cfg(not(target_arch="wasm32"))]
 use crate::widgets::zoo_widget::{upload_model, ZooLoginWidget};
 use crate::widgets::ValueWidget;
 use crate::widgets::Restore;
@@ -55,18 +56,6 @@ impl TaskResult{
     }
     pub fn err_message(msg: impl Into<String>) -> Self{
         Self::Notification(Err(msg.into()))
-    }
-}
-
-pub struct MyWidget{
-    id: egui::Id,
-    #[allow(dead_code)]
-    text: String,
-}
-
-impl std::hash::Hash for MyWidget{
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.id.hash(state)
     }
 }
 
@@ -101,6 +90,7 @@ pub struct AppState1 {
 
 
 
+    #[cfg(not(target_arch="wasm32"))]
     #[restore_default]
     pub zoo_login_widget: ZooLoginWidget,
     #[restore_default]
@@ -196,6 +186,7 @@ impl Default for AppState1 {
             weights_widget: Default::default(),
             notifications_widget: NotificationsWidget::new(),
             notifications_channel: Default::default(),
+            #[cfg(not(target_arch="wasm32"))]
             zoo_login_widget: Default::default(),
             zoo_model_creation_task: Default::default(),
             pipeline_widget: Default::default(),
@@ -310,6 +301,7 @@ impl AppState1{
         })
     }
 
+    #[cfg(not(target_arch="wasm32"))]
     fn save_project(&self, project_file: &Path) -> Result<String, String>{
         let writer = std::fs::File::options()
             .write(true)
@@ -321,6 +313,7 @@ impl AppState1{
             .map(|_| format!("Saved project to {}", project_file.to_string_lossy()))
     }
 
+    #[cfg(not(target_arch="wasm32"))]
     fn load_project(&mut self, project_file: &Path) -> Result<(), String>{
         let reader = std::fs::File::open(&project_file).map_err(|err| format!("Could not open project file: {err}"))?;
         let proj_data = match AppStateRawData::load(reader){
@@ -337,36 +330,47 @@ impl AppState1{
         }
         Ok(())
     }
-    pub fn launch_model_saving(&mut self, zoo_model: ZooModel) {
+    fn launch_model_saving(&mut self, zoo_model: ZooModel) {
         let sender = self.notifications_channel.sender().clone();
-        std::thread::spawn(move || {
-            let Some(mut path) = rfd::FileDialog::new().save_file() else {
+        let fut = async move {
+            let Some(file_handle) = rfd::AsyncFileDialog::new().save_file().await else {
+                println!("Returned with nothing");
                 return;
             };
-            if let Some(ext) = path.extension().map(|ex| ex.to_string_lossy()){
-                if ext != "zip"{
-                    let msg = TaskResult::err_message(format!("Model extension must be '.zip'. Provided '.{ext}'"));
-                    sender.send(msg).unwrap();
-                    return
-                }
+            let file_name = file_handle.file_name();
+            if !file_name.ends_with(".zip"){
+                let msg = TaskResult::err_message(format!("Model extension must be '.zip'. Provided '{file_name}'"));
+                sender.send(msg).unwrap();
+                return
             }
-            path.set_extension("zip");
-            let notification_message = format!("Packing into {}...", path.to_string_lossy());
+            let notification_message = format!("Packing into {file_name}...");
             sender.send(TaskResult::ok_message(notification_message)).unwrap();
 
-            let file = match std::fs::File::create(&path){
-                Ok(f) => f,
+            #[cfg(target_arch="wasm32")]
+            let pack_result = {
+                let mut file_bytes = Vec::<u8>::new(); //FIXME: check FileSystemWritableFileStream: seek() 
+                let file = std::io::Cursor::new(&mut file_bytes);
+                zoo_model.pack_into(file)
+            };
+            #[cfg(not(target_arch="wasm32"))]
+            let pack_result = match std::fs::File::create(file_handle.path()){
+                Ok(file) => zoo_model.pack_into(file),
                 Err(err) => {
                     sender.send(TaskResult::err_message(format!("Could not create zip file: {err}"))).unwrap();
                     return;
                 }
             };
-            let value = zoo_model.pack_into(file);
-            sender.send(match &value{
-                Ok(_) => TaskResult::ok_message(format!("Model saved to {}", path.to_string_lossy())),
+
+            sender.send(match &pack_result{
+                Ok(_) => TaskResult::ok_message(format!("Model saved to {file_name}")),
                 Err(err) => TaskResult::err_message(format!("Error saving model: {err}")),
             }).unwrap();
-        });
+        };
+
+        #[cfg(target_arch="wasm32")]
+        wasm_bindgen_futures::spawn_local(fut);
+        #[cfg(not(target_arch="wasm32"))]
+        std::thread::spawn(move || smol::block_on(fut));
     }
 }
 
@@ -379,6 +383,7 @@ impl eframe::App for AppState1 {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         egui::TopBottomPanel::top("top_panel").show(ctx, |ui| {
             egui::menu::bar(ui, |ui| {
+                #[cfg(not(target_arch="wasm32"))]
                 ui.menu_button("Zoo", |ui|{ ui.add_enabled_ui(false, |ui|{
                     self.zoo_login_widget.draw_and_parse(ui, egui::Id::from("zoo login"));
 
@@ -433,18 +438,11 @@ impl eframe::App for AppState1 {
 
                         #[cfg(target_arch="wasm32")]
                         wasm_bindgen_futures::spawn_local(async move {
-                            use zip::ZipArchive;
-                            use bioimg_runtime::zip_archive_ext::SeekReadSend;
-                            use bioimg_runtime::zip_archive_ext::{ZipArchiveIdentifier, SharedZipArchive};
+                            use bioimg_runtime::zip_archive_ext::SharedZipArchive;
 
-                            if let Some(file) = rfd::AsyncFileDialog::new().add_filter("bioimage model", &["zip"],).pick_file().await {
-                                let contents = file.read().await;
-                                let reader: Box<dyn SeekReadSend + 'static> = Box::new(std::io::Cursor::new(contents));
-                                let archive = ZipArchive::new(reader).unwrap();
-                                let shared_archive = SharedZipArchive::new(
-                                    ZipArchiveIdentifier::Name(file.file_name()),
-                                    archive
-                                );
+                            if let Some(handle) = rfd::AsyncFileDialog::new().add_filter("bioimage model", &["zip"],).pick_file().await {
+                                let contents = handle.read().await;
+                                let shared_archive = SharedZipArchive::from_raw_data(contents, handle.file_name());
                                 let message = match rt::zoo_model::ZooModel::try_load_archive(shared_archive){
                                     Err(err) => TaskResult::Notification(Err(format!("Could not import model: {err}"))),
                                     Ok(zoo_model) => TaskResult::ModelImport(Box::new(zoo_model)),

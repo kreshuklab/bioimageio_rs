@@ -1,4 +1,5 @@
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use bioimg_spec::rdf::model::{self as modelrdf, AxisType};
 use crate::widgets::author_widget::AuthorWidget;
@@ -49,6 +50,7 @@ pub enum TestTensorWidgetRawData{
 #[derive(serde::Serialize, serde::Deserialize)]
 pub enum LocalFileSourceWidgetRawData{
     Empty,
+    InMemoryData{name: Option<String>, data: Arc<[u8]>},
     AboutToLoad{path: String, inner_path: Option<String>}
 }
 

@@ -1,6 +1,8 @@
+use std::fmt::Write;
 use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::sync::Arc;
+#[cfg(not(target_arch="wasm32"))]
 use std::path::Path;
 
 use parking_lot as pl;
@@ -14,6 +16,7 @@ use crate::result::{GuiError, Result};
 use crate::widgets::popup_widget::draw_fullscreen_popup;
 
 use super::collapsible_widget::SummarizableWidget;
+
 use super::{
     error_display::show_error,
     popup_widget::PopupResult,
@@ -28,9 +31,44 @@ pub enum LocalFileState{
     #[default]
     Empty,
     Failed(GuiError),
+    InMemoryFile{name: Option<String>, data: Arc<[u8]>},
+    #[cfg(not(target_arch="wasm32"))]
     PickedNormalFile{path: Arc<Path>},
-    PickedEmptyZip{path: Arc<Path>},
     PickingInner{archive: SharedZipArchive, inner_options_widget: SearchAndPickWidget<String>}
+}
+
+impl LocalFileState{
+    #[cfg(not(target_arch="wasm32"))]
+    fn from_local_path(path: &Path, inner_path: Option<String>) -> LocalFileState{
+        if !path.exists(){ //FIXME: use smol and await?
+            return LocalFileState::Failed(GuiError::new("File does not exist"))
+        }
+        if path.extension().is_none() || matches!(path.extension(), Some(ext) if ext != "zip"){
+            return LocalFileState::PickedNormalFile { path: Arc::from(path) }
+        }
+        let archive = match SharedZipArchive::open(&path){
+            Ok(arch) => arch,
+            Err(err) => return LocalFileState::Failed(GuiError::from(err))
+        };
+        Self::from_zip(archive, inner_path)
+    }
+    fn from_zip(archive: SharedZipArchive, inner_path: Option<String>) -> Self{
+        let mut inner_options: Vec<String> = archive.with_file_names(|file_names| {
+            file_names
+                .filter(|fname| !fname.ends_with('/') && !fname.ends_with('\\'))
+                .map(|fname| fname.to_owned())
+                .collect()
+        });
+        inner_options.sort();
+        let selected_inner_path = match inner_options.first(){
+            None => return LocalFileState::Failed(GuiError::new("Empty zip file")),
+            Some(first) => inner_path.unwrap_or(first.clone())
+        };
+        LocalFileState::PickingInner {
+            archive,
+            inner_options_widget: SearchAndPickWidget::new(selected_inner_path, inner_options)
+        }
+    }
 }
 
 pub struct LocalFileSourceWidget{
@@ -48,7 +86,16 @@ impl SummarizableWidget for LocalFileSourceWidget{
             LocalFileState::Failed(err) => {
                 show_error(ui, err);
             },
-            LocalFileState::PickedNormalFile{path} | LocalFileState::PickedEmptyZip{path} => {
+            LocalFileState::InMemoryFile{ name, data } => {
+                let mut label = String::with_capacity(32);
+                if let Some(name) = name {
+                    write!(&mut label, "{name} ").unwrap();
+                }
+                write!(&mut label, "{} bytes", data.len()).unwrap();
+                ui.label(label);
+            },
+            #[cfg(not(target_arch="wasm32"))]
+            LocalFileState::PickedNormalFile{path} => {
                 ui.label(path.to_string_lossy());
             },
             LocalFileState::PickingInner{ archive, inner_options_widget} => {
@@ -76,7 +123,12 @@ impl Restore for LocalFileSourceWidget{
         let gen_state: &(i64, LocalFileState) = &*guard;
         match &gen_state.1{
             LocalFileState::Empty | LocalFileState::Failed(_) => Self::RawData::Empty,
-            LocalFileState::PickedNormalFile {path} | LocalFileState::PickedEmptyZip {path} => {
+            LocalFileState::InMemoryFile{name, data} => {
+                let data = Arc::clone(data);
+                Self::RawData::InMemoryData{name: name.clone(), data }
+            },
+            #[cfg(not(target_arch="wasm32"))]
+            LocalFileState::PickedNormalFile {path} => {
                 Self::RawData::AboutToLoad{path: path.to_string_lossy().into(), inner_path: None}
             },
             LocalFileState::PickingInner { archive, inner_options_widget, .. } => {
@@ -96,14 +148,24 @@ impl Restore for LocalFileSourceWidget{
                 self.state = Arc::new(pl::Mutex::new((0, LocalFileState::Empty)));
                 return
             },
-            Self::RawData::AboutToLoad{path, inner_path} => {
-                let pathbuf = PathBuf::from(path);
-                *self = LocalFileSourceWidget::from_outer_path(
-                    Arc::from(pathbuf.as_path()),
-                    inner_path,
-                    None,
-                );
+            Self::RawData::InMemoryData{name, data} => {
+                self.state = Arc::new(pl::Mutex::new(
+                    (0, LocalFileState::InMemoryFile { name, data })
+                ));
                 return
+            },
+            Self::RawData::AboutToLoad{path, inner_path} => {
+                #[cfg(target_arch="wasm32")]
+                eprintln!("Warning: can't load local path {path}/{inner_path:?} in wasm32"); //FIXME
+                #[cfg(not(target_arch="wasm32"))]
+                {
+                    let pathbuf = PathBuf::from(path);
+                    *self = LocalFileSourceWidget::from_outer_path(
+                        Arc::from(pathbuf.as_path()),
+                        inner_path,
+                        None,
+                    );
+                }
             }
         };
     } 
@@ -115,54 +177,56 @@ impl LocalFileSourceWidget{
             state: Arc::new(pl::Mutex::new((0, state)))
         }
     }
+    #[cfg(not(target_arch="wasm32"))]
     pub fn from_outer_path(
         path: Arc<Path>,
         inner_path: Option<String>,
         ctx: Option<egui::Context>,
     ) -> Self{
-        let out = Self::default();
-        spawn_load_file_task(
-            path, inner_path, 0, Arc::clone(&out.state), ctx
-        );
-        out
+        ctx.map(|ctx| ctx.request_repaint());
+        Self::new(LocalFileState::from_local_path(&path, inner_path))
+    }
+    pub fn from_data(name: Option<String>, data: Arc<[u8]>) -> Self{
+        Self{
+            state: Arc::new(pl::Mutex::new(
+                (
+                    0,
+                    LocalFileState::InMemoryFile {
+                        name,
+                        data,
+                    }
+                )
+            ))
+        }
     }
 }
 
 
+
 pub fn spawn_load_file_task(
-    path: Arc<Path>,
     inner_path: Option<String>,
     generation: i64,
     state: Arc<pl::Mutex<(i64, LocalFileState)>>,
     ctx: Option<egui::Context>, //FIXME: always require ctx?
 ){
-    std::thread::spawn(move || {
+    let fut = async move {
         let next_state = 'next: {
-            if !path.exists(){
-                break 'next LocalFileState::Failed(GuiError::new("File does not exist"));
-            }
-            if path.extension().is_none() || matches!(path.extension(), Some(ext) if ext != "zip"){
-                break 'next LocalFileState::PickedNormalFile { path }
-            }
-            let archive = match SharedZipArchive::open(&path){
-                Ok(arch) => arch,
-                Err(err) => break 'next LocalFileState::Failed(GuiError::from(err))
+            let Some(handle) = rfd::AsyncFileDialog::new().pick_file().await else {
+                break 'next LocalFileState::Empty;
             };
-            let mut inner_options: Vec<String> = archive.with_file_names(|file_names| {
-                file_names
-                    .filter(|fname| !fname.ends_with('/') && !fname.ends_with('\\'))
-                    .map(|fname| fname.to_owned())
-                    .collect()
-            });
-            inner_options.sort();
-            let selected_inner_path = match inner_options.first(){
-                None => break 'next LocalFileState::PickedEmptyZip { path: path.clone() },
-                Some(first) => inner_path.unwrap_or(first.clone())
-            };
-            LocalFileState::PickingInner {
-                archive,
-                inner_options_widget: SearchAndPickWidget::new(selected_inner_path, inner_options)
+            #[cfg(target_arch="wasm32")]
+            {
+                let contents = handle.read().await; //FIXME: read can panic
+                if matches!(PathBuf::from(handle.file_name()).extension(), Some(ext) if ext == "zip"){
+                    let archive = SharedZipArchive::from_raw_data(contents, handle.file_name());
+                    break 'next LocalFileState::from_zip(archive, inner_path)
+                } else {
+                    let data: Arc<[u8]> = Arc::from(contents.as_slice());
+                    break 'next LocalFileState::InMemoryFile { name: Some(handle.file_name()), data }
+                }
             }
+            #[cfg(not(target_arch="wasm32"))]
+            LocalFileState::from_local_path(handle.path(), inner_path) //FIXME: maybe use async/await?
         };
         let mut guard = state.lock();
         if guard.0 == generation{
@@ -170,7 +234,12 @@ pub fn spawn_load_file_task(
         }
         drop(guard);
         ctx.as_ref().map(|ctx| ctx.request_repaint());
-    });
+    };
+
+    #[cfg(target_arch="wasm32")]
+    wasm_bindgen_futures::spawn_local(fut);
+    #[cfg(not(target_arch="wasm32"))]
+    std::thread::spawn(move || smol::block_on(fut));
 }
 
 impl StatefulWidget for LocalFileSourceWidget{
@@ -184,16 +253,13 @@ impl StatefulWidget for LocalFileSourceWidget{
         ui.vertical(|ui|{
             ui.horizontal(|ui|{
                 if ui.button("Open...").clicked(){
-                    if let Some(path) = rfd::FileDialog::new().pick_file(){
-                        *generation += 1;
-                        spawn_load_file_task(
-                            Arc::from(path.as_path()),
-                            None,
-                            *generation,
-                            Arc::clone(&self.state),
-                            Some(ui.ctx().clone()),
-                        );
-                    }
+                    *generation += 1;
+                    spawn_load_file_task(
+                        None,
+                        *generation,
+                        Arc::clone(&self.state),
+                        Some(ui.ctx().clone()),
+                    );
                 }
                 match state{
                     LocalFileState::Empty => {
@@ -202,11 +268,17 @@ impl StatefulWidget for LocalFileSourceWidget{
                     LocalFileState::Failed(err) => {
                         show_error(ui, err);
                     },
+                    LocalFileState::InMemoryFile { name, data } => {
+                        let mut label = String::new();
+                        if let Some(name) = name {
+                            write!(&mut label, "{name} ").unwrap();
+                        }
+                        write!(&mut label, "({} bytes)", data.len()).unwrap();
+                        ui.weak(label);
+                    },
+                    #[cfg(not(target_arch="wasm32"))]
                     LocalFileState::PickedNormalFile{path} => {
                         ui.weak(path.to_string_lossy());
-                    },
-                    LocalFileState::PickedEmptyZip{path} => {
-                        show_error(ui, format!("Empty zip file: {}", path.to_string_lossy()));
                     },
                     LocalFileState::PickingInner{archive, ..} => {
                         ui.weak(archive.identifier().to_string());
@@ -228,8 +300,12 @@ impl StatefulWidget for LocalFileSourceWidget{
 
         match state{
             LocalFileState::Failed(err) => Err(err.clone()),
-            LocalFileState::Empty | LocalFileState::PickedEmptyZip{..} => {
+            LocalFileState::Empty => {
                 Err(GuiError::new("Empty"))
+            },
+            LocalFileState::InMemoryFile { name, data } => {
+                let data = Arc::clone(data);
+                Ok(rt::FileSource::Data { data, name: name.clone() })
             },
             LocalFileState::PickingInner{archive, inner_options_widget, ..} => Ok(
                 rt::FileSource::FileInZipArchive {
@@ -237,6 +313,7 @@ impl StatefulWidget for LocalFileSourceWidget{
                     inner_path: Arc::from(inner_options_widget.value.as_ref())
                 }
             ),
+            #[cfg(not(target_arch="wasm32"))]
             LocalFileState::PickedNormalFile{path} => {
                 Ok(rt::FileSource::LocalFile{path: path.clone()})
             },
@@ -298,6 +375,11 @@ impl ValueWidget for FileSourceWidget{
 
     fn set_value(&mut self, value: rt::FileSource){
         match value{
+            rt::FileSource::Data { data, name } => {
+                self.mode = FileSourceWidgetMode::Local; //FIXME: double check
+                self.local_file_source_widget = LocalFileSourceWidget::from_data(name.clone(), data);
+            },
+            #[cfg(not(target_arch="wasm32"))]
             rt::FileSource::LocalFile { path } => {
                 self.mode = FileSourceWidgetMode::Local;
                 self.local_file_source_widget = LocalFileSourceWidget::from_outer_path(path, None, None);

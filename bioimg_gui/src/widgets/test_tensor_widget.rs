@@ -1,4 +1,4 @@
-use std::io::{Cursor, Read};
+use std::io::Cursor;
 use std::ops::Deref;
 use std::time::Instant;
 use std::path::PathBuf;
@@ -79,16 +79,50 @@ impl Restore for TestTensorWidget{
 }
 
 impl TestTensorWidget{
-    pub fn try_load(mut path: impl Read) -> Result<ArcNpyArray, GuiError>{
+    #[cfg(not(target_arch="wasm32"))]
+    pub async fn try_load_path(path: &std::path::Path) -> Result<ArcNpyArray, GuiError>{
+        use smol::io::AsyncReadExt;
+
+        let mut reader = smol::fs::File::open(path).await?;
         let mut data = vec![];
-        path.read_to_end(&mut data)?;
+        reader.read_to_end(&mut data).await ?;
         let data = NpyArray::try_load(&mut data.as_slice())?;
         Ok(Arc::new(data))
     }
     pub fn state(&self) -> pl::MutexGuard<'_, GenCell<TestTensorWidgetState>>{
         self.state.lock()
     }
+    pub fn launch_test_tensor_picker(&mut self){
+        let timestamp = Instant::now();
+        let current_state = Arc::clone(&self.state);
+        let fut  = async move {
+            let Some(file_handle) = rfd::AsyncFileDialog::new().add_filter("numpy array", &["npy"],).pick_file().await else {
+                current_state.lock().maybe_set(timestamp, TestTensorWidgetState::Empty);
+                return
+            };
+            #[cfg(target_arch="wasm32")]
+            let (result, path) = {
+                let file_data = file_handle.read().await; //FIXME: This could panic. Read from the JsObj instead
+                let array_result = NpyArray::try_load(&mut file_data.as_slice()).map(Arc::new);
+                (array_result, None)
+            };
+            #[cfg(not(target_arch="wasm32"))]
+            let (result, path) = {
+                let result = Self::try_load_path(file_handle.path()).await;
+                (result, Some(file_handle.path().to_owned()))
+            };
+            let new_state = match result {
+                Ok(data) => TestTensorWidgetState::Loaded { path, data },
+                Err(e) => TestTensorWidgetState::Error { message: e.to_string() }
+            };
+            current_state.lock().maybe_set(timestamp, new_state);
+        };
 
+        #[cfg(target_arch="wasm32")]
+        wasm_bindgen_futures::spawn_local(fut);
+        #[cfg(not(target_arch="wasm32"))]
+        std::thread::spawn(move || smol::block_on(fut));
+    }
 }
 
 impl StatefulWidget for TestTensorWidget{
@@ -97,42 +131,7 @@ impl StatefulWidget for TestTensorWidget{
     fn draw_and_parse(&mut self, ui: &mut egui::Ui, _id: egui::Id) {
         ui.horizontal(|ui|{
             if ui.button("Open...").clicked(){
-                let timestamp = Instant::now();
-                let current_state = Arc::clone(&self.state);
-                #[cfg(not(target_arch="wasm32"))]
-                std::thread::spawn(move ||{
-                    let Some(path) = rfd::FileDialog::new().add_filter("numpy array", &["npy"],).pick_file() else {
-                        current_state.lock().maybe_set(timestamp, TestTensorWidgetState::Empty);
-                        return
-                    };
-                    let file = match std::fs::File::open(&path){
-                        Ok(file) => file,
-                        Err(e) => {
-                            current_state.lock().maybe_set(timestamp, TestTensorWidgetState::Error{message: e.to_string()});
-                            return
-                        }
-                    };
-                    let reader = std::io::BufReader::new(file);
-                    let new_state = match Self::try_load(reader){
-                        Ok(data) => TestTensorWidgetState::Loaded { path: Some(path.to_owned()), data },
-                        Err(e) => TestTensorWidgetState::Error { message: e.to_string() }
-                    };
-                    current_state.lock().maybe_set(timestamp, new_state);
-                });
-                #[cfg(target_arch="wasm32")]
-                wasm_bindgen_futures::spawn_local(async move {
-                    let Some(file) = rfd::AsyncFileDialog::new().add_filter("numpy array", &["npy"],).pick_file().await else {
-                        sender.send(TestTensorWidgetState::Empty).unwrap();
-                        return
-                    };
-                    let contents = file.read().await;
-                    let reader: Box<dyn SeekReadSend + 'static> = Box::new(std::io::Cursor::new(contents));
-                    let task = match Self::try_load(reader){
-                        Ok(data) => TestTensorWidgetState::Loaded{path: None, data},
-                        Err(e) => TestTensorWidgetState::Error{message: e.to_string()},
-                    };
-                    sender.send(task).unwrap();
-                })
+                self.launch_test_tensor_picker();
             }
             
             match (&*self.state()).deref(){

@@ -7,7 +7,8 @@ use bioimg_spec::rdf;
 pub trait SeekReadSend: Seek + Read + Send{}
 impl<T: Seek + Read + Send> SeekReadSend for T{}
 
-type AnyZipArchive = zip::ZipArchive<Box<dyn SeekReadSend + 'static>>;
+type BoxDynSeekReadSend = Box<dyn SeekReadSend + 'static>;
+type AnyZipArchive = zip::ZipArchive<BoxDynSeekReadSend>;
 
 /// Something that uniquely identifies a zip archive
 ///
@@ -17,6 +18,18 @@ pub enum ZipArchiveIdentifier{
     Path(PathBuf),
     /// For archives that don't live in the file system, like on memory or other web abstraction
     Name(String),
+}
+
+impl From<PathBuf> for ZipArchiveIdentifier{
+    fn from(value: PathBuf) -> Self {
+        Self::Path(value)
+    }
+}
+
+impl From<String> for ZipArchiveIdentifier{
+    fn from(value: String) -> Self {
+        Self::Name(value)
+    }
 }
 
 impl Display for ZipArchiveIdentifier{
@@ -75,9 +88,17 @@ impl SharedZipArchive{
     pub fn new(identif: ZipArchiveIdentifier, archive: AnyZipArchive) -> Self{
         Self{identif, archive: Arc::new(Mutex::new(archive))}
     }
+    pub fn from_raw_data(contents: Vec<u8>, ident: impl Into<ZipArchiveIdentifier>) -> Self{
+        let reader: Box<dyn SeekReadSend + 'static> = Box::new(std::io::Cursor::new(contents));
+        let archive = zip::ZipArchive::new(reader).unwrap();
+        SharedZipArchive::new(
+            ident.into(),
+            archive
+        )
+    }
     pub fn with_entry<F, Out>(&self, name: &str, entry_reader: F) -> Result<Out, zip::result::ZipError>
     where
-        F: FnOnce(&mut zip::read::ZipFile<'_>) -> Out,
+        F: FnOnce(&mut zip::read::ZipFile<'_, BoxDynSeekReadSend>) -> Out,
         Out: 'static,
     {
         let mut archive_guard = self.archive.lock().unwrap();
@@ -112,13 +133,13 @@ pub trait RdfFileReferenceExt{
         &self, archive: &SharedZipArchive, reader: F
     ) -> Result<Out, RdfFileReferenceReadError>
     where
-        F: FnOnce(&mut zip::read::ZipFile<'_>) -> Out,
+        F: FnOnce(&mut zip::read::ZipFile<'_, BoxDynSeekReadSend>) -> Out,
         Out: 'static;
 }
 impl RdfFileReferenceExt for rdf::FileReference{
     fn try_read<F, Out>(&self, archive: &SharedZipArchive, reader: F) -> Result<Out, RdfFileReferenceReadError>
     where
-        F: FnOnce(&mut zip::read::ZipFile<'_>) -> Out,
+        F: FnOnce(&mut zip::read::ZipFile<'_, BoxDynSeekReadSend>) -> Out,
         Out: 'static,
     {
         let inner_path: String = match self{
