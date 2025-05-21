@@ -8,8 +8,8 @@ use super::{axes::output_axes::OutputAxisGroup, postprocessing::PostprocessingDe
 
 #[derive(thiserror::Error, Debug)]
 pub enum OutputTensorParsingError{
-    #[error("Axis reference to non-existing axis")]
-    PreprocessingReferencesNonExistingAxis,
+    #[error("{tensor_id}.postprocessing[{postproc_idx}] references non-existing axis '{reference}'")]
+    PostprocessingReferencesNonExistingAxis{tensor_id: TensorId, postproc_idx: usize, reference: AxisId},
     #[error("Found a self-reference from/to {tensor_id}")]
     SelfReference{tensor_id: TensorId}
 }
@@ -57,35 +57,39 @@ pub struct OutputTensorMetadataMsg{
 impl TryFrom<OutputTensorMetadataMsg> for OutputTensorMetadata{
     type Error = OutputTensorParsingError;
     fn try_from(message: OutputTensorMetadataMsg) -> Result<Self, Self::Error> {
-        fn ensure_axis_exists(message: &OutputTensorMetadataMsg, preproc_axis_id: &AxisId) -> Result<(), OutputTensorParsingError>{
+        fn ensure_axis_exists(message: &OutputTensorMetadataMsg, postproc_idx: usize, postproc_axis_id: &AxisId) -> Result<(), OutputTensorParsingError>{
             message.axes.iter()
                 .map(|ax| ax.id())
-                .find(|ax_id| ax_id == preproc_axis_id)
-                .ok_or(OutputTensorParsingError::PreprocessingReferencesNonExistingAxis)
+                .find(|ax_id| ax_id == postproc_axis_id)
+                .ok_or(OutputTensorParsingError::PostprocessingReferencesNonExistingAxis{
+                    tensor_id: message.id.clone(),
+                    postproc_idx,
+                    reference: postproc_axis_id.clone(),
+                })
                 .map(|_| ())
         }
 
-        for preproc in message.postprocessing.iter(){
-            match preproc{
+        for (postproc_idx, postproc) in message.postprocessing.iter().enumerate(){
+            match postproc{
                 PostprocessingDescr::Binarize(BinarizeDescr::AlongAxis(descr)) => {
-                    ensure_axis_exists(&message, descr.axis.borrow())?;
+                    ensure_axis_exists(&message, postproc_idx, descr.axis.borrow())?;
                 },
                 PostprocessingDescr::ScaleLinear(ScaleLinearDescr::AlongAxis(descr)) => {
-                    ensure_axis_exists(&message, descr.axis.borrow())?;
+                    ensure_axis_exists(&message, postproc_idx, descr.axis.borrow())?;
                 },
                 PostprocessingDescr::ZeroMeanUnitVariance(Zmuv{axes: Some(axes), ..}) => {
                     for preproc_axis_id in axes.iter(){
-                        ensure_axis_exists(&message, preproc_axis_id)?;
+                        ensure_axis_exists(&message, postproc_idx, preproc_axis_id)?;
                     }
                 },
                 PostprocessingDescr::ScaleRange(ScaleRangeDescr{axes: Some(axes), ..}) => {
                     for preproc_axis_id in axes.iter(){
-                        ensure_axis_exists(&message, preproc_axis_id)?;
+                        ensure_axis_exists(&message, postproc_idx, preproc_axis_id)?;
                     }
                 },
                 PostprocessingDescr::ScaleMeanVarianceDescr(ScaleMeanVarianceDescr{axes: Some(axes), reference_tensor, ..}) => {
                     for preproc_axis_id in axes.iter(){
-                        ensure_axis_exists(&message, preproc_axis_id)?;
+                        ensure_axis_exists(&message, postproc_idx, preproc_axis_id)?;
                     }
                     if message.id == *reference_tensor{
                         return Err(OutputTensorParsingError::SelfReference { tensor_id: message.id.clone() })

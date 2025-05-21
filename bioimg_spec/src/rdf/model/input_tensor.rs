@@ -8,8 +8,8 @@ use super::{axes::input_axes::InputAxisGroup, preprocessing::{BinarizeDescr, Pre
 
 #[derive(thiserror::Error, Debug)]
 pub enum InputTensorParsingError{
-    #[error("Axis reference to non-existing axis")]
-    PreprocessingReferencesNonExistingAxis,
+    #[error("{tensor_id}.preprocessing[{preproc_idx}] references non-existing axis '{reference}'")]
+    PreprocessingReferencesNonExistingAxis{tensor_id: TensorId, preproc_idx: usize, reference: AxisId},
 }
 
 
@@ -68,32 +68,36 @@ impl TryFrom<InputTensorMetadataMsg> for InputTensorMetadata{
     type Error = InputTensorParsingError;
     fn try_from(message: InputTensorMetadataMsg) -> Result<Self, Self::Error> {
 
-        fn ensure_axis_exists(message: &InputTensorMetadataMsg, preproc_axis_id: &AxisId) -> Result<(), InputTensorParsingError>{
+        fn ensure_axis_exists(message: &InputTensorMetadataMsg, preproc_idx: usize, preproc_axis_id: &AxisId) -> Result<(), InputTensorParsingError>{
             message.axes.iter()
                 .map(|ax| ax.id())
                 .find(|ax_id| {
                     ax_id == preproc_axis_id
                 })
-                .ok_or(InputTensorParsingError::PreprocessingReferencesNonExistingAxis)
+                .ok_or(InputTensorParsingError::PreprocessingReferencesNonExistingAxis{
+                    tensor_id: message.id.clone(),
+                    preproc_idx,
+                    reference: preproc_axis_id.clone()
+                })
                 .map(|_| ())
         }
 
-        for preproc in message.preprocessing.iter(){
+        for (preproc_idx, preproc) in message.preprocessing.iter().enumerate(){
             match preproc{
                 PreprocessingDescr::Binarize(BinarizeDescr::AlongAxis(descr)) => {
-                    ensure_axis_exists(&message, descr.axis.borrow())?;
+                    ensure_axis_exists(&message, preproc_idx, descr.axis.borrow())?;
                 },
                 PreprocessingDescr::ScaleLinear(ScaleLinearDescr::AlongAxis(descr)) => {
-                    ensure_axis_exists(&message, descr.axis.borrow())?;
+                    ensure_axis_exists(&message, preproc_idx, descr.axis.borrow())?;
                 },
                 PreprocessingDescr::ZeroMeanUnitVariance(Zmuv{axes: Some(axes), ..}) => {
                     for preproc_axis_id in axes.iter(){
-                        ensure_axis_exists(&message, preproc_axis_id)?;
+                        ensure_axis_exists(&message, preproc_idx, preproc_axis_id)?;
                     }
                 },
                 PreprocessingDescr::ScaleRange(ScaleRangeDescr{axes: Some(axes), ..}) => {
                     for preproc_axis_id in axes.iter(){
-                        ensure_axis_exists(&message, preproc_axis_id)?;
+                        ensure_axis_exists(&message, preproc_idx, preproc_axis_id)?;
                     }
                 },
                 _ => (),
