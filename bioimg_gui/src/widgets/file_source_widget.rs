@@ -43,7 +43,7 @@ impl SummarizableWidget for LocalFileSourceWidget{
         let (_, state): &(_, LocalFileState) = &*guard;
         match state{
             LocalFileState::Empty => {
-                ui.label("Empty");
+                show_error(ui, "Empty");
             },
             LocalFileState::Failed(err) => {
                 show_error(ui, err);
@@ -196,7 +196,9 @@ impl StatefulWidget for LocalFileSourceWidget{
                     }
                 }
                 match state{
-                    LocalFileState::Empty => (),
+                    LocalFileState::Empty => {
+                        show_error(ui, "Please select a file");
+                    },
                     LocalFileState::Failed(err) => {
                         show_error(ui, err);
                     },
