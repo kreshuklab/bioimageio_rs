@@ -4,8 +4,17 @@ use serde::{Deserialize, Serialize};
 
 #[derive(thiserror::Error, PartialEq, Eq, Debug, Clone)]
 pub enum BoundedStringParsingError {
-    #[error("Expected a string with length in {allowed:?}")]
     BadLength { allowed: RangeInclusive<usize> },
+}
+
+impl std::fmt::Display for BoundedStringParsingError{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self{
+            Self::BadLength { allowed } => {
+                write!(f, "Expected a string with at least {} and at most {} characters", allowed.start(), allowed.end())
+            }
+        }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Serialize, Deserialize, Hash, PartialOrd, Ord)]
