@@ -85,9 +85,8 @@ impl SummarizableWidget for InputTensorWidget{
 
 impl InputTensorWidget{
     fn autofill_from_test_tensor(&mut self){
-        let state_guard = self.test_tensor_widget.state();
-        let state: &TestTensorWidgetState = state_guard.deref();
-        let TestTensorWidgetState::Loaded { path, data: gui_npy_arr } = state else {
+        let guard = self.test_tensor_widget.state();
+        let TestTensorWidgetState::Loaded { path, data: gui_npy_arr } = &guard.1 else {
             self.adjust_num_axes_on_file_selected = true;
             return;
         };
@@ -118,9 +117,8 @@ impl InputTensorWidget{
         }
     }
     pub fn parse(&self) -> Result<InputSlot<ArcNpyArray>>{
-        let state_guard = self.test_tensor_widget.state();
-        let state: &TestTensorWidgetState = state_guard.deref(); 
-        let TestTensorWidgetState::Loaded { data: gui_npy_array, .. } = state else {
+        let guard = self.test_tensor_widget.state();
+        let TestTensorWidgetState::Loaded { data: gui_npy_array, .. } = &guard.1 else {
             return Err(GuiError::new("Test tensor is missing"));
         };
         let axes = self.axis_widgets.iter()
@@ -163,9 +161,8 @@ impl InputTensorWidget{
                     provided in the model output description fields to determine if this model is working properly."
                 ));
                 self.test_tensor_widget.draw_and_parse(ui, id.with("test tensor"));
-                let state_guard = self.test_tensor_widget.state();
-                let state: &TestTensorWidgetState = state_guard.deref();
-                if matches!(state, TestTensorWidgetState::Empty) {
+                let guard = self.test_tensor_widget.state();
+                if matches!(&guard.1, TestTensorWidgetState::Empty) {
                     show_error(ui, "Missing a npy test tensor");
                 }
             });
@@ -328,9 +325,8 @@ impl SummarizableWidget for OutputTensorWidget{
 
 impl OutputTensorWidget{
     fn autofill_from_test_tensor(&mut self){
-        let state_guard = self.test_tensor_widget.state();
-        let state: &TestTensorWidgetState = state_guard.deref();
-        let TestTensorWidgetState::Loaded { path, data: gui_npy_arr } = state else {
+        let guard = self.test_tensor_widget.state();
+        let TestTensorWidgetState::Loaded { path, data: gui_npy_arr } = &guard.1 else {
             self.adjust_num_axes_on_file_selected = true;
             return;
         };
@@ -362,9 +358,8 @@ impl OutputTensorWidget{
     }
 
     pub fn parse(&self) -> Result<OutputSlot<ArcNpyArray>> {
-        let state_guard = self.test_tensor_widget.state();
-        let state: &TestTensorWidgetState = state_guard.deref();
-        let TestTensorWidgetState::Loaded { data: gui_npy_array, .. } = state else {
+        let guard = self.test_tensor_widget.state();
+        let TestTensorWidgetState::Loaded { data: gui_npy_array, .. } = &guard.1 else {
             return Err(GuiError::new("Test tensor is missing"));
         };
         let axes = self.axis_widgets.iter().map(|w| w.state()).collect::<Result<Vec<_>>>()?;
@@ -397,9 +392,8 @@ impl OutputTensorWidget{
                     this one, to determine if this model is working properly."
                 ));
                 self.test_tensor_widget.draw_and_parse(ui, id.with("test tensor"));
-                let state_guard = self.test_tensor_widget.state();
-                let state: &TestTensorWidgetState = state_guard.deref();
-                if matches!(state, TestTensorWidgetState::Empty) {
+                let guard = self.test_tensor_widget.state();
+                if matches!(&guard.1, TestTensorWidgetState::Empty) {
                     show_error(ui, "Missing a npy test tensor");
                 }
             });

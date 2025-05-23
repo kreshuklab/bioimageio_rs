@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, ops::{Deref, Sub}, sync::mpsc::{Receiver, Sender}, time::Instant};
+use std::{marker::PhantomData, ops::{Deref, Sub}, sync::{mpsc::{Receiver, Sender}, Arc, Mutex, MutexGuard}, time::Instant};
 
 use egui::InnerResponse;
 use egui::PopupCloseBehavior::CloseOnClickOutside;
@@ -114,28 +114,44 @@ impl<T> Default for TaskChannel<T>{
 }
 
 
-pub struct GenCell<T>{
-    timestamp: Instant,
-    data: T,
+
+#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
+pub struct Generation(pub i64);
+
+impl Generation{
+    pub fn incremented(self) -> Self{
+        Self(self.0 + 1)
+    }
 }
 
-impl<T> GenCell<T>{
-    pub fn new(data: T) -> Self{
-        Self{timestamp: Instant::now(), data }
+pub struct GenSyncCell<T>{
+    data: Arc<Mutex<(Generation, T)>>
+}
+
+impl<T> Clone for GenSyncCell<T>{
+    fn clone(&self) -> Self {
+        let data = Arc::clone(&self.data);
+        Self{data}
     }
-    pub fn maybe_set(&mut self, timestamp: Instant, value: T){
-        if timestamp > self.timestamp {
-            self.data = value
+}
+
+impl<T> GenSyncCell<T>{
+    pub fn new(value: T) -> Self{
+        Self{data: Arc::new(Mutex::new((Generation(0), value)))}
+    }
+
+    pub fn lock_then_maybe_set(&self, generation: Generation, value: T){
+        let mut guard = self.data.lock().unwrap();
+        if guard.0 == generation{
+            guard.1 = value;
         }
     }
-}
 
-impl<T> Deref for GenCell<T>{
-    type Target = T;
-    fn deref(&self) -> &Self::Target {
-        &self.data
+    pub fn lock(&self) -> MutexGuard<'_, (Generation, T)>{
+        self.data.lock().unwrap()
     }
 }
+
 
 pub struct Arrow{
     pub origin: egui::Pos2,
