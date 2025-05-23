@@ -462,16 +462,16 @@ impl eframe::App for AppState1 {
                         }
                     }
                     #[cfg(not(target_arch="wasm32"))]
-                    if ui.button("Save Project").clicked() { 'save_project: {
+                    if ui.button("Save Draft").clicked() { 'save_project: {
                         ui.close_menu();
-                        let Some(path) = rfd::FileDialog::new().set_file_name("MyProject.bmb").save_file() else {
+                        let Some(path) = rfd::FileDialog::new().set_file_name("MyDraft.bmb").save_file() else {
                             break 'save_project;
                         };
                         let result = self.save_project(&path);
                         self.notifications_widget.push_message(result);
                     }}
                     #[cfg(not(target_arch="wasm32"))]
-                    if ui.button("Load Project").clicked() { 'load_project: {
+                    if ui.button("Load Draft").clicked() { 'load_project: {
                         ui.close_menu();
                         let Some(path) = rfd::FileDialog::new().add_filter("bioimage model builder", &["bmb"]).pick_file() else {
                             break 'load_project;
@@ -748,16 +748,29 @@ impl eframe::App for AppState1 {
         if self.show_confirmation_dialog {
             egui::Modal::new(egui::Id::from("confirmation dialog"))
                 .show(ctx, |ui| {
-                    ui.label("Are you sure you want to quit?");
+                    ui.label("Save draft before quitting?");
                     ui.horizontal(|ui| {
-                        if ui.button("No").clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                        if ui.button("Yes").clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter)){ 'save_draft: {
                             self.show_confirmation_dialog = false;
-                            self.close_confirmed = false;
-                        }
-                        if ui.button("Yes").clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter)){
+                            let Some(path) = rfd::FileDialog::new().set_file_name("MyDraft.bmb").save_file() else {
+                                break 'save_draft;
+                            };
+                            let result = self.save_project(&path);
+                            if result.is_ok(){
+                                self.show_confirmation_dialog = false;
+                                self.close_confirmed = true;
+                                ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                            }
+                            self.notifications_widget.push_message(result);
+                        }}
+                        if ui.button("No").clicked() {
                             self.show_confirmation_dialog = false;
                             self.close_confirmed = true;
                             ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                        }
+                        if ui.button("Cancel").clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                            self.show_confirmation_dialog = false;
+                            self.close_confirmed = false;
                         }
                     });
                 });
