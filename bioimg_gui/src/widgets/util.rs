@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, ops::{Deref, Sub}, sync::{mpsc::{Receiver, Sender}, Arc, Mutex, MutexGuard}, time::Instant};
+use std::{marker::PhantomData, ops::Sub, sync::{mpsc::{Receiver, Sender}, Arc, Mutex, MutexGuard}};
 
 use egui::InnerResponse;
 use egui::PopupCloseBehavior::CloseOnClickOutside;
@@ -149,6 +149,15 @@ impl<T> GenSyncCell<T>{
 
     pub fn lock(&self) -> MutexGuard<'_, (Generation, T)>{
         self.data.lock().unwrap()
+    }
+
+    pub fn lock_then_replace_with<F>(&mut self, f: F)
+    where
+        F: FnOnce(Generation, T) -> (Generation, T),
+        T: Default,
+    {
+        let mut guard = self.data.lock().unwrap();
+        *guard = f(guard.0, std::mem::take(&mut guard.1));
     }
 }
 
