@@ -4,7 +4,6 @@ use std::io::Cursor;
 use std::error::Error;
 
 use image::GenericImageView;
-use parking_lot as pl;
 use bioimg_runtime::{self as rt, FileSource};
 
 use crate::{project_data::{ImageWidget2LoadingStateRawData, ImageWidget2RawData, SpecialImageWidgetRawData}, result::{GuiError, Result}};
@@ -74,6 +73,7 @@ impl LoadingState{
             Self::Failed {generation,  .. } => *generation,
         }
     }
+    #[allow(dead_code)]
     pub fn file_source(&self) -> Option<&FileSource>{
         match self {
             Self::Empty{..} => None,
@@ -87,14 +87,14 @@ impl LoadingState{
 
 pub struct ImageWidget2{
     file_source_widget: FileSourceWidget,
-    loading_state: Arc<pl::Mutex<LoadingState>>,
+    loading_state: Arc<std::sync::Mutex<LoadingState>>,
 }
 
 impl Default for ImageWidget2{
     fn default() -> Self {
         Self{
             file_source_widget: Default::default(),
-            loading_state: Arc::new(pl::Mutex::new(Default::default()))
+            loading_state: Arc::new(std::sync::Mutex::new(Default::default()))
         }
     }
 }
@@ -102,7 +102,7 @@ impl Default for ImageWidget2{
 impl Restore for ImageWidget2{
     type RawData = ImageWidget2RawData;
     fn dump(&self) -> Self::RawData {
-        let loading_state_guard = self.loading_state.lock();
+        let loading_state_guard = self.loading_state.lock().unwrap();
         let loading_state: &LoadingState = &*loading_state_guard;
         ImageWidget2RawData{
             file_source_widget: self.file_source_widget.dump(),
@@ -135,7 +135,7 @@ impl Restore for ImageWidget2{
                 LoadingState::Forced { generation, img: Arc::new(image), texture: None }
             }
         };
-        self.loading_state = Arc::new(pl::Mutex::new(loading_state));
+        self.loading_state = Arc::new(std::sync::Mutex::new(loading_state));
     }
 }
 
@@ -147,15 +147,15 @@ impl ValueWidget for ImageWidget2{
         match value{
             (None, Some(img)) => {
                 self.file_source_widget = Default::default();
-                self.loading_state = Arc::new(pl::Mutex::new(LoadingState::Forced { generation, img, texture: None}));
+                self.loading_state = Arc::new(std::sync::Mutex::new(LoadingState::Forced { generation, img, texture: None}));
             },
             (None, None) => {
                 self.file_source_widget = Default::default();
-                self.loading_state = Arc::new(pl::Mutex::new(LoadingState::Empty{generation}));
+                self.loading_state = Arc::new(std::sync::Mutex::new(LoadingState::Empty{generation}));
             },
             (Some(file_source), _) => {
                 self.file_source_widget.set_value(file_source);
-                self.loading_state = Arc::new(pl::Mutex::new(LoadingState::Empty{generation}));
+                self.loading_state = Arc::new(std::sync::Mutex::new(LoadingState::Empty{generation}));
             }
         }
         // self.update(); //FIXME: call once set_value takes a context
@@ -166,17 +166,17 @@ impl ImageWidget2{
     fn spawn_load_image_task(
         generation: Generation,
         file_source: FileSource,
-        loading_state: Arc<pl::Mutex<LoadingState>>,
+        loading_state: Arc<std::sync::Mutex<LoadingState>>,
         ctx: egui::Context,
     ){
-        std::thread::spawn(move ||{
+        let fut = async move {
             let res = || -> Result<ArcDynImg>{
                 let mut img_data = Vec::<u8>::new();
                 file_source.read_to_end(&mut img_data)?;
                 let img = image::io::Reader::new(Cursor::new(img_data)).with_guessed_format()?.decode()?;
                 Ok(Arc::new(img))
             }();
-            let mut guard = loading_state.lock();
+            let mut guard = loading_state.lock().unwrap();
             if guard.generation() != generation {
                 eprintln!("Dropping stale image: {file_source:?}");
                 return
@@ -186,7 +186,11 @@ impl ImageWidget2{
                 Ok(img) => LoadingState::Ready { generation, source: file_source, img, texture: None },
             };
             ctx.request_repaint();
-        });
+        };
+        #[cfg(target_arch="wasm32")]
+        wasm_bindgen_futures::spawn_local(fut);
+        #[cfg(not(target_arch="wasm32"))]
+        std::thread::spawn(move || smol::block_on(fut));
     }
 }
 
@@ -194,7 +198,7 @@ impl StatefulWidget for ImageWidget2{
     type Value<'p> = Result<Arc<image::DynamicImage>>;
 
     fn draw_and_parse(&mut self, ui: &mut egui::Ui, id: egui::Id){
-        let mut loading_state_guard = self.loading_state.lock();
+        let mut loading_state_guard = self.loading_state.lock().unwrap();
         let loading_state: &mut LoadingState = &mut *loading_state_guard;
 
         fn fill_and_show_texture(ui: &mut egui::Ui, tex: &mut Option<Texture>, img: &image::DynamicImage) {
@@ -271,7 +275,7 @@ impl StatefulWidget for ImageWidget2{
     }
 
     fn state(&self) -> Result<ArcDynImg>{
-        let loading_state_guard = self.loading_state.lock();
+        let loading_state_guard = self.loading_state.lock().unwrap();
         let loading_state: &LoadingState = &*loading_state_guard;
         match loading_state{
             LoadingState::Empty{..} | LoadingState::Loading { .. } => Err(GuiError::new("No image selected".to_owned())),

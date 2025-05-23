@@ -5,8 +5,6 @@ use std::sync::Arc;
 #[cfg(not(target_arch="wasm32"))]
 use std::path::Path;
 
-use parking_lot as pl;
-
 use bioimg_runtime as rt;
 use bioimg_runtime::zip_archive_ext::ZipArchiveIdentifier;
 use bioimg_runtime::zip_archive_ext::SharedZipArchive;
@@ -72,12 +70,12 @@ impl LocalFileState{
 }
 
 pub struct LocalFileSourceWidget{
-    state: Arc<pl::Mutex<(i64, LocalFileState)>>,
+    state: Arc<std::sync::Mutex<(i64, LocalFileState)>>,
 }
 
 impl SummarizableWidget for LocalFileSourceWidget{
     fn summarize(&mut self, ui: &mut egui::Ui, _id: egui::Id) {
-        let guard = self.state.lock();
+        let guard = self.state.lock().unwrap();
         let (_, state): &(_, LocalFileState) = &*guard;
         match state{
             LocalFileState::Empty => {
@@ -112,14 +110,14 @@ impl SummarizableWidget for LocalFileSourceWidget{
 impl Default for LocalFileSourceWidget{
     fn default() -> Self {
         let state = (0, LocalFileState::default());
-        Self{ state: Arc::new(pl::Mutex::new(state)) }
+        Self{ state: Arc::new(std::sync::Mutex::new(state)) }
     }
 }
 
 impl Restore for LocalFileSourceWidget{
     type RawData = LocalFileSourceWidgetRawData;
     fn dump(&self) -> Self::RawData {
-        let guard = self.state.lock();
+        let guard = self.state.lock().unwrap();
         let gen_state: &(i64, LocalFileState) = &*guard;
         match &gen_state.1{
             LocalFileState::Empty | LocalFileState::Failed(_) => Self::RawData::Empty,
@@ -145,11 +143,11 @@ impl Restore for LocalFileSourceWidget{
     fn restore(&mut self, raw: Self::RawData) {
         match raw{
             Self::RawData::Empty => {
-                self.state = Arc::new(pl::Mutex::new((0, LocalFileState::Empty)));
+                self.state = Arc::new(std::sync::Mutex::new((0, LocalFileState::Empty)));
                 return
             },
             Self::RawData::InMemoryData{name, data} => {
-                self.state = Arc::new(pl::Mutex::new(
+                self.state = Arc::new(std::sync::Mutex::new(
                     (0, LocalFileState::InMemoryFile { name, data })
                 ));
                 return
@@ -174,7 +172,7 @@ impl Restore for LocalFileSourceWidget{
 impl LocalFileSourceWidget{
     pub fn new(state: LocalFileState) -> Self{
         Self{
-            state: Arc::new(pl::Mutex::new((0, state)))
+            state: Arc::new(std::sync::Mutex::new((0, state)))
         }
     }
     #[cfg(not(target_arch="wasm32"))]
@@ -188,7 +186,7 @@ impl LocalFileSourceWidget{
     }
     pub fn from_data(name: Option<String>, data: Arc<[u8]>) -> Self{
         Self{
-            state: Arc::new(pl::Mutex::new(
+            state: Arc::new(std::sync::Mutex::new(
                 (
                     0,
                     LocalFileState::InMemoryFile {
@@ -206,7 +204,7 @@ impl LocalFileSourceWidget{
 pub fn spawn_load_file_task(
     inner_path: Option<String>,
     generation: i64,
-    state: Arc<pl::Mutex<(i64, LocalFileState)>>,
+    state: Arc<std::sync::Mutex<(i64, LocalFileState)>>,
     ctx: Option<egui::Context>, //FIXME: always require ctx?
 ){
     let fut = async move {
@@ -228,7 +226,7 @@ pub fn spawn_load_file_task(
             #[cfg(not(target_arch="wasm32"))]
             LocalFileState::from_local_path(handle.path(), inner_path) //FIXME: maybe use async/await?
         };
-        let mut guard = state.lock();
+        let mut guard = state.lock().unwrap();
         if guard.0 == generation{
             guard.1 = next_state;
         }
@@ -245,7 +243,7 @@ pub fn spawn_load_file_task(
 impl StatefulWidget for LocalFileSourceWidget{
     type Value<'p> = Result<rt::FileSource>;
     fn draw_and_parse(&mut self, ui: &mut egui::Ui, id: egui::Id) {
-        let mut guard = self.state.lock();
+        let mut guard = self.state.lock().unwrap();
         let gen_state: &mut (i64, LocalFileState) = &mut *guard;
         let generation = &mut gen_state.0;
         let state = &mut gen_state.1;
@@ -294,7 +292,7 @@ impl StatefulWidget for LocalFileSourceWidget{
         });
     }
     fn state<'p>(&'p self) -> Self::Value<'p> {
-        let mut guard = self.state.lock();
+        let mut guard = self.state.lock().unwrap();
         let gen_state: &mut (i64, LocalFileState) = &mut *guard;
         let state = &mut gen_state.1;
 

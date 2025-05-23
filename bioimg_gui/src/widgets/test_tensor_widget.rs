@@ -5,7 +5,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use bioimg_runtime::{npy_array::ArcNpyArray, NpyArray};
-use parking_lot as pl;
 
 use crate::{project_data::TestTensorWidgetRawData, result::GuiError};
 
@@ -22,13 +21,13 @@ pub enum TestTensorWidgetState{
 }
 
 pub struct TestTensorWidget{
-    state: Arc<pl::Mutex<GenCell<TestTensorWidgetState>>>,
+    state: Arc<std::sync::Mutex<GenCell<TestTensorWidgetState>>>,
 }
 
 impl Default for TestTensorWidget{
     fn default() -> Self {
         Self{
-            state: Arc::new(pl::Mutex::new(GenCell::new(Default::default()))),
+            state: Arc::new(std::sync::Mutex::new(GenCell::new(Default::default()))),
         }
     }
 }
@@ -38,7 +37,7 @@ impl ValueWidget for TestTensorWidget{
     type Value<'v> = ArcNpyArray;
 
     fn set_value<'v>(&mut self, data: Self::Value<'v>) {
-        self.state = Arc::new(pl::Mutex::new(GenCell::new(
+        self.state = Arc::new(std::sync::Mutex::new(GenCell::new(
             TestTensorWidgetState::Loaded { path: None, data}
         )));
     }
@@ -65,7 +64,7 @@ impl Restore for TestTensorWidget{
     }
 
     fn restore(&mut self, raw: Self::RawData) {
-        self.state = Arc::new(pl::Mutex::new(GenCell::new(match raw{
+        self.state = Arc::new(std::sync::Mutex::new(GenCell::new(match raw{
             TestTensorWidgetRawData::Empty => TestTensorWidgetState::Empty,
             TestTensorWidgetRawData::Loaded { path, data } => {
                 let state = match NpyArray::try_load(Cursor::new(data)){
@@ -89,15 +88,15 @@ impl TestTensorWidget{
         let data = NpyArray::try_load(&mut data.as_slice())?;
         Ok(Arc::new(data))
     }
-    pub fn state(&self) -> pl::MutexGuard<'_, GenCell<TestTensorWidgetState>>{
-        self.state.lock()
+    pub fn state(&self) -> std::sync::MutexGuard<'_, GenCell<TestTensorWidgetState>>{
+        self.state.lock().unwrap()
     }
     pub fn launch_test_tensor_picker(&mut self){
         let timestamp = Instant::now();
         let current_state = Arc::clone(&self.state);
         let fut  = async move {
             let Some(file_handle) = rfd::AsyncFileDialog::new().add_filter("numpy array", &["npy"],).pick_file().await else {
-                current_state.lock().maybe_set(timestamp, TestTensorWidgetState::Empty);
+                current_state.lock().unwrap().maybe_set(timestamp, TestTensorWidgetState::Empty);
                 return
             };
             #[cfg(target_arch="wasm32")]
@@ -115,7 +114,7 @@ impl TestTensorWidget{
                 Ok(data) => TestTensorWidgetState::Loaded { path, data },
                 Err(e) => TestTensorWidgetState::Error { message: e.to_string() }
             };
-            current_state.lock().maybe_set(timestamp, new_state);
+            current_state.lock().unwrap().maybe_set(timestamp, new_state);
         };
 
         #[cfg(target_arch="wasm32")]
