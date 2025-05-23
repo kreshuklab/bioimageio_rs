@@ -118,7 +118,7 @@ impl StatefulWidget for ZooLoginWidget{
                 ZooLoginState::Failed(state) => {
                     let clicked = ui.horizontal(|ui|{
                         let clicked = ui.add(button).clicked();
-                        ui.label(egui::RichText::new("login failed").color(egui::Color32::RED))
+                        ui.label(egui::RichText::new("login failed").color(ui.visuals().error_fg_color))
                             .on_hover_ui(|ui|{
                                 ui.label(state.to_string());
                             });

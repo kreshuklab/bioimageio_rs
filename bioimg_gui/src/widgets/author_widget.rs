@@ -1,7 +1,7 @@
 use bioimg_spec::rdf::{author::Author2, bounded_string::BoundedString, orcid::Orcid};
 
 use super::{
-    collapsible_widget::{CollapsibleWidget, SummarizableWidget}, labels::{self, orcid_label}, staging_opt::StagingOpt, staging_string::StagingString, staging_vec::ItemWidgetConf, Restore, StatefulWidget, ValueWidget
+    collapsible_widget::{CollapsibleWidget, SummarizableWidget}, error_display::show_error, labels::{self, orcid_label}, staging_opt::StagingOpt, staging_string::StagingString, staging_vec::ItemWidgetConf, Restore, StatefulWidget, ValueWidget
 };
 use crate::result::{GuiError, Result};
 
@@ -46,8 +46,7 @@ impl SummarizableWidget for AuthorWidget{
                 ui.label(author.to_string());
             },
             Err(err) => {
-                let rich_text = egui::RichText::new(err.to_string()).color(egui::Color32::RED);
-                ui.label(rich_text);
+                show_error(ui, err.to_string());
             }
         }
     }

@@ -45,7 +45,7 @@ fn draw_proc_button<P: Iconify>(ui: &mut egui::Ui, proc: &P) -> egui::Response{
         Ok(widget_text) => egui::Button::new(widget_text.color(egui::Color32::BLACK).strong()).fill(bg).ui(ui),
         Err(err) => {
             let text = egui::RichText::new("!").color(egui::Color32::WHITE);
-            egui::Button::new(text).fill(egui::Color32::RED).ui(ui).on_hover_ui(|ui| show_error(ui, err))
+            egui::Button::new(text).fill(ui.visuals().error_fg_color).ui(ui).on_hover_ui(|ui| show_error(ui, err))
         }
     }
 }
@@ -238,7 +238,7 @@ fn draw_weights_widget(ui: &mut egui::Ui, out: &mut PipelineAction, weights_widg
             let keras_resp = match &weights_widget.keras_weights_widget.0 {
                 None => ui.button("Keras: Empty"),
                 Some(kw) => match kw.inner.state(){
-                    Err(e) => ui.button(egui::RichText::new(format!("Keras: {e}")).color(egui::Color32::RED)),
+                    Err(e) => ui.button(egui::RichText::new(format!("Keras: {e}")).color(ui.visuals().error_fg_color)),
                     Ok(state) => ui.button(egui::RichText::new(format!(
                         "Keras: tensorflow v{} {}",
                         state.tensorflow_version,
@@ -253,7 +253,7 @@ fn draw_weights_widget(ui: &mut egui::Ui, out: &mut PipelineAction, weights_widg
             let torchscript_resp = match &weights_widget.torchscript_weights_widget.0 {
                 None => ui.button("Torchscript: Empty"),
                 Some(w) => match w.inner.state(){
-                    Err(e) => ui.button(egui::RichText::new(format!("Torchscript: {e}")).color(egui::Color32::RED)),
+                    Err(e) => ui.button(egui::RichText::new(format!("Torchscript: {e}")).color(ui.visuals().error_fg_color)),
                     Ok(state) => ui.button(egui::RichText::new(format!(
                         "Torchscript: pytorch v{} {}",
                         state.pytorch_version,
@@ -268,7 +268,7 @@ fn draw_weights_widget(ui: &mut egui::Ui, out: &mut PipelineAction, weights_widg
             let state_dict_resp = match &weights_widget.pytorch_state_dict_weights_widget.0 {
                 None => ui.button("Pytorch State Dict: Empty"),
                 Some(w) => match w.inner.state(){
-                    Err(e) => ui.button(egui::RichText::new(format!("Pytorch State Dict: {e}")).color(egui::Color32::RED)),
+                    Err(e) => ui.button(egui::RichText::new(format!("Pytorch State Dict: {e}")).color(ui.visuals().error_fg_color)),
                     Ok(state) => ui.button(egui::RichText::new(format!(
                         "Pytorch State Dict: pytorch v{} {}",
                         state.pytorch_version,
@@ -283,7 +283,7 @@ fn draw_weights_widget(ui: &mut egui::Ui, out: &mut PipelineAction, weights_widg
             let onnx_dict_resp = match &weights_widget.onnx_weights_widget.0 {
                 None => ui.button("Onnx: Empty"),
                 Some(w) => match w.inner.state(){
-                    Err(e) => ui.button(egui::RichText::new(format!("Onnx: {e}")).color(egui::Color32::RED)),
+                    Err(e) => ui.button(egui::RichText::new(format!("Onnx: {e}")).color(ui.visuals().error_fg_color)),
                     Ok(state) => ui.button(egui::RichText::new(format!(
                         "Onnx: opset v{} {}",
                         state.opset_version,
@@ -359,7 +359,7 @@ impl PipelineWidget{
                                 egui::RichText::new(&inp.id_widget.raw)
                             };
                             if inp.parse().is_err(){
-                                input_name = input_name.color(egui::Color32::RED);
+                                input_name = input_name.color(ui.visuals().error_fg_color);
                             }
                             if egui::Button::new(input_name).draw_as_label(ui).clicked(){
                                 pipeline_action = PipelineAction::OpenInput{input_idx};
@@ -438,7 +438,7 @@ impl PipelineWidget{
                                 egui::RichText::new(&output.id_widget.raw)
                             };
                             if output.parse().is_err(){
-                                output_name = output_name.color(egui::Color32::RED);
+                                output_name = output_name.color(ui.visuals().error_fg_color);
                             }
                             if egui::Button::new(output_name).draw_as_label(ui).clicked(){
                                 pipeline_action = PipelineAction::OpenOutput{output_idx};

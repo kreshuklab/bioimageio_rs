@@ -9,6 +9,7 @@ use bioimg_spec::rdf::model::{self as modelrdf};
 
 use super::channel_name_widget::ChannelNamesWidget;
 use super::collapsible_widget::SummarizableWidget;
+use super::error_display::show_error;
 use super::search_and_pick_widget::SearchAndPickWidget;
 use super::staging_string::StagingString;
 use super::util::group_frame;
@@ -89,8 +90,7 @@ impl SummarizableWidget for BatchAxisWidget{
                 ui.label(axis.to_string());
             },
             Err(err) => {
-                let rich_text = egui::RichText::new(err.to_string()).color(egui::Color32::RED);
-                ui.label(rich_text);
+                show_error(ui, err.to_string());
             }
         }
     }
@@ -150,8 +150,7 @@ impl SummarizableWidget for ChannelAxisWidget{
                 ui.label(axis.to_string());
             },
             Err(err) => {
-                let rich_text = egui::RichText::new(err.to_string()).color(egui::Color32::RED);
-                ui.label(rich_text);
+                show_error(ui, err.to_string());
             },
         }
     }

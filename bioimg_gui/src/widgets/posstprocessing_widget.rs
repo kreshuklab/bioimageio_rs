@@ -7,6 +7,7 @@ use crate::project_data::PostprocessingWidgetModeRawData;
 use crate::result::Result;
 use super::collapsible_widget::CollapsibleWidget;
 use super::collapsible_widget::SummarizableWidget;
+use super::error_display::show_error;
 use super::iconify::Iconify;
 use super::scale_mean_variance_widget::ScaleMeanVarianceWidget;
 use super::util::search_and_pick;
@@ -140,8 +141,7 @@ impl SummarizableWidget for PostprocessingWidget{
                 ui.label(prep.to_string());
             },
             Err(err) => {
-                let rich_text = egui::RichText::new(err.to_string()).color(egui::Color32::RED);
-                ui.label(rich_text);
+                show_error(ui, err.to_string());
             }
         };
     }

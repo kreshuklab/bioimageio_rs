@@ -6,7 +6,7 @@ use bioimg_spec::rdf::{
     cite_entry::{CiteEntry2, CiteEntry2Msg},
 };
 
-use super::{collapsible_widget::{CollapsibleWidget, SummarizableWidget}, staging_opt::StagingOpt, staging_string::StagingString, staging_vec::ItemWidgetConf, url_widget::StagingUrl, Restore, StatefulWidget, ValueWidget};
+use super::{collapsible_widget::{CollapsibleWidget, SummarizableWidget}, error_display::show_error, staging_opt::StagingOpt, staging_string::StagingString, staging_vec::ItemWidgetConf, url_widget::StagingUrl, Restore, StatefulWidget, ValueWidget};
 
 pub type ConfString = BoundedString<1, 1024>;
 
@@ -56,8 +56,7 @@ impl SummarizableWidget for CiteEntryWidget{
                 ui.label(author.to_string());
             },
             Err(err) => {
-                let rich_text = egui::RichText::new(err.to_string()).color(egui::Color32::RED);
-                ui.label(rich_text);
+                show_error(ui, err.to_string());
             }
         }
     }

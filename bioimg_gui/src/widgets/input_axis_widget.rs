@@ -6,6 +6,7 @@ use bioimg_spec::rdf::model as modelrdf;
 
 use super::axis_physical_scale_widget::PhysicalScaleWidget;
 use super::collapsible_widget::{CollapsibleWidget, SummarizableWidget};
+use super::error_display::show_error;
 use super::search_and_pick_widget::SearchAndPickWidget;
 use super::staging_string::StagingString;
 use super::staging_vec::ItemWidgetConf;
@@ -212,8 +213,7 @@ impl SummarizableWidget for InputAxisWidget{
                 ui.label(axis.to_string());
             },
             Err(err) => {
-                let rich_text = egui::RichText::new(err.to_string()).color(egui::Color32::RED);
-                ui.label(rich_text);
+                show_error(ui, err.to_string());
             }
         }
     }

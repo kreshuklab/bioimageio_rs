@@ -3,6 +3,7 @@ use bioimg_spec::rdf::model as modelrdf;
 use strum::VariantArray;
 
 use crate::{project_data::PreprocessingWidgetModeRawData, result::Result};
+use super::error_display::show_error;
 use super::iconify::Iconify;
 use super::util::{search_and_pick, SearchVisibility};
 use super::{Restore, StatefulWidget, ValueWidget};
@@ -163,8 +164,7 @@ impl SummarizableWidget for PreprocessingWidget{
                 ui.label(prep.to_string());
             },
             Err(err) => {
-                let rich_text = egui::RichText::new(err.to_string()).color(egui::Color32::RED);
-                ui.label(rich_text);
+                show_error(ui, err.to_string());
             }
         };
     }
