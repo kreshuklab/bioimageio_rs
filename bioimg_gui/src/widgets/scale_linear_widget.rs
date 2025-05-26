@@ -1,9 +1,14 @@
 use bioimg_spec::rdf::model::{self as modelrdf, preprocessing::ScaleLinearDescr};
 use bioimg_spec::rdf::model::preprocessing as modelrdfpreproc;
+use indoc::indoc;
 
-use crate::{project_data::ScaleLinearModeRawData, result::{GuiError, Result, VecResultExt}};
+use crate::result::{GuiError, Result, VecResultExt};
+use crate::project_data::ScaleLinearModeRawData;
 use super::iconify::Iconify;
-use super::{error_display::show_if_error, search_and_pick_widget::SearchAndPickWidget, staging_float::StagingFloat, staging_string::StagingString, staging_vec::{ItemWidgetConf, StagingVec}, Restore, StatefulWidget, ValueWidget};
+use super::{Restore, StatefulWidget, ValueWidget};
+use super::staging_vec::{ItemWidgetConf, StagingVec};
+use super::staging_string::StagingString;
+use super::staging_float::StagingFloat;
 
 #[derive(PartialEq, Eq, Default, Copy, Clone, strum::VariantArray, strum::AsRefStr, strum::Display)]
 pub enum ScaleLinearMode{
@@ -148,18 +153,24 @@ impl StatefulWidget for ScaleLinearAlongAxisWidget{
                 "The Nth slice along {axis_id_text} will go through the Nth linear scaling in 'Gains and Offsets'"
             ));
             ui.horizontal(|ui|{
-                ui.strong("Axis");
+                ui.strong("Axis ID").on_hover_text(indoc!("
+                    The axis id (name) along which the incoming tensor will be sliced.
+                    Each slice along this axis will be scaled with its corresponding entry in
+                    the 'Gains and Offsets' field below."
+                ));
                 self.axis_widget.draw_and_parse(ui, id.with("ax".as_ptr()));
             });
             ui.horizontal(|ui|{
-                ui.strong("Gains and Offsets:");
+                ui.strong("Gains and Offsets:").on_hover_text(indoc!("
+                    Each entry represents a linear transformation to be applied on a slice of the incoming
+                    tensor. The incoming tensor is sliced along the axis in the 'Axis ID' field above."
+                ));
                 self.gain_offsets_widget.draw_and_parse(ui, id.with("go".as_ptr()));
             });
             ui.weak(format!(
                 "Note: Incoming tensor will be expected to have size of exactly {} along {axis_id_text}",
                 self.gain_offsets_widget.staging.len()
             ));
-            show_if_error(ui, &self.parsed)
         });
     }
 
@@ -172,7 +183,7 @@ impl StatefulWidget for ScaleLinearAlongAxisWidget{
 
 #[derive(Default, Restore)]
 pub struct ScaleLinearWidget{
-    pub mode_widget: SearchAndPickWidget<ScaleLinearMode, false>,
+    pub mode: ScaleLinearMode,
     pub simple_widget: SimpleScaleLinearWidget,
     pub along_axis_widget: ScaleLinearAlongAxisWidget,
 }
@@ -207,11 +218,11 @@ impl ValueWidget for ScaleLinearWidget{
     fn set_value<'v>(&mut self, value: Self::Value<'v>) {
         match value{
             modelrdfpreproc::ScaleLinearDescr::Simple(simple) => {
-                self.mode_widget.value = ScaleLinearMode::Simple;
+                self.mode = ScaleLinearMode::Simple;
                 self.simple_widget.set_value(simple)
             },
             modelrdfpreproc::ScaleLinearDescr::AlongAxis(val) => {
-                self.mode_widget.value = ScaleLinearMode::AlongAxis;
+                self.mode = ScaleLinearMode::AlongAxis;
                 self.along_axis_widget.set_value(val)
             },
         }
@@ -225,9 +236,19 @@ impl StatefulWidget for ScaleLinearWidget{
         ui.vertical(|ui|{
             ui.horizontal(|ui|{
                 ui.strong("Mode: ");
-                self.mode_widget.draw_and_parse(ui, id.with("mode".as_ptr()));
+
+                ui.radio_value(&mut self.mode, ScaleLinearMode::Simple, "General")
+                    .on_hover_text(indoc!("
+                        Run the entire incoming tensor through a function of the form f(x) = x * Gain + Offset"
+                    ));
+                ui.radio_value(&mut self.mode, ScaleLinearMode::AlongAxis, "Along Axis")
+                    .on_hover_text(indoc!("
+                        Pick one axis from the tensor; for every tensor slice along the incoming tensor, \
+                        run that slice through a function of the form f(slice) = slice * SliceGain + SliceOffset"
+                    ));
             });
-            match self.mode_widget.value{
+
+            match self.mode{
                 ScaleLinearMode::Simple => self.simple_widget.draw_and_parse(ui, id.with("simple".as_ptr())),
                 ScaleLinearMode::AlongAxis => self.along_axis_widget.draw_and_parse(ui, id.with("along axis".as_ptr())),
             };
@@ -235,7 +256,7 @@ impl StatefulWidget for ScaleLinearWidget{
     }
 
     fn state<'p>(&'p self) -> Self::Value<'p> {
-        Ok(match self.mode_widget.value{
+        Ok(match self.mode{
             ScaleLinearMode::Simple => modelrdfpreproc::ScaleLinearDescr::Simple(
                 self.simple_widget.state()?
             ),

@@ -374,7 +374,7 @@ pub struct FixedZmuvWidgetRawData{
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct ScaleLinearWidgetRawData{
-    pub mode_widget: ScaleLinearModeRawData,
+    pub mode: ScaleLinearModeRawData,
     pub simple_widget: SimpleScaleLinearWidgetRawData,
     pub along_axis_widget: ScaleLinearAlongAxisWidgetRawData,
 }
