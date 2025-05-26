@@ -454,7 +454,7 @@ where
         egui::AboveOrBelow::Above
     };
     egui::popup::popup_above_or_below_widget(ui, popup_id, &button_response, above_or_below, CloseOnClickOutside, |ui| {
-        // ui.set_min_width(200.0);
+        ui.set_min_width(200.0);
         // ui.set_min_height(vert_space_above_button.max(vert_space_under_button));
         // ui.set_max_height(vert_space_above_button.max(vert_space_under_button));
         ui.vertical(|ui|{
@@ -477,7 +477,7 @@ where
             let lower_search = search.to_lowercase();
             let lower_search_words: Vec<_> = lower_search.split_whitespace().collect();
             let scroll_area = egui::ScrollArea::vertical()
-                .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysVisible)
+                .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::VisibleWhenNeeded)
                 .max_height(vert_space_above_button.max(vert_space_under_button).sub(header_height).max(0.0));
             let (num_visible_entries, candidate) = scroll_area.show(ui, |ui| {
                 let mut candidate: Option<T> = None;
