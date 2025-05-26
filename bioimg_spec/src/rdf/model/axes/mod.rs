@@ -6,11 +6,13 @@ use std::{borrow::Borrow, fmt::Display, str::FromStr};
 
 use serde::{Deserialize, Serialize};
 
-use super::{
-    axis_size::AnyAxisSize,
-    FixedAxisSize,
-};
-use crate::rdf::{bounded_string::BoundedString, identifier::Identifier, literal::{LitStr, LiteralInt, StrMarker}, lowercase::{Lowercase, LowercaseParsingError}, non_empty_list::NonEmptyList};
+use super::FixedAxisSize;
+use super::axis_size::AnyAxisSize;
+use crate::rdf::non_empty_list::NonEmptyList;
+use crate::rdf::lowercase::{Lowercase, LowercaseParsingError};
+use crate::rdf::literal::{LitStr, LiteralInt, StrMarker};
+use crate::rdf::identifier::Identifier;
+use crate::rdf::bounded_string::BoundedString;
 
 pub type AxisId = Lowercase<BoundedString<1, 16>>;
 pub type AxisDescription = BoundedString<0, 128>;
