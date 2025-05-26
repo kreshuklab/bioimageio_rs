@@ -750,7 +750,7 @@ impl eframe::App for AppState1 {
                 .show(ctx, |ui| {
                     ui.label("Save draft before quitting?");
                     ui.horizontal(|ui| {
-                        if ui.button("Yes").clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter)){ 'save_draft: {
+                        if ui.button("Yes 💾").clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter)){ 'save_draft: {
                             self.show_confirmation_dialog = false;
                             let Some(path) = rfd::FileDialog::new().set_file_name("MyDraft.bmb").save_file() else {
                                 break 'save_draft;
@@ -763,12 +763,12 @@ impl eframe::App for AppState1 {
                             }
                             self.notifications_widget.push_message(result);
                         }}
-                        if ui.button("No").clicked() {
+                        if ui.button("No 🗑").clicked() {
                             self.show_confirmation_dialog = false;
                             self.close_confirmed = true;
                             ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
                         }
-                        if ui.button("Cancel").clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                        if ui.button("Cancel 🗙").clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape)) {
                             self.show_confirmation_dialog = false;
                             self.close_confirmed = false;
                         }
