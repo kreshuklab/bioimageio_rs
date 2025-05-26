@@ -66,7 +66,7 @@ impl StatefulWidget for ClipWidget{
                 ui.strong("Min Percentile");
                 self.min_widget.draw_and_parse(ui, id.with("min"));
                 ui.strong("Max Percentile");
-                self.min_widget.draw_and_parse(ui, id.with("max"));
+                self.max_widget.draw_and_parse(ui, id.with("max"));
             });
             show_if_error(ui, &self.parsed)
         });

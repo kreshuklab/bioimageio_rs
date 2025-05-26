@@ -55,19 +55,19 @@ impl Default for SimpleScaleLinearWidget{
 impl StatefulWidget for SimpleScaleLinearWidget{
     type Value<'p> = Result<modelrdfpreproc::SimpleScaleLinearDescr>;
     fn draw_and_parse(&mut self, ui: &mut egui::Ui, id: egui::Id) {
-        match self.state(){
-            Ok(s) => {
-                let msg = format!("Runs data through linear function f(x) = x * {} + {}", s.gain, s.offset);
-                ui.weak(msg)
-            },
-            Err(_) => ui.weak("Runs data through linear function f(x) = x * Gain + Offset")
-        };
         ui.horizontal(|ui|{
             ui.strong("Gain: ");
             self.gain_widget.draw_and_parse(ui, id.with("gain"));
             ui.strong(" Offset: ");
             self.offset_widget.draw_and_parse(ui, id.with("off"));
         });
+        match self.state(){
+            Ok(s) => {
+                let msg = format!("Runs data through f(x) = x * {} + {}", s.gain, s.offset);
+                ui.weak(msg)
+            },
+            Err(_) => ui.weak("Runs data through f(x) = x * Gain + Offset")
+        };
     }
 
     fn state<'p>(&'p self) -> Self::Value<'p> {
@@ -140,6 +140,13 @@ impl StatefulWidget for ScaleLinearAlongAxisWidget{
     fn draw_and_parse(&mut self, ui: &mut egui::Ui, id: egui::Id) {
         self.update();
         ui.vertical(|ui|{
+            let axis_id_text: String = match self.axis_widget.state() {
+                Ok(axis_id) => format!("'{axis_id}'"),
+                Err(_) => "axis specified in 'Axis'".to_owned(),
+            };
+            ui.weak(format!(
+                "The Nth slice along {axis_id_text} will go through the Nth linear scaling in 'Gains and Offsets'"
+            ));
             ui.horizontal(|ui|{
                 ui.strong("Axis");
                 self.axis_widget.draw_and_parse(ui, id.with("ax".as_ptr()));
@@ -148,6 +155,10 @@ impl StatefulWidget for ScaleLinearAlongAxisWidget{
                 ui.strong("Gains and Offsets:");
                 self.gain_offsets_widget.draw_and_parse(ui, id.with("go".as_ptr()));
             });
+            ui.weak(format!(
+                "Note: Incoming tensor will be expected to have size of exactly {} along {axis_id_text}",
+                self.gain_offsets_widget.staging.len()
+            ));
             show_if_error(ui, &self.parsed)
         });
     }
@@ -174,7 +185,7 @@ impl Iconify for ScaleLinearWidget{
         let text = match preproc{
             ScaleLinearDescr::AlongAxis(preproc) => {
                 format!(
-                    "*［{}］➕［{}］",
+                    "* [{}] + [{}]",
                     preproc.gain_offsets.iter()
                         .map(|(gain, _)| gain)
                         .join(", "),

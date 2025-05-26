@@ -222,7 +222,7 @@ impl PostprocessingWidget {
                     self.scale_linear_widget.draw_and_parse(ui, id.with("scale_linear_widget".as_ptr()))
                 },
                 PostprocessingWidgetMode::Sigmoid => {
-                    ()
+                    ui.weak("Runs output through a sigmoid function, i.e. f(x) = 1 / (1 + e^(-x))");
                 },
                 PostprocessingWidgetMode::ZeroMeanUnitVariance => {
                     self.zero_mean_unit_variance_widget.draw_and_parse(ui, id.with("zero_mean_unit_variance_widget".as_ptr()))
