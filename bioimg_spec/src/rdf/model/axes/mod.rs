@@ -19,7 +19,7 @@ pub type AxisDescription = BoundedString<0, 128>;
 
 #[derive(thiserror::Error, Debug)]
 pub enum AxisIdParsingError{
-    #[error("AxisId mut be lowercase: {0}")]
+    #[error(transparent)]
     LowercaseParsingError(#[from] LowercaseParsingError),
     #[error("Axis can't be 'batch'")]
     CantBeBatch,
