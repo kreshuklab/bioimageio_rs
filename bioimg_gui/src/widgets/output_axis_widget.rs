@@ -279,15 +279,19 @@ impl ItemWidgetConf for CollapsibleWidget<OutputAxisWidget>{
     const GROUP_FRAME: bool = false;
 }
 
-impl StatefulWidget for OutputAxisWidget{
-    type Value<'p> = Result<modelrdf::OutputAxis>;
+impl OutputAxisWidget{
+    pub fn draw_type_picker(&mut self, ui: &mut egui::Ui, id: egui::Id){
+        self.axis_type_widget.draw_and_parse(ui, id);
+    }
 
-    fn draw_and_parse(&mut self, ui: &mut egui::Ui, id: egui::Id) {
+    pub fn draw_and_parse(&mut self, ui: &mut egui::Ui, id: egui::Id, show_type_picker: bool) {
         ui.vertical(|ui|{
-            ui.horizontal(|ui| {
-                ui.strong("Axis Type: ");
-                self.axis_type_widget.draw_and_parse(ui, id.with("axis_type".as_ptr()));
-            });
+            if show_type_picker{
+                ui.horizontal(|ui| {
+                    ui.strong("Axis Type: ");
+                    self.draw_type_picker(ui, id.with("axis_type".as_ptr()));
+                });
+            }
             match self.axis_type_widget.value{
                 AxisType::Space => self.space_axis_widget.draw_and_parse(ui, id.with("space")),
                 AxisType::Time => self.time_axis_widget.draw_and_parse(ui, id.with("time")),
@@ -298,7 +302,7 @@ impl StatefulWidget for OutputAxisWidget{
         });
     }
 
-    fn state<'p>(&'p self) -> Self::Value<'p> {
+    pub fn state(&self) -> Result<modelrdf::OutputAxis> {
         Ok(match self.axis_type_widget.value{
             AxisType::Space => modelrdf::OutputAxis::Space(self.space_axis_widget.state()?),
             AxisType::Time => modelrdf::OutputAxis::Time(self.time_axis_widget.state()?),

@@ -1,13 +1,15 @@
 use std::marker::PhantomData;
 use std::sync::Arc;
 
+use bioimg_spec::rdf::model::axes::output_axes::OutputSpacetimeSize;
+use bioimg_spec::rdf::model::axis_size::FixedOrRefAxisSize;
 use indoc::indoc;
 
 use bioimg_runtime::model_interface::{InputSlot, OutputSlot};
 use bioimg_runtime::npy_array::ArcNpyArray;
 
 use crate::result::{GuiError, Result};
-use bioimg_spec::rdf::model as modelrdf;
+use bioimg_spec::rdf::model::{self as modelrdf, AnyAxisSize, AxisId, AxisSizeReference, AxisType, InputAxis, ParameterizedAxisSize};
 use bioimg_spec::rdf::model::input_tensor as rdfinput;
 
 use super::collapsible_widget::{CollapsibleWidget, SummarizableWidget};
@@ -21,6 +23,82 @@ use super::test_tensor_widget::{TestTensorWidget, TestTensorWidgetState};
 use super::util::{VecItemRender, VecWidget};
 use super::{Restore, StatefulWidget, ValueWidget};
 use crate::widgets::staging_vec::ItemWidgetConf;
+
+trait IAnyAxisSizeExt{
+    fn as_header(&self, axis_id: &AxisId) -> String;
+}
+
+impl IAnyAxisSizeExt for FixedOrRefAxisSize{
+    fn as_header(&self, axis_id: &AxisId) -> String{
+        match self{
+            Self::Fixed(size) => format!("{axis_id}: {size}"),
+            Self::Reference(AxisSizeReference{qualified_axis_id, offset}) => format!("{axis_id}: same as {qualified_axis_id}, offset by {offset}"),
+        }
+    }
+}
+
+impl IAnyAxisSizeExt for AnyAxisSize{
+    fn as_header(&self, axis_id: &AxisId) -> String{
+        match self{
+            Self::Fixed(size) => FixedOrRefAxisSize::from(size.clone()).as_header(axis_id),
+            Self::Reference(reference) => FixedOrRefAxisSize::from(reference.clone()).as_header(axis_id),
+            Self::Parameterized(ParameterizedAxisSize { min, step }) => format!("{axis_id}: {min} + N * {step}"),
+        }
+    }
+}
+
+impl IAnyAxisSizeExt for OutputSpacetimeSize{
+    fn as_header(&self, axis_id: &AxisId) -> String{
+        match self{
+            Self::Haloed { size, .. } => size.as_header(axis_id), //FIXME: use halo
+            Self::Standard { size } => size.as_header(axis_id),
+        }
+    }
+}
+
+trait IAxisNameLabel{
+    fn draw_header_label(&self, ui: &mut egui::Ui, axis_idx: usize) -> egui::Response;
+}
+
+
+macro_rules! impl_IAxisNameLabel_for {($axis_widget_ty:ty) => {
+    impl IAxisNameLabel for $axis_widget_ty{
+        fn draw_header_label(&self, ui: &mut egui::Ui, axis_idx: usize) -> egui::Response {
+            let state = self.state();
+            let rt: egui::RichText = match self.axis_type_widget.value{
+                AxisType::Space => match self.space_axis_widget.state(){
+                    Ok(axis) => axis.size.as_header(&axis.id).into(),
+                    Err(_) => self.name_label(axis_idx)
+                },
+                AxisType::Time => match self.time_axis_widget.state(){
+                    Ok(axis) => axis.size.as_header(&axis.id).into(),
+                    Err(_) => self.name_label(axis_idx)
+                }
+                AxisType::Index => match self.index_axis_widget.state(){
+                    Ok(axis) => axis.clone().size.as_header(&InputAxis::from(axis).id()).into(),
+                    Err(_) => self.name_label(axis_idx)
+                }
+                AxisType::Batch => match &state {
+                    Ok(_) => String::new().into(),
+                    Err(_) => "!".into(),
+                },
+                AxisType::Channel => match self.channel_axis_widget.state(){
+                    Ok(channels) => channels.to_string().into(),
+                    Err(_) => "!".into()
+                }
+            };
+
+            match state{
+                Ok(_) => ui.label(rt),
+                Err(err) => ui.label(rt.color(ui.visuals().error_fg_color)).on_hover_text(err.to_string())
+            }
+        }
+    }
+};}
+
+impl_IAxisNameLabel_for!(InputAxisWidget);
+impl_IAxisNameLabel_for!(OutputAxisWidget);
+
 
 #[derive(Restore, Default)]
 pub struct InputTensorWidget {
@@ -209,10 +287,7 @@ impl InputTensorWidget{
                     item_renderer: VecItemRender::HeaderAndBody {
                         render_header: |widget: &mut InputAxisWidget, idx, ui|{
                             widget.draw_type_picker(ui, id.with(("type picker".as_ptr(), idx)));
-                            match widget.state(){
-                                Ok(_) => ui.add(egui::Label::new(widget.name_label(idx))),
-                                Err(err) => ui.add(egui::Label::new(widget.name_label(idx))).on_hover_text(err.to_string()),
-                            };
+                            widget.draw_header_label(ui, idx);
                         },
                         render_body: |widget: &mut InputAxisWidget, idx, ui|{
                             widget.draw(ui, id.with("input axis").with(idx), false);
@@ -435,15 +510,13 @@ impl OutputTensorWidget{
                     show_reorder_buttons: true,
                     item_renderer: VecItemRender::HeaderAndBody {
                         render_header: |widget: &mut OutputAxisWidget, idx, ui|{
-                            match widget.state(){
-                                Ok(_) => ui.add(egui::Label::new(widget.name_label(idx))),
-                                Err(err) => ui.add(egui::Label::new(widget.name_label(idx))).on_hover_text(err.to_string()),
-                            };
+                            widget.draw_type_picker(ui, id.with(("output type picker".as_ptr(), idx)));
+                            widget.draw_header_label(ui, idx);
                         },
                         render_body: |widget: &mut OutputAxisWidget, idx, ui|{
-                            widget.draw_and_parse(ui, id.with("input axis").with(idx));
+                            widget.draw_and_parse(ui, id.with("output axis").with(idx), false);
                         },
-                        collapsible_id_source: Some(id.with("axis list")),
+                        collapsible_id_source: Some(id.with("output axis list")),
                         marker: PhantomData,
                     },
                     new_item: Some(OutputAxisWidget::default),

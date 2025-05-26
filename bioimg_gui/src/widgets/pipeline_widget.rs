@@ -576,7 +576,7 @@ impl PipelineWidget{
                 );
                 modal(modal_id, ui, header, |ui|{
                     let mut action = None;
-                    interface_widget.output_widgets[output_idx].axis_widgets[axis_idx].draw_and_parse(ui, id.with("axis".as_ptr()));
+                    interface_widget.output_widgets[output_idx].axis_widgets[axis_idx].draw_and_parse(ui, id.with("axis".as_ptr()), true);
                     ui.separator();
                     ui.horizontal(|ui|{
                         if ui.button("Remove").clicked(){
