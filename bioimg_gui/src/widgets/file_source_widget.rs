@@ -36,10 +36,14 @@ pub enum LocalFileState{
 }
 
 impl LocalFileState{
+    pub fn from_failure_msg(message: impl AsRef<str>) -> Self{
+        Self::Failed(GuiError::new(message))
+    }
     #[cfg(not(target_arch="wasm32"))]
     fn from_local_path(path: &Path, inner_path: Option<String>) -> LocalFileState{
         if !path.exists(){ //FIXME: use smol and await?
-            return LocalFileState::Failed(GuiError::new("File does not exist"))
+            let path_display = path.to_string_lossy();
+            return LocalFileState::Failed(GuiError::new(format!("File does not exist: {path_display}")))
         }
         if path.extension().is_none() || matches!(path.extension(), Some(ext) if ext != "zip"){
             return LocalFileState::PickedNormalFile { path: Arc::from(path) }
@@ -58,10 +62,21 @@ impl LocalFileState{
                 .collect()
         });
         inner_options.sort();
-        let selected_inner_path = match inner_options.first(){
-            None => return LocalFileState::Failed(GuiError::new("Empty zip file")),
-            Some(first) => inner_path.unwrap_or(first.clone())
+
+        let selected_inner_path = match inner_path{
+            Some(inner_path) => {
+                if !inner_options.contains(&inner_path){
+                    let message = format!("File {} does not contain entry '{inner_path}'", archive.identifier());
+                    return Self::from_failure_msg(message)
+                }
+                inner_path
+            },
+            None => match inner_options.first(){
+                None => return Self::from_failure_msg(format!("Empty zip file: {}", archive.identifier())),
+                Some(first) => first.clone(),
+            }
         };
+
         LocalFileState::PickingInner {
             archive,
             inner_options_widget: SearchAndPickWidget::new(selected_inner_path, inner_options)
