@@ -147,24 +147,19 @@ impl InputAxisWidget{
         }
         out
     }
-    pub fn raw_axis_id(&self) -> &str{
+    pub fn name_label(&self, axis_idx: usize) -> egui::RichText {
         match self.axis_type_widget.value{
-            AxisType::Space => &self.space_axis_widget.id_widget.raw,
-            AxisType::Time => &self.time_axis_widget.id_widget.raw,
-            AxisType::Batch => "batch",
-            AxisType::Channel => "channel",
-            AxisType::Index => "index",
-        }
-    }
-    pub fn name_label(&self, axis_idx: usize) -> egui::RichText{
-        let label = if self.raw_axis_id().len() == 0{
-            egui::RichText::new(format!("Axis #{}", axis_idx + 1))
-        } else {
-            egui::RichText::new(self.raw_axis_id())
-        };
-        match self.state(){
-            Ok(_) => label,
-            Err(_) => label.color(egui::Color32::RED)
+            AxisType::Space => match self.space_axis_widget.id_widget.raw.len() {
+                0 => egui::RichText::new(format!("Axis #{axis_idx}")).color(egui::Color32::RED),
+                _ => egui::RichText::new(&self.space_axis_widget.id_widget.raw)
+            },
+            AxisType::Time => match self.time_axis_widget.id_widget.raw.len() {
+                0 => egui::RichText::new(format!("Axis #{axis_idx}")).color(egui::Color32::RED),
+                _ => egui::RichText::new(&self.time_axis_widget.id_widget.raw)
+            },
+            AxisType::Batch => "batch".into(),
+            AxisType::Channel => "channel".into(),
+            AxisType::Index => "index".into(),
         }
     }
 }
