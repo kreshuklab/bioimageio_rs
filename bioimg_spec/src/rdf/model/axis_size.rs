@@ -6,6 +6,12 @@ use super::{axes::AxisId, tensor_id::TensorId};
 
 pub type FixedAxisSize = NonZeroUsize;
 
+impl From<FixedAxisSize> for FixedOrRefAxisSize{
+    fn from(value: FixedAxisSize) -> Self {
+        return Self::Fixed(value)
+    }
+}
+
 impl From<FixedAxisSize> for AnyAxisSize{
     fn from(value: FixedAxisSize) -> Self {
         AnyAxisSize::Fixed(value)
