@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 pub enum LowercaseParsingError {
     #[error("{source}")]
     BadString { source: Box<dyn Error + 'static> },
-    #[error("Character at {idx} is not lowercase: {value}")]
+    #[error("Character at offset {idx} is not lowercase: {value}")]
     IsNotLowercase { value: String, idx: usize },
 }
 
