@@ -390,7 +390,7 @@ impl PipelineWidget{
                                 });
                             }
                             ui.add_space(10.0);
-                            if ui.button("✚").on_hover_text("Add preprocesing step").clicked(){
+                            if ui.button("✚ 📊").on_hover_text("Add preprocesing step").clicked(){
                                 inp.preprocessing_widget.push(Default::default());
                                 let preproc_idx = inp.preprocessing_widget.len() - 1;
                                 pipeline_action = PipelineAction::OpenPreproc{ input_idx, preproc_idx };
@@ -469,7 +469,7 @@ impl PipelineWidget{
                                 });
                             }
                             ui.add_space(10.0);
-                            if ui.button("✚").on_hover_text("Add postprocessing step").clicked(){
+                            if ui.button("✚ 📊").on_hover_text("Add postprocessing step").clicked(){
                                 output.postprocessing_widgets.push(Default::default());
                                 let postproc_idx = output.postprocessing_widgets.len() - 1;
                                 pipeline_action = PipelineAction::OpenPostproc { output_idx, postproc_idx };
