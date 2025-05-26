@@ -16,6 +16,9 @@ impl ResolvedAxisSizeExt for ResolvedAxisSize{
             Self::Parameterized(ParameterizedAxisSize { min, step }) => {
                 let min = usize::from(*min);
                 let step = usize::from(*step);
+                if extent < min {
+                    return false
+                }
                 return (extent - min) % step == 0;
             }
         }
