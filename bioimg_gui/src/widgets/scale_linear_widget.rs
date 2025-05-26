@@ -55,6 +55,13 @@ impl Default for SimpleScaleLinearWidget{
 impl StatefulWidget for SimpleScaleLinearWidget{
     type Value<'p> = Result<modelrdfpreproc::SimpleScaleLinearDescr>;
     fn draw_and_parse(&mut self, ui: &mut egui::Ui, id: egui::Id) {
+        match self.state(){
+            Ok(s) => {
+                let msg = format!("Runs data through linear function f(x) = x * {} + {}", s.gain, s.offset);
+                ui.weak(msg)
+            },
+            Err(_) => ui.weak("Runs data through linear function f(x) = x * Gain + Offset")
+        };
         ui.horizontal(|ui|{
             ui.strong("Gain: ");
             self.gain_widget.draw_and_parse(ui, id.with("gain"));
@@ -167,7 +174,7 @@ impl Iconify for ScaleLinearWidget{
         let text = match preproc{
             ScaleLinearDescr::AlongAxis(preproc) => {
                 format!(
-                    "× ［{}］ + ［{}］",
+                    "*［{}］➕［{}］",
                     preproc.gain_offsets.iter()
                         .map(|(gain, _)| gain)
                         .join(", "),
@@ -177,7 +184,7 @@ impl Iconify for ScaleLinearWidget{
                 )
             },
             ScaleLinearDescr::Simple(preproc) => {
-                format!("× {} + {}", preproc.gain, preproc.offset)
+                format!("* {} + {}", preproc.gain, preproc.offset)
             }
         };
         Ok(egui::RichText::new(text).into())
