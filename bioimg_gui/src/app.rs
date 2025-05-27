@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::path::Path;
 use std::sync::Arc;
 use std::thread::JoinHandle;
@@ -353,7 +354,15 @@ impl AppState1{
                 zoo_model.pack_into(file)
             };
             #[cfg(not(target_arch="wasm32"))]
-            let pack_result = match std::fs::File::create(file_handle.path()){
+            let current_extension = file_handle.path().extension().map(|s| s.to_string_lossy()).unwrap_or(Cow::Borrowed(""));
+            let temp_extension = format!("{current_extension}.partial");
+            let temp_path = {
+                let mut temp_path = file_handle.path().to_owned();
+                temp_path.set_extension(temp_extension);
+                temp_path
+            };
+
+            let pack_result = match std::fs::File::create(&temp_path){
                 Ok(file) => zoo_model.pack_into(file),
                 Err(err) => {
                     sender.send(TaskResult::err_message(format!("Could not create zip file: {err}"))).unwrap();
@@ -361,10 +370,20 @@ impl AppState1{
                 }
             };
 
-            sender.send(match &pack_result{
-                Ok(_) => TaskResult::ok_message(format!("Model saved to {file_name}")),
-                Err(err) => TaskResult::err_message(format!("Error saving model: {err}")),
-            }).unwrap();
+            let message = match pack_result{
+                Ok(_) => match std::fs::rename(&temp_path, file_handle.path()) {
+                    Ok(_) => TaskResult::ok_message(format!("Model saved to {file_name}")),
+                    Err(err) => {
+                        if let Err(err) = std::fs::remove_file(&temp_path){
+                            sender.send(TaskResult::err_message(format!("Could not delete temp file {}: {err}", temp_path.to_string_lossy()))).unwrap();
+                        }
+                        TaskResult::err_message(format!("Error saving model: {err}"))
+                    },
+                },
+                Err(err) => TaskResult::err_message(format!("Error saving model: {err}"))
+            };
+
+            sender.send(message).unwrap();
         };
 
         #[cfg(target_arch="wasm32")]
