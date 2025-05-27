@@ -764,6 +764,7 @@ impl eframe::App for AppState1 {
             }
         }
 
+        #[cfg(not(target_arch="wasm32"))]
         if self.show_confirmation_dialog {
             egui::Modal::new(egui::Id::from("confirmation dialog"))
                 .show(ctx, |ui| {
