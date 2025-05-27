@@ -46,6 +46,7 @@ use crate::widgets::{
     util::group_frame, StatefulWidget,
 };
 
+#[must_use]
 pub enum TaskResult{
     Notification(Result<String, String>),
     ModelImport(Box<rt::zoo_model::ZooModel>),
@@ -348,39 +349,42 @@ impl AppState1{
             sender.send(TaskResult::ok_message(notification_message)).unwrap();
 
             #[cfg(target_arch="wasm32")]
-            let pack_result = {
+            let message = {
                 let mut file_bytes = Vec::<u8>::new(); //FIXME: check FileSystemWritableFileStream: seek() 
                 let file = std::io::Cursor::new(&mut file_bytes);
-                zoo_model.pack_into(file)
-            };
-            #[cfg(not(target_arch="wasm32"))]
-            let current_extension = file_handle.path().extension().map(|s| s.to_string_lossy()).unwrap_or(Cow::Borrowed(""));
-            let temp_extension = format!("{current_extension}.partial");
-            let temp_path = {
-                let mut temp_path = file_handle.path().to_owned();
-                temp_path.set_extension(temp_extension);
-                temp_path
-            };
-
-            let pack_result = match std::fs::File::create(&temp_path){
-                Ok(file) => zoo_model.pack_into(file),
-                Err(err) => {
-                    sender.send(TaskResult::err_message(format!("Could not create zip file: {err}"))).unwrap();
-                    return;
+                match zoo_model.pack_into(file){
+                    Ok(_) => TaskResult::ok_message(format!("Model saved to {file_name}")),
+                    Err(err) => TaskResult::err_message(format!("Error saving model: {err}")),
                 }
             };
+            #[cfg(not(target_arch="wasm32"))]
+            let message = 'packing: {
+                let temp_path = {
+                    let current_extension = file_handle.path().extension().map(|s| s.to_string_lossy()).unwrap_or(Cow::Borrowed(""));
+                    let temp_extension = format!("{current_extension}.partial");
+                    let mut temp_path = file_handle.path().to_owned();
+                    temp_path.set_extension(temp_extension);
+                    temp_path
+                };
 
-            let message = match pack_result{
-                Ok(_) => match std::fs::rename(&temp_path, file_handle.path()) {
-                    Ok(_) => TaskResult::ok_message(format!("Model saved to {file_name}")),
+                let file = match std::fs::File::create(&temp_path){
+                    Ok(file) => file,
                     Err(err) => {
-                        if let Err(err) = std::fs::remove_file(&temp_path){
-                            sender.send(TaskResult::err_message(format!("Could not delete temp file {}: {err}", temp_path.to_string_lossy()))).unwrap();
-                        }
-                        TaskResult::err_message(format!("Error saving model: {err}"))
-                    },
-                },
-                Err(err) => TaskResult::err_message(format!("Error saving model: {err}"))
+                        break 'packing TaskResult::err_message(format!("Could not create zip file: {err}"));
+                    }
+                };
+
+                if let Err(err) = zoo_model.pack_into(file){
+                    break 'packing TaskResult::err_message(format!("Error saving model: {err}"));
+                }
+                if let Err(err) = std::fs::rename(&temp_path, file_handle.path()) {
+                    if let Err(rm_err) = std::fs::remove_file(&temp_path){
+                        let msg = format!("Could not delete temp file {}: {rm_err}", temp_path.to_string_lossy());
+                        sender.send(TaskResult::err_message(msg)).unwrap();
+                    }
+                    break 'packing TaskResult::err_message(format!("Error saving model: {err}"))
+                }
+                TaskResult::ok_message(format!("Model saved to {file_name}"))
             };
 
             sender.send(message).unwrap();
