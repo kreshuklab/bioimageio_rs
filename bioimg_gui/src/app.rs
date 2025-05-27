@@ -455,7 +455,10 @@ impl eframe::App for AppState1 {
                     };
                 })});
                 ui.menu_button("File", |ui| {
-                    if ui.button("Import Model").clicked() {
+                    if ui.button("📦⤴ Import Model")
+                        .on_hover_text("Import a .zip model file, like the ones you'd get from bioimage.io")
+                        .clicked()
+                    {
                         ui.close_menu();
                         let sender = self.notifications_channel.sender().clone();
 
@@ -485,7 +488,10 @@ impl eframe::App for AppState1 {
                         }
                     }
                     #[cfg(not(target_arch="wasm32"))]
-                    if ui.button("Save Draft").clicked() { 'save_project: {
+                    if ui.button("🗊⤵ Save Draft ")
+                        .on_hover_text("Save your current work as-is, even with unresolved errors")
+                        .clicked()
+                    { 'save_project: {
                         ui.close_menu();
                         let Some(path) = rfd::FileDialog::new().set_file_name("MyDraft.bmb").save_file() else {
                             break 'save_project;
@@ -494,7 +500,10 @@ impl eframe::App for AppState1 {
                         self.notifications_widget.push_message(result);
                     }}
                     #[cfg(not(target_arch="wasm32"))]
-                    if ui.button("Load Draft").clicked() { 'load_project: {
+                    if ui.button("🗊⤴ Load Draft")
+                        .on_hover_text("Load a previously saved, potentially unfinished session")
+                        .clicked()
+                    { 'load_project: {
                         ui.close_menu();
                         let Some(path) = rfd::FileDialog::new().add_filter("bioimage model builder", &["bmb"]).pick_file() else {
                             break 'load_project;
@@ -744,8 +753,8 @@ impl eframe::App for AppState1 {
 
                 ui.separator();
 
-                let save_button_clicked = ui.button("Save Model")
-                    .on_hover_text("Save this model to a .zip file, ready to be used or uploaded to the Model Zoo")
+                let save_button_clicked = ui.button("Export Model ⤵📦")
+                    .on_hover_text("Exports this model to a .zip file, ready to be used or uploaded to the Model Zoo")
                     .clicked();
 
                 if save_button_clicked {
