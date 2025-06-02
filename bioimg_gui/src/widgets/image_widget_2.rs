@@ -182,10 +182,10 @@ impl StatefulWidget for ImageWidget2{
     fn draw_and_parse(&mut self, ui: &mut egui::Ui, id: egui::Id){
 
         fn fill_and_show_texture(ui: &mut egui::Ui, tex: &mut Option<Texture>, img: &image::DynamicImage) {
-                let tex = tex.get_or_insert_with(|| Texture::load(&img, ui.ctx().clone()));
-                let (width, height) = img.dimensions();
-                let ratio =  width as f64 / height as f64;
-                tex.show(ui, egui::Vec2 { y: 50.0, x: 50.0 * ratio as f32 }); //FIXME: can we not hardcode this?
+            let tex = tex.get_or_insert_with(|| Texture::load(&img, ui.ctx().clone()));
+            let (width, height) = img.dimensions();
+            let ratio =  width as f64 / height as f64;
+            tex.show(ui, egui::Vec2 { y: 50.0, x: 50.0 * ratio as f32 }); //FIXME: can we not hardcode this?
         }
 
         ui.vertical(|ui|{
