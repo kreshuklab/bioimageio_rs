@@ -8,6 +8,9 @@ use std::path::Path;
 use bioimg_runtime as rt;
 use bioimg_runtime::zip_archive_ext::ZipArchiveIdentifier;
 use bioimg_runtime::zip_archive_ext::SharedZipArchive;
+use sha2::digest::consts::U32;
+use sha2::digest::generic_array::GenericArray;
+use sha2::Digest;
 
 use crate::project_data::{FileSourceWidgetRawData, LocalFileSourceWidgetRawData};
 use crate::result::{GuiError, Result};
@@ -23,13 +26,12 @@ use super::{
     Restore, StatefulWidget, ValueWidget,
 };
 
-
 #[derive(Default)]
 pub enum LocalFileState{
     #[default]
     Empty,
     Failed(GuiError),
-    InMemoryFile{name: Option<String>, data: Arc<[u8]>},
+    InMemoryFile{name: Option<String>, digest: GenericArray<u8, U32>, data: Arc<[u8]>},
     #[cfg(not(target_arch="wasm32"))]
     PickedNormalFile{path: Arc<Path>},
     PickingInner{archive: SharedZipArchive, inner_options_widget: SearchAndPickWidget<String>}
@@ -99,7 +101,7 @@ impl SummarizableWidget for LocalFileSourceWidget{
             LocalFileState::Failed(err) => {
                 show_error(ui, err);
             },
-            LocalFileState::InMemoryFile{ name, data } => {
+            LocalFileState::InMemoryFile{ name, data, digest: _digest } => {
                 let mut label = String::with_capacity(32);
                 if let Some(name) = name {
                     write!(&mut label, "{name} ").unwrap();
@@ -136,7 +138,7 @@ impl Restore for LocalFileSourceWidget{
         let gen_state: &(i64, LocalFileState) = &*guard;
         match &gen_state.1{
             LocalFileState::Empty | LocalFileState::Failed(_) => Self::RawData::Empty,
-            LocalFileState::InMemoryFile{name, data} => {
+            LocalFileState::InMemoryFile{name, data, digest: _digest} => {
                 let data = Arc::clone(data);
                 Self::RawData::InMemoryData{name: name.clone(), data }
             },
@@ -162,8 +164,9 @@ impl Restore for LocalFileSourceWidget{
                 return
             },
             Self::RawData::InMemoryData{name, data} => {
+                let digest = sha2::Sha256::digest(&data);
                 self.state = Arc::new(std::sync::Mutex::new(
-                    (0, LocalFileState::InMemoryFile { name, data })
+                    (0, LocalFileState::InMemoryFile { name, data, digest })
                 ));
                 return
             },
@@ -206,6 +209,7 @@ impl LocalFileSourceWidget{
                     0,
                     LocalFileState::InMemoryFile {
                         name,
+                        digest: sha2::Sha256::digest(&data),
                         data,
                     }
                 )
@@ -230,12 +234,13 @@ pub fn spawn_load_file_task(
             #[cfg(target_arch="wasm32")]
             {
                 let contents = handle.read().await; //FIXME: read can panic
+                let digest = sha2::Sha256::digest(&contents);
                 if matches!(PathBuf::from(handle.file_name()).extension(), Some(ext) if ext == "zip"){
                     let archive = SharedZipArchive::from_raw_data(contents, handle.file_name());
                     break 'next LocalFileState::from_zip(archive, inner_path)
                 } else {
                     let data: Arc<[u8]> = Arc::from(contents.as_slice());
-                    break 'next LocalFileState::InMemoryFile { name: Some(handle.file_name()), data }
+                    break 'next LocalFileState::InMemoryFile { name: Some(handle.file_name()), data, digest }
                 }
             }
             #[cfg(not(target_arch="wasm32"))]
@@ -281,7 +286,7 @@ impl StatefulWidget for LocalFileSourceWidget{
                     LocalFileState::Failed(err) => {
                         show_error(ui, err);
                     },
-                    LocalFileState::InMemoryFile { name, data } => {
+                    LocalFileState::InMemoryFile { name, data, digest: _digest } => {
                         let mut label = String::new();
                         if let Some(name) = name {
                             write!(&mut label, "{name} ").unwrap();
@@ -316,9 +321,9 @@ impl StatefulWidget for LocalFileSourceWidget{
             LocalFileState::Empty => {
                 Err(GuiError::new("Empty"))
             },
-            LocalFileState::InMemoryFile { name, data } => {
+            LocalFileState::InMemoryFile { name, data, digest } => {
                 let data = Arc::clone(data);
-                Ok(rt::FileSource::Data { data, name: name.clone() })
+                Ok(rt::FileSource::Data { data, name: name.clone(), digest: digest.clone() })
             },
             LocalFileState::PickingInner{archive, inner_options_widget, ..} => Ok(
                 rt::FileSource::FileInZipArchive {
@@ -388,7 +393,7 @@ impl ValueWidget for FileSourceWidget{
 
     fn set_value(&mut self, value: rt::FileSource){
         match value{
-            rt::FileSource::Data { data, name } => {
+            rt::FileSource::Data { data, name, digest: _digest } => {
                 self.mode = FileSourceWidgetMode::Local; //FIXME: double check
                 self.local_file_source_widget = LocalFileSourceWidget::from_data(name.clone(), data);
             },

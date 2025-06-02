@@ -34,6 +34,7 @@ bioimg_codegen = { path = "../bioimg_codegen" }
 bson = "2.11.0"
 indoc = "2.0.5"
 itertools = "0.14.0"
+sha2 = { workspace = true }
 
 # native:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
@@ -42,11 +43,12 @@ smol = "2.0.2"
 ureq = { version = "2.10.1", features = ["http-crate"] }
 zip = { workspace = true, default-features = true }
 rattler_conda_types = "0.28.3"
-env_logger = "0.10"
+env_logger = "0.11.8"
 
 # web:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-wasm-bindgen-futures = "0.4"
+wasm-bindgen-futures = "0.4.50"
+web-sys = "0.3.70"              # to access the DOM (to hide the loading text)
 zip = {workspace = true, default-features = false, features=[
   # "aes-crypto",
   # "bzip2",

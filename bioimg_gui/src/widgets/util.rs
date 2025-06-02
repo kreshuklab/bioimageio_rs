@@ -115,7 +115,7 @@ impl<T> Default for TaskChannel<T>{
 
 
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug)]
 pub struct Generation(pub i64);
 
 impl Generation{
