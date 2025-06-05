@@ -1,5 +1,6 @@
 [workspace]
 members = ["bioimg_codegen", "bioimg_gui", "bioimg_spec", "bioimg_runtime", "bioimg_zoo"]
+default-members = ["bioimg_gui"]
 resolver = "2"
 
 [workspace.package]
