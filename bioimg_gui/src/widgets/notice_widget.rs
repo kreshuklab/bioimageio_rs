@@ -1,13 +1,13 @@
-use std::{collections::VecDeque, time::{Duration, Instant}};
+use std::collections::VecDeque;
 
 use egui::NumExt;
 
 use crate::result::GuiError;
 
-const FADE_TIME: Duration = Duration::from_secs(5);
+const NUM_FRAMES_TO_FADE: f32 = 60.0 * 5.0; // fade in 5 seconds, assuming 60 fps
 
 struct Message{
-    spawn_instant: Instant,
+    num_remaining_frames: f32,
     text: String,
     color: egui::Color32,
     link_target: Option<egui::Rect>
@@ -15,11 +15,10 @@ struct Message{
 
 impl Message{
     fn progress(&self) -> f32{
-        let elapsed = Instant::now() - self.spawn_instant;
-        (elapsed.as_millis() as f32 / FADE_TIME.as_millis() as f32).at_most(1.0)
+        1.0 - (self.num_remaining_frames / NUM_FRAMES_TO_FADE)
     }
     fn is_done(&self) -> bool{
-        self.spawn_instant + FADE_TIME < Instant::now()
+        self.num_remaining_frames == 0.0
     }
 }
 
@@ -39,7 +38,7 @@ impl NotificationsWidget{
             Err(text) => (text, egui::Color32::RED),
         };
         self.messages.push_back(Message{
-            spawn_instant: Instant::now(),
+            num_remaining_frames: NUM_FRAMES_TO_FADE,
             text,
             color,
             link_target: None,
@@ -47,7 +46,7 @@ impl NotificationsWidget{
     }
     pub fn push_gui_error(&mut self, error: GuiError){
         self.messages.push_back(Message{
-            spawn_instant: Instant::now(),
+            num_remaining_frames: NUM_FRAMES_TO_FADE,
             text: error.to_string(),
             color: egui::Color32::RED,
             link_target: error.failed_widget_rect,
@@ -59,7 +58,6 @@ impl NotificationsWidget{
         if self.messages.len() == 0{
             return scroll_to
         }
-        let now = Instant::now();
         let area = egui::Window::new("Notifications")
             .id(id)
             .title_bar(false)
@@ -75,8 +73,8 @@ impl NotificationsWidget{
                 .outer_margin(0.0);
             frame.show(ui, |ui| {
                 self.messages.retain_mut(|msg|{
-                    if self.stop_fade{
-                        msg.spawn_instant = now;
+                    if !self.stop_fade{
+                        msg.num_remaining_frames = (msg.num_remaining_frames - 1.0).at_least(0.0);
                     }
                     if msg.is_done(){
                         false

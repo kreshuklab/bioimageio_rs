@@ -335,30 +335,36 @@ impl AppState1{
     fn launch_model_saving(&mut self, zoo_model: ZooModel) {
         let sender = self.notifications_channel.sender().clone();
         let fut = async move {
-            let Some(file_handle) = rfd::AsyncFileDialog::new().save_file().await else {
-                println!("Returned with nothing");
+            let model_name = format!("{}.zip", zoo_model.name);
+            let Some(file_handle) = rfd::AsyncFileDialog::new().set_file_name(model_name).save_file().await else {
                 return;
             };
-            let file_name = file_handle.file_name();
-            if !file_name.ends_with(".zip"){
-                let msg = TaskResult::err_message(format!("Model extension must be '.zip'. Provided '{file_name}'"));
-                sender.send(msg).unwrap();
-                return
-            }
-            let notification_message = format!("Packing into {file_name}...");
-            sender.send(TaskResult::ok_message(notification_message)).unwrap();
 
             #[cfg(target_arch="wasm32")]
-            let message = {
-                let mut file_bytes = Vec::<u8>::new(); //FIXME: check FileSystemWritableFileStream: seek() 
-                let file = std::io::Cursor::new(&mut file_bytes);
-                match zoo_model.pack_into(file){
-                    Ok(_) => TaskResult::ok_message(format!("Model saved to {file_name}")),
-                    Err(err) => TaskResult::err_message(format!("Error saving model: {err}")),
+            let message = 'packing_wasm: {
+                let mut buffer = Vec::<u8>::new(); //FIXME: check FileSystemWritableFileStream: seek() 
+                let cursor = std::io::Cursor::new(&mut buffer);
+                if let Err(err) = zoo_model.pack_into(cursor) {
+                    let msg = TaskResult::err_message(format!("Error saving model: {err:?}"));
+                    break 'packing_wasm msg;
+                };
+                match file_handle.write(&buffer).await {
+                    Ok(()) => TaskResult::ok_message("Model exported successfully"),
+                    Err(err) => TaskResult::err_message(format!("{:?}", err)),
                 }
             };
+
             #[cfg(not(target_arch="wasm32"))]
             let message = 'packing: {
+                let file_name = file_handle.file_name();
+                if !file_name.ends_with(".zip"){
+                    let msg = TaskResult::err_message(format!("Model extension must be '.zip'. Provided '{file_name}'"));
+                    sender.send(msg).unwrap();
+                    return
+                }
+                let notification_message = format!("Packing into {file_name}...");
+                sender.send(TaskResult::ok_message(notification_message)).unwrap();
+
                 let temp_path = {
                     let current_extension = file_handle.path().extension().map(|s| s.to_string_lossy()).unwrap_or(Cow::Borrowed(""));
                     let temp_extension = format!("{current_extension}.partial");
