@@ -1,0 +1,13 @@
+[package]
+name = "task__build_webapp"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+
+[dependencies-dev]
+bioimg_gui = { path = "../bioimg_gui" }
