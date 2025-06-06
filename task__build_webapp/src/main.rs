@@ -23,6 +23,7 @@ fn main() {
         .current_dir(&bioimg_gui_dir)
         .arg("build")
         .arg("--release=true")
+        .arg("--public-url=https://kreshuklab.github.io/bioimageio_rs/")
         .arg(format!("--dist={}", docs_dir.to_string_lossy()))
         .output().expect("Expected trunk to run");
 
