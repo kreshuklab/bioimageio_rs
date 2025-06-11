@@ -21,6 +21,12 @@ pub struct InputTensorDescr {
     pub sample_tensor: Option<FileDescription>,
 }
 
+// pub struct PartialInputTensorDescr {
+//     pub meta: InputTensorMetadata,
+//     pub test_tensor: FileDescription,
+//     pub sample_tensor: Option<FileDescription>,
+// }
+
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(into = "InputTensorMetadataMsg")]

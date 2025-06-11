@@ -1,5 +1,7 @@
 use std::str::FromStr;
 
+use crate::util::AsPartial;
+
 
 #[derive(thiserror::Error, Debug)]
 #[error("Error parsing version: {reason}")]
@@ -74,6 +76,10 @@ impl From<Version> for String{
 #[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 #[serde(try_from="Version")]
 pub struct Version_0_5_x(Version);
+
+impl AsPartial for Version_0_5_x{
+    type Partial = String;
+}
 
 impl Version_0_5_x{
     pub fn new() -> Self{

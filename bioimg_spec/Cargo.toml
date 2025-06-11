@@ -12,6 +12,7 @@ name = "bioimg_spec"
 crate-type = ["rlib"]
 
 [dependencies]
+bioimg_codegen = { path = "../bioimg_codegen" }
 image = { workspace = true }
 serde = { workspace = true, features = ["derive", "rc"] }
 serde_json = { workspace = true }

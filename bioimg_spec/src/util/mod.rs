@@ -1,3 +1,5 @@
+pub use bioimg_codegen::AsPartial;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
@@ -14,4 +16,12 @@ impl<T> SingleOrMultiple<T> {
             Self::Multiple(ts) => ts,
         }
     }
+}
+
+pub trait AsPartial{
+    type Partial: serde::Serialize;
+}
+
+impl AsPartial for String{
+    type Partial = String;
 }

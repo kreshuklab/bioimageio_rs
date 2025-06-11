@@ -666,6 +666,7 @@ dependencies = [
 name = "bioimg_spec"
 version = "0.2.1"
 dependencies = [
+ "bioimg_codegen",
  "derive_more",
  "image 0.24.9",
  "iso8601-timestamp",
