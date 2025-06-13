@@ -9,9 +9,24 @@ pub fn do_derive_as_partial(input: TokenStream) -> syn::Result<TokenStream>{
     // Parse the input tokens into a syntax tree.
     let input = syn::parse::<syn::ItemStruct>(input)?;
     let struct_name = &input.ident;
-    let raw_data_struct_name = format_ident!("Partial{}", struct_name);
+    let struct_vis = input.vis;
+    let partial_struct_name = format_ident!("Partial{}", struct_name);
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
-    let where_clauses = where_clause.map(|wc| wc.predicates.clone());
+    let where_predicates = where_clause.map(|wc| wc.predicates.clone());
+
+    let generics_bound_to_AsPartial: Vec<TokenStream2> = input.generics.type_params()
+        .map(|gen_ty| {
+            let gen_ty_ident = &gen_ty.ident;
+            quote! { #gen_ty_ident : ::bioimg_spec::util::AsPartial }
+        })
+        .collect();
+
+    let generics_bound_to_serde: Vec<TokenStream2> = input.generics.type_params()
+        .map(|gen_ty| {
+            let gen_ty_ident = &gen_ty.ident;
+            quote! { #gen_ty_ident : ::serde::Serialize + ::serde::de::DeserializeOwned }
+        })
+        .collect();
 
     let partial_fields: Vec::<TokenStream2> = input.fields.iter().enumerate().map(|(field_idx, field)| {
         let ident = field.ident.as_ref().map(|id| quote!(#id)).unwrap_or(quote!(#field_idx));
@@ -24,37 +39,26 @@ pub fn do_derive_as_partial(input: TokenStream) -> syn::Result<TokenStream>{
     })
     .collect();
 
-    let extra_where_clauses: Vec<TokenStream2> = input.generics.type_params()
-        .map(|gen_ty| {
-            let gen_ty_ident = &gen_ty.ident;
-            quote! { #gen_ty_ident : ::serde::Serialize + ::serde::de::DeserializeOwned + crate::util::AsPartial } //FIXME: don't use 'crate'
-        })
-        .collect();
-
     let expanded = quote! {
-        // #[derive(::serde::Serialize, ::serde::Deserialize)]
-        // pub struct #raw_data_struct_name #ty_generics
-        // where
-        //     #where_clause
-        //     #(#extra_where_clauses)*
-        // {
-        //     #(#partial_fields)*
-        // }
-
-        //FIXME: use ::bioimg_spec instead of crate and maybe use the extern crate self as bioimg_spec trick
-        impl #impl_generics crate::util::AsPartial for #struct_name #ty_generics
+        #[derive(::serde::Serialize, ::serde::Deserialize)]
+        #struct_vis struct #partial_struct_name #ty_generics
         where
-            #(#extra_where_clauses,)*
-            #where_clauses
+            #(#generics_bound_to_AsPartial,)*
+            #where_predicates
+        {
+            #(#partial_fields)*
+        }
+
+        impl #impl_generics ::bioimg_spec::util::AsPartial for #struct_name #ty_generics
+        where
+            #(#generics_bound_to_AsPartial,)*
+            #(#generics_bound_to_serde,)*
+            #where_predicates
             // FIXME: extra where clauses... i guess enforce that fields are AsPartial?
         {
-            // type Partial = #raw_data_struct_name::<impl_generics>;
-            type Partial = String;
+            type Partial = #partial_struct_name #impl_generics;
         }
     };
-
-    std::fs::write("/tmp/ty_generics.rs", quote!(#ty_generics).to_string()).unwrap();
-    std::fs::write("/tmp/bla.rs", expanded.to_string()).unwrap();
 
     Ok(proc_macro::TokenStream::from(expanded))
 }

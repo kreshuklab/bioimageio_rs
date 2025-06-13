@@ -19,9 +19,19 @@ impl<T> SingleOrMultiple<T> {
 }
 
 pub trait AsPartial{
-    type Partial: serde::Serialize;
+    type Partial: serde::Serialize + serde::de::DeserializeOwned;
 }
 
 impl AsPartial for String{
     type Partial = String;
 }
+
+impl AsPartial for f32 {
+    type Partial = f32;
+}
+
+//FIXME: T::Partial and not Option<T::Partial>??
+impl<T: AsPartial> AsPartial for Option<T>{
+    type Partial = T::Partial;
+}
+
