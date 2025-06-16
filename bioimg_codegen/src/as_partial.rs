@@ -48,7 +48,7 @@ pub fn do_derive_as_partial(input: TokenStream) -> syn::Result<TokenStream>{
         #partial_struct
     };
 
-    std::fs::write(format!("/tmp/blas__{}.rs", struct_name.to_string()), expanded.to_string()).unwrap();
+    // std::fs::write(format!("/tmp/blas__{}.rs", struct_name.to_string()), expanded.to_string()).unwrap();
 
     Ok(proc_macro::TokenStream::from(expanded))
 }
