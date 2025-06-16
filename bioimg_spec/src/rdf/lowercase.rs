@@ -1,6 +1,7 @@
 use std::{borrow::Borrow, error::Error, fmt::Display, ops::Deref, str::FromStr};
-
 use serde::{Deserialize, Serialize};
+
+use crate::util::AsPartial;
 
 #[derive(thiserror::Error, Debug)]
 pub enum LowercaseParsingError {
@@ -12,6 +13,10 @@ pub enum LowercaseParsingError {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Lowercase<T>(T);
+
+impl<T> AsPartial for Lowercase<T> {
+    type Partial = String;
+}
 
 impl<T: Into<String>> From<Lowercase<T>> for String{
     fn from(value: Lowercase<T>) -> Self {

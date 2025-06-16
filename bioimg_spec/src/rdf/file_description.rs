@@ -4,8 +4,7 @@ use crate::util::AsPartial;
 
 use super::{lowercase::Lowercase, BoundedString, EnvironmentFile, FileReference};
 
-// #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, AsPartial)]
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, AsPartial)]
 pub struct FileDescription<R = FileReference>
 where
     R: Borrow<FileReference>

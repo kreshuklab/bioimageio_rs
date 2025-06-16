@@ -3,6 +3,8 @@ use std::{fmt::Display, ops::Deref, path::PathBuf};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+use crate::util::AsPartial;
+
 #[derive(thiserror::Error, Debug)]
 pub enum FsPathParsingError{
     #[error("Bad character in file path component '{raw}'")]
@@ -60,6 +62,10 @@ impl From<FsPathComponent> for String{
 #[serde(into = "String")]
 pub struct FsPath{
     components: Vec<FsPathComponent>
+}
+
+impl AsPartial for FsPath {
+    type Partial = String;
 }
 
 impl FsPath{
@@ -141,6 +147,10 @@ pub enum UrlParsingError{
 #[serde(try_from = "String")]
 pub struct HttpUrl(url::Url);
 
+impl AsPartial for HttpUrl{
+    type Partial = String;
+}
+
 impl HttpUrl{
     pub fn path(&self) -> &str{
         self.0.path()
@@ -199,6 +209,10 @@ pub enum FileReferenceParsingError{
 pub enum FileReference {
     Url(HttpUrl),
     Path(FsPath),
+}
+
+impl AsPartial for FileReference {
+    type Partial = String;
 }
 
 impl std::fmt::Display for FileReference{

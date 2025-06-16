@@ -1,64 +1,54 @@
-
-use quote::{quote, quote_spanned, format_ident};
-use syn::spanned::Spanned;
+use quote::{quote, format_ident};
+use syn::{parse_quote, parse_quote_spanned, spanned::Spanned};
 use proc_macro::TokenStream;
-use proc_macro2::TokenStream as TokenStream2;
 
 
 pub fn do_derive_as_partial(input: TokenStream) -> syn::Result<TokenStream>{
     // Parse the input tokens into a syntax tree.
     let input = syn::parse::<syn::ItemStruct>(input)?;
     let struct_name = &input.ident;
-    let struct_vis = input.vis;
-    let partial_struct_name = format_ident!("Partial{}", struct_name);
-    let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
-    let where_predicates = where_clause.map(|wc| wc.predicates.clone());
 
-    let generics_bound_to_AsPartial: Vec<TokenStream2> = input.generics.type_params()
-        .map(|gen_ty| {
-            let gen_ty_ident = &gen_ty.ident;
-            quote! { #gen_ty_ident : ::bioimg_spec::util::AsPartial }
-        })
-        .collect();
+    let partial_struct = {
+        let mut partial_struct = input.clone();
+        partial_struct.ident = format_ident!("Partial{struct_name}");
+        partial_struct.attrs.push(parse_quote!(#[derive(::serde::Serialize, ::serde::Deserialize)]));
+        partial_struct.attrs.push(parse_quote!(#[serde(bound = "")]));
+        partial_struct.generics.where_clause = {
+            let mut wc = partial_struct.generics.where_clause.unwrap_or(parse_quote!(where));
+            let comma = parse_quote!(,);
 
-    let generics_bound_to_serde: Vec<TokenStream2> = input.generics.type_params()
-        .map(|gen_ty| {
-            let gen_ty_ident = &gen_ty.ident;
-            quote! { #gen_ty_ident : ::serde::Serialize + ::serde::de::DeserializeOwned }
-        })
-        .collect();
+            if !wc.predicates.empty_or_trailing() {
+                wc.predicates.push_punct(comma);
+            }
+            for field in partial_struct.fields.iter_mut() {
+                let field_ty = &field.ty;
+                let span = field_ty.span();
+                wc.predicates.push_value(parse_quote_spanned!{ span=>
+                    #field_ty: ::bioimg_spec::util::AsSerializablePartial
+                });
+                wc.predicates.push_punct(comma);
 
-    let partial_fields: Vec::<TokenStream2> = input.fields.iter().enumerate().map(|(field_idx, field)| {
-        let ident = field.ident.as_ref().map(|id| quote!(#id)).unwrap_or(quote!(#field_idx));
-        let field_ty = &field.ty;
-        let ident_span = ident.span();
-        quote_spanned! {ident_span=>
-            #[serde(default)]
-            #ident: Option< <#field_ty as ::bioimg_spec::util::AsPartial>::Partial >,
-        }
-    })
-    .collect();
+                field.attrs.push(parse_quote!(#[serde(default)]));
+                field.ty = parse_quote!(Option< <#field_ty as ::bioimg_spec::util::AsPartial>::Partial >);
+            }
+            Some(wc)
+        };
+        partial_struct
+    };
+    let partial_struct_name = &partial_struct.ident;
 
+    let (impl_generics, ty_generics, where_clause) = partial_struct.generics.split_for_impl();
     let expanded = quote! {
-        #[derive(::serde::Serialize, ::serde::Deserialize)]
-        #struct_vis struct #partial_struct_name #ty_generics
-        where
-            #(#generics_bound_to_AsPartial,)*
-            #where_predicates
-        {
-            #(#partial_fields)*
-        }
-
         impl #impl_generics ::bioimg_spec::util::AsPartial for #struct_name #ty_generics
-        where
-            #(#generics_bound_to_AsPartial,)*
-            #(#generics_bound_to_serde,)*
-            #where_predicates
-            // FIXME: extra where clauses... i guess enforce that fields are AsPartial?
+            #where_clause
         {
             type Partial = #partial_struct_name #impl_generics;
         }
+
+        #partial_struct
     };
+
+    std::fs::write(format!("/tmp/blas__{}.rs", struct_name.to_string()), expanded.to_string()).unwrap();
 
     Ok(proc_macro::TokenStream::from(expanded))
 }
