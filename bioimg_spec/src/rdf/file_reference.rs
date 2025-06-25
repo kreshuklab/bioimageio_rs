@@ -290,6 +290,10 @@ macro_rules! suffixed_file_ref {(
             &self.0
         }
     }
+
+    impl crate::util::AsPartial for $name {
+        type Partial = String;
+    }
 };}
 
 suffixed_file_ref!(struct CoverImageSource suffixes=[".gif", ".jpeg", ".jpg", ".png"]);

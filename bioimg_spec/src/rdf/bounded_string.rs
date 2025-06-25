@@ -2,6 +2,8 @@ use std::{borrow::Borrow, fmt::Display, ops::RangeInclusive, str::FromStr, sync:
 
 use serde::{Deserialize, Serialize};
 
+use crate::util::AsPartial;
+
 #[derive(thiserror::Error, PartialEq, Eq, Debug, Clone)]
 pub enum BoundedStringParsingError {
     BadLength { allowed: RangeInclusive<usize> },
@@ -21,6 +23,10 @@ impl std::fmt::Display for BoundedStringParsingError{
 #[serde(try_from = "String")]
 #[serde(into = "String")]
 pub struct BoundedString<const MIN_CHARS: usize, const MAX_CHARS: usize>(Arc<str>);
+
+impl AsPartial for BoundedString {
+    type Partial = String;
+}
 
 impl<const MAX_CHARS: usize> Default for BoundedString<0, MAX_CHARS> {
     fn default() -> Self {
