@@ -24,7 +24,7 @@ impl std::fmt::Display for BoundedStringParsingError{
 #[serde(into = "String")]
 pub struct BoundedString<const MIN_CHARS: usize, const MAX_CHARS: usize>(Arc<str>);
 
-impl AsPartial for BoundedString {
+impl<const MIN_CHARS: usize, const MAX_CHARS: usize> AsPartial for BoundedString<MIN_CHARS, MAX_CHARS> {
     type Partial = String;
 }
 

@@ -36,13 +36,7 @@ pub use cite_entry::CiteEntry2;
 pub use tag::Tag;
 pub use non_empty_list::NonEmptyList;
 
-use crate::util::AsPartial;
-
 use self::{lowercase::Lowercase, slashless_string::SlashlessString};
 
 pub type ResourceId = SlashlessString<Lowercase<BoundedString<1, 1024>>>;
 pub type ResourceTextDescription = BoundedString<0, 1024>;
-
-impl AsPartial for ResourceTextDescription{
-    type Partial = String;
-}

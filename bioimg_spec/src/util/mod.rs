@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 pub use bioimg_codegen::AsPartial;
 
 use serde::{Deserialize, Serialize};
@@ -30,6 +32,10 @@ where T: AsPartial<Partial: serde::Serialize + serde::de::DeserializeOwned>
 {}
 
 impl AsPartial for String{
+    type Partial = String;
+}
+
+impl AsPartial for Arc<str>{
     type Partial = String;
 }
 
