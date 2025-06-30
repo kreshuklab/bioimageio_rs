@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
 
-use crate::rdf::BoundedString;
+use crate::{rdf::BoundedString, util::AsPartial};
 
 use super::orcid::Orcid;
 
@@ -15,7 +15,7 @@ pub struct Author {
     pub orcid: Orcid,
 }
 
-#[derive(Debug, Eq, PartialEq, Serialize, Deserialize, Clone)]
+#[derive(Debug, Eq, PartialEq, Serialize, Deserialize, Clone, AsPartial)]
 pub struct Author2 {
     pub name: BoundedString<1, 1024>,                // (Name→String) Full name.
     pub affiliation: Option<BoundedString<1, 1024>>, // (String) Affiliation.
