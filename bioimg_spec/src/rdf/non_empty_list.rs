@@ -4,9 +4,15 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
+use crate::util::AsPartial;
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(transparent)]
 pub struct NonEmptyList<T>(Vec<T>);
+
+impl<T: AsPartial> AsPartial for NonEmptyList<T> {
+    type Partial = Vec<T>;
+}
 
 impl<T: Display> Display for NonEmptyList<T>{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
