@@ -78,5 +78,7 @@ impl<T: AsPartial> AsPartial for Vec<T> {
     type Partial = Vec<T::Partial>;
 }
 
-
+impl AsPartial for serde_json::Map<String, serde_json::Value>{
+    type Partial = Self;
+}
 
