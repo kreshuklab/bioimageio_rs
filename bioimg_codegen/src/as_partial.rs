@@ -24,7 +24,7 @@ pub fn do_derive_as_partial(input: TokenStream) -> syn::Result<TokenStream>{
                 let field_ty = &field.ty;
                 let span = field_ty.span();
                 wc.predicates.push_value(parse_quote_spanned!{ span=>
-                    #field_ty: ::bioimg_spec::util::AsSerializablePartial
+                    #field_ty: ::bioimg_spec::util::AsSerializablePartial<Partial: Clone>
                 });
                 wc.predicates.push_punct(comma);
 
@@ -51,6 +51,7 @@ pub fn do_derive_as_partial(input: TokenStream) -> syn::Result<TokenStream>{
             type Partial = Self;
         }
 
+        #[derive(Clone)]
         #partial_struct
     };
 
