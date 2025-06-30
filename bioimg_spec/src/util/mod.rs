@@ -74,5 +74,9 @@ impl<T: AsPartial> AsPartial for Option<T>{
     type Partial = T::Partial;
 }
 
+impl<T: AsPartial> AsPartial for Vec<T> {
+    type Partial = Vec<T::Partial>;
+}
+
 
 
