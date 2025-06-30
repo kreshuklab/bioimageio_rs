@@ -11,7 +11,7 @@ pub fn do_derive_as_partial(input: TokenStream) -> syn::Result<TokenStream>{
     let partial_struct = {
         let mut partial_struct = input.clone();
         partial_struct.ident = format_ident!("Partial{struct_name}");
-        partial_struct.attrs.push(parse_quote!(#[derive(::serde::Serialize, ::serde::Deserialize)]));
+        partial_struct.attrs = vec![ parse_quote!(#[derive(::serde::Serialize, ::serde::Deserialize)]) ];
         partial_struct.attrs.push(parse_quote!(#[serde(bound = "")]));
         partial_struct.generics.where_clause = {
             let mut wc = partial_struct.generics.where_clause.unwrap_or(parse_quote!(where));
