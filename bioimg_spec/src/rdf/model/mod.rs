@@ -1,3 +1,5 @@
+use crate::util::AsPartial;
+
 use super::basic_chars_string::BasicCharsString;
 use super::BoundedString;
 
@@ -55,6 +57,10 @@ pub use model_rdf_0_5::ModelRdfV0_5;
 #[serde(try_from = "String")]
 #[serde(into = "String")]
 pub struct RdfTypeModel;
+
+impl AsPartial for RdfTypeModel {
+    type Partial = String;
+}
 
 impl From<RdfTypeModel> for String{
     fn from(_: RdfTypeModel) -> Self {
