@@ -20,10 +20,36 @@ impl<T> SingleOrMultiple<T> {
     }
 }
 
+/// Types that represent some structure in a serialized payload can implement
+/// AsPartial to specify what that structure would look like when incomplete.
+/// Usually, for a struct of the form
+/// ```rust
+/// struct MyStruct{
+///   field1: Something,
+///   field2: SomethingElse,
+/// }
+/// ```
+/// a partial version of it would be of the form
+/// ```rust
+/// struct PartialMyStruct{
+///   field1: Option<<Something as AsPartial>::Partial>,
+///   field2: Option<<Something as AsPartial>::Partial>,
+/// }
+/// ```
+///
+///which expresses some data that has the same structure as MyStruct but
+/// maybe have some (or all) of its (arbitrarily nested) fields missing.
+/// 
+/// Note that [AsPartial::Partial] also implements [AsPartial], so that
+/// any arbitrarily nested field can also be missing
 pub trait AsPartial{
-    type Partial;
+    type Partial: AsPartial;
 }
 
+/// Partial types are mostly useful in the context of (de)serialization, to be able
+/// to handle incomplete data in self-describing formats (e.g. JSON, YAML).
+/// For convenience, the AsSerializablePartial is blanket-implemented for all types
+/// that implement `AsPartial` and whose partial version is also serializable
 pub trait AsSerializablePartial: AsPartial<Partial: serde::Serialize + serde::de::DeserializeOwned>
 {}
 
