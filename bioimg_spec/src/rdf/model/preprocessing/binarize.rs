@@ -1,8 +1,8 @@
 use std::fmt::Display;
 
-use crate::rdf::{model::axes::NonBatchAxisId, non_empty_list::NonEmptyList};
+use crate::{rdf::{model::axes::NonBatchAxisId, non_empty_list::NonEmptyList}, util::AsPartial};
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
 pub struct SimpleBinarizeDescr{
     pub threshold: f32,
 }
@@ -13,7 +13,7 @@ impl Display for SimpleBinarizeDescr{
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
 pub struct BinarizeAlongAxisDescr{
     pub threshold: NonEmptyList<f32>,
     pub axis: NonBatchAxisId,
@@ -28,6 +28,13 @@ impl Display for BinarizeAlongAxisDescr{
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 #[serde(untagged)]
 pub enum BinarizeDescr{
+    Simple(SimpleBinarizeDescr),
+    AlongAxis(BinarizeAlongAxisDescr),
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[serde(untagged)]
+pub enum PartialBinarizeDescr {
     Simple(SimpleBinarizeDescr),
     AlongAxis(BinarizeAlongAxisDescr),
 }
