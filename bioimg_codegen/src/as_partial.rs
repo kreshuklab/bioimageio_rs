@@ -45,6 +45,12 @@ pub fn do_derive_as_partial(input: TokenStream) -> syn::Result<TokenStream>{
             type Partial = #partial_struct_name #impl_generics;
         }
 
+        impl #impl_generics ::bioimg_spec::util::AsPartial for #partial_struct_name #ty_generics
+            #where_clause
+        {
+            type Partial = Self;
+        }
+
         #partial_struct
     };
 
