@@ -13,6 +13,7 @@ use crate::rdf::lowercase::{Lowercase, LowercaseParsingError};
 use crate::rdf::literal::{LitStr, LiteralInt, StrMarker};
 use crate::rdf::identifier::Identifier;
 use crate::rdf::bounded_string::BoundedString;
+use crate::util::AsPartial;
 
 pub type AxisId = Lowercase<BoundedString<1, 16>>;
 pub type AxisDescription = BoundedString<0, 128>;
@@ -27,6 +28,10 @@ pub enum AxisIdParsingError{
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct NonBatchAxisId(AxisId);
+
+impl AsPartial for NonBatchAxisId {
+    type Partial = String;
+}
 
 impl Display for NonBatchAxisId{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
