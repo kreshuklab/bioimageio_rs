@@ -28,7 +28,7 @@ pub fn do_derive_as_partial(input: TokenStream) -> syn::Result<TokenStream>{
                 });
                 wc.predicates.push_punct(comma);
 
-                field.attrs.push(parse_quote!(#[serde(default)]));
+                field.attrs = vec![parse_quote!(#[serde(default)])];
                 field.ty = parse_quote!(Option< <#field_ty as ::bioimg_spec::util::AsPartial>::Partial >);
             }
             Some(wc)
