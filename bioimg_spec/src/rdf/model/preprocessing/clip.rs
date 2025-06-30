@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use crate::util::AsPartial;
+
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum ClipDescrParsingError{
     #[error("Max '{max}' not greater than min '{min}'")]
@@ -8,7 +10,7 @@ pub enum ClipDescrParsingError{
     UndefinedFloatValue{min: f32, max: f32},
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
 #[serde(try_from="ClipDescrMessage")]
 pub struct ClipDescr {
     min: f32,
