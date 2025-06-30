@@ -51,13 +51,8 @@ pub enum PreprocessingEpsilonParsingError{
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Copy, Debug)]
+#[derive(derive_more::Display, derive_more::Into)]
 pub struct PreprocessingEpsilon(f32);
-
-impl Display for PreprocessingEpsilon{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
 
 impl Default for PreprocessingEpsilon{
     fn default() -> Self {
@@ -75,13 +70,6 @@ impl TryFrom<f32> for PreprocessingEpsilon{
         }
     }
 }
-
-impl From<PreprocessingEpsilon> for f32{
-    fn from(value: PreprocessingEpsilon) -> Self {
-        value.0
-    }
-}
-
 
 impl FromStr for PreprocessingEpsilon{
     type Err = PreprocessingEpsilonParsingError;
