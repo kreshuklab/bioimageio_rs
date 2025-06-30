@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+use crate::util::AsPartial;
+
 #[derive(
     Default, Serialize, Deserialize, Eq, PartialEq, Debug, Copy, Clone, strum::VariantArray, strum::VariantNames, strum::Display
 )]
@@ -30,6 +32,10 @@ pub enum DataType {
     Int64,
 }
 
+impl AsPartial for DataType {
+    type Partial = String;
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum UintDataType{
     #[serde(rename = "uint8")]
@@ -41,6 +47,11 @@ pub enum UintDataType{
     #[serde(rename = "uint64")]
     Uint64,
 }
+
+impl AsPartial for UintDataType {
+    type Partial = String;
+}
+
 
 impl From<UintDataType> for DataType{
     fn from(value: UintDataType) -> Self {
