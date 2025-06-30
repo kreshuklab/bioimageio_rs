@@ -1,5 +1,7 @@
 use std::{borrow::Borrow, str::FromStr};
 
+use crate::util::AsPartial;
+
 use super::file_reference::FileReference;
 
 #[derive(thiserror::Error, Debug, Clone)]
@@ -13,6 +15,10 @@ pub enum IconParsingError {
 pub enum Icon {
     Emoji(EmojiIcon),
     FileRef(FileReference),
+}
+
+impl AsPartial for Icon{
+    type Partial = String;
 }
 
 #[derive(thiserror::Error, Clone, Debug)]
