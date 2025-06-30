@@ -18,6 +18,10 @@ pub struct VersionParsingError {
 #[serde(into="String")]
 pub struct Version(versions::Version);
 
+impl AsPartial for Version {
+    type Partial = String;
+}
+
 impl Version{
     pub fn major_minor_patch(major: u32, minor: u32, patch: u32) -> Self{
         Version(versions::Version{
