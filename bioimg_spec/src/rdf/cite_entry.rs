@@ -2,7 +2,7 @@ use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
 
-use crate::rdf::BoundedString;
+use crate::{rdf::BoundedString, util::AsPartial};
 
 use super::HttpUrl;
 
@@ -37,7 +37,7 @@ impl CiteEntry2{
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, AsPartial)]
 pub struct CiteEntry2Msg{
     pub text: BoundedString<1, 1024>,        //(String) free text description
     #[serde(default)]
