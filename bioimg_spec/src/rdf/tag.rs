@@ -1,10 +1,16 @@
 use std::{borrow::Borrow, str::FromStr};
 
+use crate::util::AsPartial;
+
 use super::{bounded_string::BoundedStringParsingError, BoundedString};
 
 
 #[derive(serde::Deserialize, serde::Serialize, Clone, Debug, PartialEq, Eq)]
 pub struct Tag(BoundedString<1, 1024>);
+
+impl AsPartial for Tag{
+    type Partial = String;
+}
 
 impl Borrow<str> for Tag{
     fn borrow(&self) -> &str {
