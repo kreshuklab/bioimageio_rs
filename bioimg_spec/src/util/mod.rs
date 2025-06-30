@@ -82,3 +82,6 @@ impl AsPartial for serde_json::Map<String, serde_json::Value>{
     type Partial = Self;
 }
 
+impl AsPartial for bool {
+    type Partial = bool;
+}
