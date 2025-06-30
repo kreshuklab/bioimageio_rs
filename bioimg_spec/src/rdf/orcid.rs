@@ -1,5 +1,7 @@
 use std::{borrow::Borrow, str::FromStr, sync::Arc};
 
+use crate::util::AsPartial;
+
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum OrcidParsingError{
     #[error("Bad ORCID string")]
@@ -19,6 +21,10 @@ pub struct Orcid{
     digits: Arc<str>,
     value: u64,
     checksum: u64,
+}
+
+impl AsPartial for Orcid{
+    type Partial = String;
 }
 
 impl Borrow<str> for Orcid{
