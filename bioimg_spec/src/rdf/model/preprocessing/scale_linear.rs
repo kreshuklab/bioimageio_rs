@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::{rdf::{model::axes::NonBatchAxisId, non_empty_list::NonEmptyList}, util::SingleOrMultiple};
+use crate::{rdf::{model::axes::NonBatchAxisId, non_empty_list::NonEmptyList}, util::{AsPartial, SingleOrMultiple}};
 
 use super::{_default_to_1, _default_to_single_1, _default_to_single_0};
 
@@ -9,6 +9,13 @@ use super::{_default_to_1, _default_to_single_1, _default_to_single_0};
 pub enum ScaleLinearDescr{
     AlongAxis(ScaleLinearAlongAxisDescr),
     Simple(SimpleScaleLinearDescr),
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[serde(untagged)]
+pub enum PartialScaleLinearDescr{
+    AlongAxis(PartialScaleLinearAlongAxisDescr),
+    Simple(PartialSimpleScaleLinearDescr),
 }
 
 impl Display for ScaleLinearDescr{
@@ -20,7 +27,7 @@ impl Display for ScaleLinearDescr{
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
 pub struct SimpleScaleLinearDescr{
     /// multiplicative factor
     #[serde(default = "_default_to_1")]
@@ -38,7 +45,7 @@ impl Display for SimpleScaleLinearDescr{
 
 // //////////////////////
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
 #[serde(try_from="ScaleLinearAlongAxisDescrMessage")]
 #[serde(into="ScaleLinearAlongAxisDescrMessage")]
 pub struct ScaleLinearAlongAxisDescr{
