@@ -1,8 +1,8 @@
 use std::fmt::Display;
 
-use crate::rdf::model::data_type::DataType;
+use crate::{rdf::model::data_type::DataType, util::AsPartial};
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
 pub struct EnsureDtype{
     pub dtype: DataType
 }
