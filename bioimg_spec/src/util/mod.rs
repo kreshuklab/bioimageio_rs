@@ -69,6 +69,10 @@ impl AsPartial for f32 {
     type Partial = f32;
 }
 
+impl AsPartial for (f32, f32) {
+    type Partial = (f32, f32);
+}
+
 //FIXME: T::Partial and not Option<T::Partial>??
 impl<T: AsPartial> AsPartial for Option<T>{
     type Partial = T::Partial;
