@@ -3,6 +3,55 @@ use syn::{parse_quote, parse_quote_spanned, spanned::Spanned};
 use proc_macro::TokenStream;
 
 
+pub struct SerdeDefaultAttrParams;
+
+impl syn::parse::Parse for SerdeDefaultAttrParams {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let first_token_span = input.span();
+        let default_token: syn::Ident = input.parse()?;
+        if default_token.to_string() != "default" {
+            return Err(syn::Error::new(first_token_span, "Expected 'default' token"))
+        }
+        if input.is_empty() {
+            return Ok(Self)
+        }
+        input.parse::<syn::Token![=]>()?;
+        let _default_function_name: syn::LitStr = input.parse()?;
+        Ok(Self)
+    }
+}
+
+trait IAttrExt{
+    fn is_serde_attr(&self) -> bool;
+    fn is_serde_default(&self) -> bool;
+}
+
+impl IAttrExt for syn::Attribute{
+    fn is_serde_attr(&self) -> bool {
+        let Some(last_segment) = self.path().segments.last() else {
+            return false;
+        };
+        let expected: syn::PathSegment = parse_quote!(serde);
+        return *last_segment == expected
+    }
+    fn is_serde_default(&self) -> bool {
+        if !self.is_serde_attr() {
+            return false
+        }
+        if matches!(self.style, syn::AttrStyle::Inner(_)){
+            return false;
+        }
+        let syn::Meta::List(meta_list) = &self.meta else {
+            return false;
+        };
+        match meta_list.parse_args::<SerdeDefaultAttrParams>() {
+            Ok(_) => true,
+            Err(_) => false,
+        }
+    }
+}
+
+
 pub fn do_derive_as_partial(input: TokenStream) -> syn::Result<TokenStream>{
     // Parse the input tokens into a syntax tree.
     let input = syn::parse::<syn::ItemStruct>(input)?;
@@ -10,9 +59,12 @@ pub fn do_derive_as_partial(input: TokenStream) -> syn::Result<TokenStream>{
 
     let partial_struct = {
         let mut partial_struct = input.clone();
+        // partial_struct.attrs.retain(|attr| attr.is_serde_attr());
         partial_struct.ident = format_ident!("Partial{struct_name}");
-        partial_struct.attrs = vec![ parse_quote!(#[derive(::serde::Serialize, ::serde::Deserialize)]) ];
-        partial_struct.attrs.push(parse_quote!(#[serde(bound = "")]));
+        partial_struct.attrs = vec![
+            parse_quote!(#[derive(::serde::Serialize, ::serde::Deserialize)]),
+            parse_quote!(#[serde(bound = "")]),
+        ];
         partial_struct.generics.where_clause = {
             let mut wc = partial_struct.generics.where_clause.unwrap_or(parse_quote!(where));
             let comma = parse_quote!(,);
@@ -28,8 +80,15 @@ pub fn do_derive_as_partial(input: TokenStream) -> syn::Result<TokenStream>{
                 });
                 wc.predicates.push_punct(comma);
 
-                field.attrs = vec![parse_quote!(#[serde(default)])];
-                field.ty = parse_quote!(Option< <#field_ty as ::bioimg_spec::util::AsPartial>::Partial >);
+                field.attrs = std::mem::take(&mut field.attrs).into_iter()
+                    .filter(|attr| {
+                        attr.is_serde_attr()
+                    })
+                    .collect();
+                if !field.attrs.iter().any(|a| a.is_serde_default()){
+                    field.attrs.push(parse_quote!(#[serde(default)]));
+                    field.ty = parse_quote!(Option< <#field_ty as ::bioimg_spec::util::AsPartial>::Partial >);
+                }
             }
             Some(wc)
         };
