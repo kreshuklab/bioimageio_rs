@@ -11,11 +11,21 @@ pub enum ScaleLinearDescr{
     Simple(SimpleScaleLinearDescr),
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
-#[serde(untagged)]
-pub enum PartialScaleLinearDescr{
-    AlongAxis(PartialScaleLinearAlongAxisDescr),
-    Simple(PartialSimpleScaleLinearDescr),
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[serde(try_from = "serde_json::Value")]
+pub struct PartialScaleLinearDescr{
+    pub along_axis: Option<PartialScaleLinearAlongAxisDescr>,
+    pub simple: Option<PartialSimpleScaleLinearDescr>,
+}
+
+impl TryFrom<serde_json::Value> for PartialScaleLinearDescr{
+    type Error = serde_json::Value;
+    fn try_from(value: serde_json::Value) -> Result<Self, Self::Error> {
+        Ok(Self{
+            along_axis: serde_json::from_value(value.clone()).ok(),
+            simple: serde_json::from_value(value).ok()
+        })
+    }
 }
 
 impl Display for ScaleLinearDescr{

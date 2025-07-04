@@ -33,10 +33,20 @@ pub enum BinarizeDescr{
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
-#[serde(untagged)]
-pub enum PartialBinarizeDescr {
-    Simple(SimpleBinarizeDescr),
-    AlongAxis(BinarizeAlongAxisDescr),
+#[serde(try_from = "serde_json::Value")]
+pub struct PartialBinarizeDescr {
+    pub simple: Option<PartialSimpleBinarizeDescr>,
+    pub along_axis: Option<PartialBinarizeAlongAxisDescr>,
+}
+
+impl TryFrom<serde_json::Value> for PartialBinarizeDescr{
+    type Error = serde_json::Error;
+    fn try_from(value: serde_json::Value) -> Result<Self, Self::Error> {
+        Ok(Self{
+            simple: serde_json::from_value(value.clone()).ok(),
+            along_axis: serde_json::from_value(value).ok()
+        })
+    }
 }
 
 impl Display for BinarizeDescr{

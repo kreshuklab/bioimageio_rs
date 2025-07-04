@@ -1,5 +1,6 @@
 use std::{fmt::Display, str::FromStr};
 
+use crate::util::AsPartial;
 use crate::rdf::{model::{axes::NonBatchAxisId, AxisId}, non_empty_list::NonEmptyList};
 
 use super::PreprocessingEpsilon;
@@ -19,7 +20,11 @@ pub enum ZmuvParsingError{
 #[derive(Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize, Debug)]
 pub struct ZmuvStdDeviation(f32);
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+impl AsPartial for ZmuvStdDeviation {
+    type Partial = f32;
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
 pub struct Zmuv {
     /// The subset of axes to normalize jointly, i.e. axes to reduce to compute mean/std.
     /// For example to normalize 'batch', 'x' and 'y' jointly in a tensor ('batch', 'channel', 'y', 'x')
@@ -48,6 +53,24 @@ impl Display for Zmuv{
 pub enum FixedZmuv{
     Simple(SimpleFixedZmuv),
     AlongAxis(FixedZmuvAlongAxis)
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[serde(try_from="serde_json::Value")]
+pub struct PartialFixedZmuv{
+    pub simple: Option<PartialSimpleFixedZmuv>,
+    pub along_axis: Option<PartialFixedZmuvAlongAxis>,
+}
+
+impl TryFrom<serde_json::Value> for PartialFixedZmuv {
+    type Error = serde_json::Error;
+
+    fn try_from(value: serde_json::Value) -> Result<Self, Self::Error> {
+        Ok(Self{
+            simple: serde_json::from_value(value.clone()).ok(),
+            along_axis: serde_json::from_value(value).ok(),
+        })
+    }
 }
 
 impl Display for FixedZmuv{
@@ -90,7 +113,7 @@ impl From<ZmuvStdDeviation> for f32{
 
 ///Normalize with fixed, precomputed values for mean and variance.
 ///See `zero_mean_unit_variance` for data dependent normalization.
-#[derive(Clone, serde::Serialize, serde::Deserialize, Debug)]
+#[derive(Clone, serde::Serialize, serde::Deserialize, Debug, AsPartial)]
 pub struct SimpleFixedZmuv{
     ///The mean value to normalize with.
     pub mean: f32,
@@ -107,7 +130,7 @@ impl Display for SimpleFixedZmuv{
 
 // Normalize with fixed, precomputed values for mean and variance.
 // See `zero_mean_unit_variance` for data dependent normalization.
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
 #[serde(try_from = "FixedZmuvAlongAxisMsg")]
 #[serde(into = "FixedZmuvAlongAxisMsg")]
 pub struct FixedZmuvAlongAxis{
