@@ -1,5 +1,7 @@
 use serde::{Serialize, Deserialize};
 
+use crate::util::AsPartial;
+
 #[derive(
     Default, Serialize, Deserialize, Eq, PartialEq, Debug, Copy, Clone, strum::VariantArray, strum::VariantNames, strum::Display
 )]
@@ -83,4 +85,8 @@ pub enum SpaceUnit{
     #[serde(rename = "zettameter")]
     #[strum(to_string = "zettameter")]
     Zettameter,
+}
+
+impl AsPartial for SpaceUnit {
+    type Partial = String;
 }

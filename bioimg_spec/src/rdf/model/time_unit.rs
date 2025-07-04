@@ -1,5 +1,7 @@
 use serde::{Serialize, Deserialize};
 
+use crate::util::AsPartial;
+
 #[derive(
     Default, Serialize, Deserialize, Eq, PartialEq, Debug, Copy, Clone, strum::VariantArray, strum::VariantNames, strum::Display
 )]
@@ -74,4 +76,8 @@ pub enum TimeUnit{
     #[serde(rename = "zettasecond")]
     #[strum(to_string = "zettasecond")]
     Zettasecond,
+}
+
+impl AsPartial for TimeUnit {
+    type Partial = String;
 }
