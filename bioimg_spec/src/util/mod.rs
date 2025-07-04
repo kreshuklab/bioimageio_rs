@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{num::NonZeroUsize, sync::Arc};
 
 pub use bioimg_codegen::AsPartial;
 
@@ -63,6 +63,14 @@ impl AsPartial for String{
 
 impl AsPartial for Arc<str>{
     type Partial = String;
+}
+
+impl AsPartial for usize {
+    type Partial = usize;
+}
+
+impl AsPartial for NonZeroUsize {
+    type Partial = NonZeroUsize;
 }
 
 impl AsPartial for f32 {
