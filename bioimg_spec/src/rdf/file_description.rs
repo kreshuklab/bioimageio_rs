@@ -4,13 +4,23 @@ use crate::util::AsPartial;
 
 use super::{lowercase::Lowercase, BoundedString, EnvironmentFile, FileReference};
 
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, AsPartial)]
+#[derive(Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq, AsPartial)]
 pub struct FileDescription<R = FileReference>
 where
     R: Borrow<FileReference>
 {
     pub source: R,
     pub sha256: Option<Sha256>,
+}
+
+impl<R> std::fmt::Debug for FileDescription<R >
+where
+    R: std::fmt::Debug,
+    R: Borrow<FileReference>,
+{
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{{ source: {:?}, sha256: {:?}}}", self.source, self.sha256)
+    }
 }
 
 impl<R: Borrow<FileReference>> Display for FileDescription<R>{
