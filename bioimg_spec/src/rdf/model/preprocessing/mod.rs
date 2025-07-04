@@ -117,6 +117,7 @@ impl AsPartial for PreprocessingDescr {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[serde(try_from="serde_json::Value")]
 pub struct PartialPreprocessingDescr {
     pub binarize: Option<PartialBinarizeDescr>,
     pub clip: Option<PartialClipDescr>,
