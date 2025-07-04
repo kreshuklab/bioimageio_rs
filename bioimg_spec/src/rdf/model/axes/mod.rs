@@ -83,6 +83,10 @@ impl TryFrom<String> for NonBatchAxisId{
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Copy)]
 pub struct AxisScale(f32);
 
+impl AsPartial for AxisScale {
+    type Partial = f32;
+}
+
 impl Display for AxisScale{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
@@ -193,7 +197,7 @@ impl TryFrom<f32> for AxisScale {
 
 // ///////////////////////
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default, AsPartial)]
 pub struct BatchAxis {
     #[serde(default)]
     pub id: LitStr<Batch>,
@@ -209,7 +213,7 @@ impl Display for BatchAxis{
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
 pub struct ChannelAxis {
     #[serde(default)]
     pub id: LitStr<Channel>,
@@ -240,7 +244,7 @@ impl ChannelAxis {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
 pub struct IndexAxis {
     #[serde(default)]
     pub id: LitStr<Index>,
