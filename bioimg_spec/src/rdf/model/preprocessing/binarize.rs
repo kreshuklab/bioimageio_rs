@@ -32,7 +32,7 @@ pub enum BinarizeDescr{
     AlongAxis(BinarizeAlongAxisDescr),
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 #[serde(try_from = "serde_json::Value")]
 pub struct PartialBinarizeDescr {
     pub simple: Option<PartialSimpleBinarizeDescr>,
