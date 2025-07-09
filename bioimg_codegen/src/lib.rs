@@ -8,6 +8,8 @@ mod str_marker;
 mod syn_extensions;
 mod restore;
 mod as_partial;
+mod serde_attributes;
+mod util;
 
 ////////////////////////////////////////////
 
