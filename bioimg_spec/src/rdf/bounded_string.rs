@@ -1,8 +1,7 @@
 use std::{borrow::Borrow, fmt::Display, ops::RangeInclusive, str::FromStr, sync::Arc};
 
+use aspartial::AsPartial;
 use serde::{Deserialize, Serialize};
-
-use crate::util::AsPartial;
 
 #[derive(thiserror::Error, PartialEq, Eq, Debug, Clone)]
 pub enum BoundedStringParsingError {

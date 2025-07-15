@@ -1,13 +1,13 @@
 use std::{borrow::Borrow, error::Error, fmt::Display, str::FromStr};
 
-use crate::util::AsPartial;
+use aspartial::AsPartial;
 
-#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, AsPartial)]
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SlashlessString<T>(T);
 
-// impl<T: Borrow<str>> AsPartial for SlashlessString<T>{
-//     type Partial = String;
-// }
+impl<T: Borrow<str>> AsPartial for SlashlessString<T>{
+    type Partial = String;
+}
 
 impl<T: Display> Display for SlashlessString<T>{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

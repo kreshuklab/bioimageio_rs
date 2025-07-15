@@ -1,8 +1,11 @@
 use std::fmt::Display;
 
-use crate::{rdf::{model::axes::NonBatchAxisId, non_empty_list::NonEmptyList}, util::AsPartial};
+use ::aspartial::AsPartial;
+
+use crate::rdf::{model::axes::NonBatchAxisId, non_empty_list::NonEmptyList};
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialSimpleBinarizeDescr)]
 pub struct SimpleBinarizeDescr{
     pub threshold: f32,
 }
@@ -14,6 +17,7 @@ impl Display for SimpleBinarizeDescr{
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialBinarizeAlongAxisDescr)]
 pub struct BinarizeAlongAxisDescr{
     pub threshold: NonEmptyList<f32>,
     pub axis: NonBatchAxisId,
@@ -25,28 +29,12 @@ impl Display for BinarizeAlongAxisDescr{
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
+#[aspartial(name = PartialBinarizeDescr)]
 #[serde(untagged)]
 pub enum BinarizeDescr{
     Simple(SimpleBinarizeDescr),
     AlongAxis(BinarizeAlongAxisDescr),
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
-#[serde(try_from = "serde_json::Value")]
-pub struct PartialBinarizeDescr {
-    pub simple: Option<PartialSimpleBinarizeDescr>,
-    pub along_axis: Option<PartialBinarizeAlongAxisDescr>,
-}
-
-impl TryFrom<serde_json::Value> for PartialBinarizeDescr{
-    type Error = serde_json::Error;
-    fn try_from(value: serde_json::Value) -> Result<Self, Self::Error> {
-        Ok(Self{
-            simple: serde_json::from_value(value.clone()).ok(),
-            along_axis: serde_json::from_value(value).ok()
-        })
-    }
 }
 
 impl Display for BinarizeDescr{

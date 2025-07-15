@@ -9,6 +9,8 @@ pub mod ensure_dtype;
 use std::fmt::Display;
 use std::str::FromStr;
 
+use ::aspartial::AsPartial;
+
 use binarize::PartialBinarizeDescr;
 use clip::PartialClipDescr;
 use ensure_dtype::PartialEnsureDtype;
@@ -26,7 +28,7 @@ pub use self::ensure_dtype::EnsureDtype;
 pub use self::zero_mean_unit_variance::Zmuv;
 pub use self::zero_mean_unit_variance::{SimpleFixedZmuv, FixedZmuvAlongAxis, FixedZmuv};
 
-use crate::util::{AsPartial, SingleOrMultiple};
+use crate::util::SingleOrMultiple;
 
 // //////////////
 

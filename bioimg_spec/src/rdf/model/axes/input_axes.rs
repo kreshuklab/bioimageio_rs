@@ -1,8 +1,9 @@
 use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
+use ::aspartial::AsPartial;
 
-use crate::{rdf::model::{AnyAxisSize, SpaceUnit, TimeUnit}, util::AsPartial};
+use crate::rdf::model::{AnyAxisSize, SpaceUnit, TimeUnit};
 
 use super::{
     AxisDescription, AxisId, AxisScale, AxisType, BatchAxis, ChannelAxis, IndexAxis,
@@ -10,6 +11,7 @@ use super::{
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialTimeInputAxis)]
 pub struct TimeInputAxis {
     #[serde(default = "_default_time_axis_id")]
     pub id: AxisId,
@@ -29,6 +31,7 @@ impl Display for TimeInputAxis{
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialSpaceInputAxis)]
 pub struct SpaceInputAxis {
     #[serde(default = "_default_space_axis_id")]
     pub id: AxisId,
@@ -47,7 +50,8 @@ impl Display for SpaceInputAxis{
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialInputAxis)]
 #[serde(tag = "type")]
 pub enum InputAxis {
     #[serde(rename = "batch")]
@@ -60,55 +64,6 @@ pub enum InputAxis {
     Time(TimeInputAxis),
     #[serde(rename = "space")]
     Space(SpaceInputAxis),
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-// #[serde(tag = "type")]
-#[serde(try_from="serde_json::Value")]
-pub struct PartialInputAxis {
-    pub batch: Option<PartialBatchAxis>,
-    pub channel: Option<PartialChannelAxis>,
-    pub index: Option<PartialIndexAxis>,
-    pub time: Option<PartialTimeInputAxis>,
-    pub space: Option<PartialSpaceInputAxis>,
-}
-
-impl TryFrom<serde_json::Value> for PartialInputAxis {
-    type Error = serde_json::Error;
-    fn try_from(value: serde_json::Value) -> Result<Self, Self::Error> {
-
-        fn do_from_value(value: &serde_json::Value) -> Result<PartialInputAxis, serde_json::Error>{
-            Ok(PartialInputAxis {
-                batch: serde_json::from_value(value.clone()).ok(),
-                channel: serde_json::from_value(value.clone()).ok(),
-                index: serde_json::from_value(value.clone()).ok(),
-                time: serde_json::from_value(value.clone()).ok(),
-                space: serde_json::from_value(value.clone()).ok(),
-            })
-        }
-
-        let id = match value.get("type") {
-            Some(serde_json::Value::String(s)) => s,
-            _ => return do_from_value(&value),
-        };
-
-        let empty = Self {
-            batch: None,
-            channel: None,
-            index: None,
-            time: None,
-            space: None,
-        };
-
-        Ok(match id.as_str() {
-            "batch" => Self{ batch: serde_json::from_value(value.clone()).ok(), ..empty },
-            "channel" => Self{ channel: serde_json::from_value(value.clone()).ok(), ..empty },
-            "index" => Self{ index: serde_json::from_value(value.clone()).ok(), ..empty },
-            "time" => Self{ time: serde_json::from_value(value.clone()).ok(), ..empty },
-            "space" => Self{ space: serde_json::from_value(value.clone()).ok(), ..empty },
-            _ => return do_from_value(&value),
-        })
-    }
 }
 
 impl Display for InputAxis{
@@ -184,5 +139,9 @@ impl InputAxis{
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 #[serde(try_from = "Vec::<InputAxis>")]
 pub struct InputAxisGroup(Vec<InputAxis>);
+
+impl AsPartial for InputAxisGroup {
+    type Partial = Vec<<InputAxis as AsPartial>::Partial>;
+}
 
 impl_axis_group!(Input);

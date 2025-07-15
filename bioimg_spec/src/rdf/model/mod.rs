@@ -1,4 +1,4 @@
-use crate::util::AsPartial;
+use ::aspartial::AsPartial;
 
 use super::basic_chars_string::BasicCharsString;
 use super::BoundedString;

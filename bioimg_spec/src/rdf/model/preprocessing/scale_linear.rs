@@ -1,31 +1,16 @@
 use std::fmt::Display;
 
-use crate::{rdf::{model::axes::NonBatchAxisId, non_empty_list::NonEmptyList}, util::{AsPartial, SingleOrMultiple}};
+use ::aspartial::AsPartial;
 
+use crate::{rdf::{model::axes::NonBatchAxisId, non_empty_list::NonEmptyList}, util::SingleOrMultiple};
 use super::{_default_to_1, _default_to_single_1, _default_to_single_0};
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
+#[aspartial(name = PartialScaleLinearDescr)]
 #[serde(untagged)]
 pub enum ScaleLinearDescr{
     AlongAxis(ScaleLinearAlongAxisDescr),
     Simple(SimpleScaleLinearDescr),
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
-#[serde(try_from = "serde_json::Value")]
-pub struct PartialScaleLinearDescr{
-    pub along_axis: Option<PartialScaleLinearAlongAxisDescr>,
-    pub simple: Option<PartialSimpleScaleLinearDescr>,
-}
-
-impl TryFrom<serde_json::Value> for PartialScaleLinearDescr{
-    type Error = serde_json::Value;
-    fn try_from(value: serde_json::Value) -> Result<Self, Self::Error> {
-        Ok(Self{
-            along_axis: serde_json::from_value(value.clone()).ok(),
-            simple: serde_json::from_value(value).ok()
-        })
-    }
 }
 
 impl Display for ScaleLinearDescr{
@@ -37,7 +22,8 @@ impl Display for ScaleLinearDescr{
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]\
+#[aspartial(name = PartialSimpleScaleLinearDescr)]
 pub struct SimpleScaleLinearDescr{
     /// multiplicative factor
     #[serde(default = "_default_to_1")]
@@ -55,12 +41,16 @@ impl Display for SimpleScaleLinearDescr{
 
 // //////////////////////
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 #[serde(try_from="ScaleLinearAlongAxisDescrMessage")]
 #[serde(into="ScaleLinearAlongAxisDescrMessage")]
 pub struct ScaleLinearAlongAxisDescr{
     pub axis: NonBatchAxisId,
     pub gain_offsets: NonEmptyList<(f32, f32)>,
+}
+
+impl AsPartial for ScaleLinearAlongAxisDescr {
+    type Partial = ScaleLinearAlongAxisDescrMessage;
 }
 
 impl Display for ScaleLinearAlongAxisDescr{
@@ -75,7 +65,8 @@ pub enum ScaleLinearDescrParsingError{
     MismatchedGainsAndOffsets{num_gains: usize, num_offsets: usize},
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
+#[aspartial(name = PartialScaleLinearAlongAxisDescrMessage)]
 pub struct ScaleLinearAlongAxisDescrMessage{
     /// The axis of of gains/offsets values
     pub axis: NonBatchAxisId,

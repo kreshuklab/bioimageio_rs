@@ -4,7 +4,7 @@ use crate::rdf::{
     version::Version_0_5_x, Author2, CiteEntry2, CoverImageSource, FileReference, HttpUrl, Icon, LicenseId,
     Maintainer, NonEmptyList, ResourceId, ResourceTextDescription, Version
 };
-use crate::util::AsPartial;
+use aspartial::AsPartial;
 use super::{WeightsDescr, _now};
 
 use super::dataset_descr::DatasetDescrEnum;

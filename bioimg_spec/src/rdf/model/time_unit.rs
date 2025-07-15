@@ -1,6 +1,6 @@
 use serde::{Serialize, Deserialize};
 
-use crate::util::AsPartial;
+use aspartial::AsPartial;
 
 #[derive(
     Default, Serialize, Deserialize, Eq, PartialEq, Debug, Copy, Clone, strum::VariantArray, strum::VariantNames, strum::Display

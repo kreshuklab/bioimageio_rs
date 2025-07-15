@@ -1,6 +1,6 @@
 use std::{borrow::Borrow, str::FromStr, sync::Arc};
 
-use crate::util::AsPartial;
+use aspartial::AsPartial;
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum OrcidParsingError{

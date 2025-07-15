@@ -1,6 +1,6 @@
 use std::{fmt::Display, str::FromStr};
 
-use crate::util::AsPartial;
+use aspartial::AsPartial;
 use crate::rdf::{model::{axes::NonBatchAxisId, AxisId}, non_empty_list::NonEmptyList};
 
 use super::PreprocessingEpsilon;
@@ -25,6 +25,7 @@ impl AsPartial for ZmuvStdDeviation {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialZmuv)]
 pub struct Zmuv {
     /// The subset of axes to normalize jointly, i.e. axes to reduce to compute mean/std.
     /// For example to normalize 'batch', 'x' and 'y' jointly in a tensor ('batch', 'channel', 'y', 'x')

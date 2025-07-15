@@ -4,7 +4,7 @@ use std::{
 
 use serde::{Deserialize, Serialize};
 
-use crate::util::AsPartial;
+use aspartial::AsPartial;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(transparent)]

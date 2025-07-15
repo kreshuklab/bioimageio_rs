@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::util::AsPartial;
+use aspartial::AsPartial;
 
 
 #[derive(thiserror::Error, Debug)]

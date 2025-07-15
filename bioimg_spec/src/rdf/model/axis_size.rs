@@ -1,8 +1,8 @@
 use std::{fmt::Display, num::NonZeroUsize};
 
 use serde::{Deserialize, Serialize};
+use aspartial::AsPartial;
 
-use crate::util::AsPartial;
 use super::{axes::AxisId, tensor_id::TensorId};
 
 pub type FixedAxisSize = NonZeroUsize;
@@ -20,6 +20,7 @@ impl From<FixedAxisSize> for AnyAxisSize{
 }
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord, AsPartial)]
+#[aspartial(name = PartialQualifiedAxisId )]
 pub struct QualifiedAxisId {
     pub tensor_id: TensorId,
     pub axis_id: AxisId,
@@ -32,6 +33,7 @@ impl Display for QualifiedAxisId {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialAxisSizeReference )]
 pub struct AxisSizeReference {
     #[serde(flatten)]
     pub qualified_axis_id: QualifiedAxisId,
@@ -58,6 +60,7 @@ impl Display for AxisSizeReference {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialParameterizedAxisSize)]
 pub struct ParameterizedAxisSize {
     pub min: NonZeroUsize,
     pub step: NonZeroUsize,
@@ -70,8 +73,10 @@ impl From<ParameterizedAxisSize> for AnyAxisSize{
 }
 
 ///////////////////////////////////////////
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug, Clone)]
+#[derive(AsPartial)]
+#[aspartial(name = PartialAnyAxisSize)]
+#[derive(Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum AnyAxisSize {
     Fixed(FixedAxisSize),
@@ -79,68 +84,14 @@ pub enum AnyAxisSize {
     Reference(AxisSizeReference),
 }
 
-impl AsPartial for AnyAxisSize {
-    type Partial = PartialAnyAxisSize;
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(try_from = "serde_json::Value")]
-pub struct PartialAnyAxisSize {
-    pub fixed: Option<FixedAxisSize>,
-    pub parameterized: Option<ParameterizedAxisSize>,
-    pub reference: Option<AxisSizeReference>,
-}
-
-impl AsPartial for ParameterizedAxisSize {
-    type Partial = Self;
-}
-
-impl TryFrom<serde_json::Value> for PartialAnyAxisSize {
-    type Error = serde_json::Error;
-    fn try_from(value: serde_json::Value) -> Result<Self, Self::Error> {
-        Ok(Self{
-            fixed: ::serde_json::from_value(value.clone()).ok(),
-            parameterized: ::serde_json::from_value(value.clone()).ok(),
-            reference: ::serde_json::from_value(value.clone()).ok(),
-        })
-    }
-}
-
 ////////////////////////////////////////////
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialResolvedAxisSize )]
 #[serde(untagged)]
 pub enum ResolvedAxisSize {
     Fixed(FixedAxisSize),
     Parameterized(ParameterizedAxisSize),
-}
-
-
-
-impl AsPartial for ResolvedAxisSize {
-    type Partial = PartialResolvedAxisSize;
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(try_from = "serde_json::Value")]
-pub struct PartialResolvedAxisSize {
-    pub fixed: Option<FixedAxisSize>,
-    pub parameterized: Option<ParameterizedAxisSize>,
-}
-
-impl AsPartial for PartialResolvedAxisSize{
-    type Partial = Self;
-}
-
-impl TryFrom<serde_json::Value> for PartialResolvedAxisSize {
-    type Error = serde_json::Error;
-
-    fn try_from(value: serde_json::Value) -> Result<Self, Self::Error> {
-        Ok(Self{
-            fixed: ::serde_json::from_value(value.clone()).ok(),
-            parameterized: ::serde_json::from_value(value).ok(),
-        })
-    }
 }
 
 impl From<FixedAxisSize> for ResolvedAxisSize{
@@ -164,7 +115,8 @@ impl From<ResolvedAxisSize> for AnyAxisSize{
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialFixedOrRefAxisSize)]
 #[serde(untagged)]
 pub enum FixedOrRefAxisSize{
     Fixed(FixedAxisSize),

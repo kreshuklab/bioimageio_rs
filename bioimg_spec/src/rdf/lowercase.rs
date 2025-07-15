@@ -1,7 +1,7 @@
 use std::{borrow::Borrow, error::Error, fmt::Display, ops::Deref, str::FromStr};
 use serde::{Deserialize, Serialize};
 
-use crate::util::AsPartial;
+use aspartial::AsPartial;
 
 #[derive(thiserror::Error, Debug)]
 pub enum LowercaseParsingError {

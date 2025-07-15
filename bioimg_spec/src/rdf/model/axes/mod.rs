@@ -5,6 +5,7 @@ pub mod input_axes;
 use std::{borrow::Borrow, fmt::Display, str::FromStr};
 
 use serde::{Deserialize, Serialize};
+use aspartial::AsPartial;
 
 use super::FixedAxisSize;
 use super::axis_size::AnyAxisSize;
@@ -13,7 +14,6 @@ use crate::rdf::lowercase::{Lowercase, LowercaseParsingError};
 use crate::rdf::literal::{LitStr, LiteralInt, StrMarker};
 use crate::rdf::identifier::Identifier;
 use crate::rdf::bounded_string::BoundedString;
-use crate::util::AsPartial;
 
 pub type AxisId = Lowercase<BoundedString<1, 16>>;
 pub type AxisDescription = BoundedString<0, 128>;
@@ -198,6 +198,7 @@ impl TryFrom<f32> for AxisScale {
 // ///////////////////////
 
 #[derive(Serialize, Deserialize, Debug, Clone, Default, AsPartial)]
+#[aspartial(name = PartialBatchAxis)]
 pub struct BatchAxis {
     #[serde(default)]
     pub id: LitStr<Batch>,
@@ -214,6 +215,7 @@ impl Display for BatchAxis{
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialChannelAxis)]
 pub struct ChannelAxis {
     #[serde(default)]
     pub id: LitStr<Channel>,
@@ -245,6 +247,7 @@ impl ChannelAxis {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialIndexAxis)]
 pub struct IndexAxis {
     #[serde(default)]
     pub id: LitStr<Index>,

@@ -1,10 +1,11 @@
 use std::{borrow::Borrow, fmt::Display};
 
-use crate::util::AsPartial;
+use aspartial::AsPartial;
 
 use super::{lowercase::Lowercase, BoundedString, EnvironmentFile, FileReference};
 
 #[derive(Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq, AsPartial)]
+#[aspartial(name = PartialFileDescription)]
 pub struct FileDescription<R = FileReference>
 where
     R: Borrow<FileReference>

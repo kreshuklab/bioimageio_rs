@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use crate::util::AsPartial;
+use aspartial::AsPartial;
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum ClipDescrParsingError{
@@ -10,11 +10,15 @@ pub enum ClipDescrParsingError{
     UndefinedFloatValue{min: f32, max: f32},
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 #[serde(try_from="ClipDescrMessage")]
 pub struct ClipDescr {
     min: f32,
     max: f32,
+}
+
+impl AsPartial for ClipDescr {
+    type Partial = PartialClipDescrMessage;
 }
 
 impl Display for ClipDescr{
@@ -49,7 +53,8 @@ impl TryFrom<ClipDescrMessage> for ClipDescr{
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, AsPartial)]
+#[aspartial(name = PartialClipDescrMessage )]
 struct ClipDescrMessage {
     pub min: f32,
     pub max: f32,

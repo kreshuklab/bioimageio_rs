@@ -3,7 +3,8 @@ use std::{fmt::Display, ops::Deref, path::PathBuf};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::util::AsPartial;
+use aspartial::AsPartial;
+
 
 #[derive(thiserror::Error, Debug)]
 pub enum FsPathParsingError{
@@ -291,7 +292,7 @@ macro_rules! suffixed_file_ref {(
         }
     }
 
-    impl crate::util::AsPartial for $name {
+    impl ::aspartial::AsPartial for $name {
         type Partial = String;
     }
 };}

@@ -2,7 +2,7 @@ use std::{borrow::Borrow, error::Error, fmt::Display, ops::Deref, str::FromStr, 
 
 use serde::{Deserialize, Serialize};
 
-use crate::util::AsPartial;
+use aspartial::AsPartial;
 
 const PYTHON_KEYWORDS: [&'static str; 35] = [
     "False", "None", "True", "and", "as", "assert", "async", "await", "break", "class", "continue", "def", "del", "elif", "else",
