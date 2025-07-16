@@ -15,7 +15,8 @@ pub enum OutputTensorParsingError{
     SelfReference{tensor_id: TensorId}
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialOutputTensorDescr )]
 pub struct OutputTensorDescr {
     #[serde(flatten)]
     pub metadata: OutputTensorMetadata,

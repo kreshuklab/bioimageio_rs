@@ -1,7 +1,13 @@
 use std::{borrow::Borrow, error::Error, fmt::Display, str::FromStr};
 
+use aspartial::AsPartial;
+
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct BasicCharsString<T>(T);
+
+impl<T: Borrow<str>> AsPartial for BasicCharsString<T> {
+    type Partial = String;
+}
 
 impl<T> BasicCharsString<T>{
     pub const ALLOWED_CHARS: [char;67] = [

@@ -1,5 +1,7 @@
 use std::ops::Deref;
 
+use aspartial::AsPartial;
+
 use crate::rdf::{author::Author2, file_description::{FileDescription, Sha256}, file_reference::EnvironmentFile, FileReference, Identifier, Version};
 
 #[derive(thiserror::Error, Debug, Clone)]
@@ -12,7 +14,8 @@ pub enum ModelWeightsParsingError{
     DependenciesNotYaml{path: String}
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
+#[aspartial(name = PartialMaybeSomeWeightsDescr)]
 pub struct MaybeSomeWeightsDescr{
     #[serde(default)]
     pub keras_hdf5: Option<KerasHdf5WeightsDescr>,
@@ -31,6 +34,10 @@ pub struct MaybeSomeWeightsDescr{
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 #[serde(try_from = "MaybeSomeWeightsDescr")]
 pub struct WeightsDescr(MaybeSomeWeightsDescr);
+
+impl AsPartial for WeightsDescr {
+    type Partial = <MaybeSomeWeightsDescr as AsPartial>::Partial;
+}
 
 impl WeightsDescr{
     pub fn into_inner(self) -> MaybeSomeWeightsDescr{
@@ -76,6 +83,10 @@ pub enum WeightsFormat{
     Torchscript,
 }
 
+impl AsPartial for WeightsFormat {
+    type Partial = String;
+}
+
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Clone)]
 #[serde(tag = "type")]
 pub enum ModelWeightsEnum{
@@ -93,7 +104,12 @@ pub enum ModelWeightsEnum{
     TorchscriptWeightsDescr(TorchscriptWeightsDescr),
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq)]
+impl AsPartial for ModelWeightsEnum {
+    type Partial = String;
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq, AsPartial)]
+#[aspartial(name=PartialWeightsDescrBase)]
 pub struct WeightsDescrBase{
     pub source: FileReference,
     #[serde(default)]
@@ -104,7 +120,8 @@ pub struct WeightsDescrBase{
 }
 
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq, AsPartial)]
+#[aspartial(name = PartialKerasHdf5WeightsDescr)]
 pub struct KerasHdf5WeightsDescr{
     #[serde(flatten)]
     pub base: WeightsDescrBase,
@@ -114,6 +131,11 @@ pub struct KerasHdf5WeightsDescr{
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 #[derive(derive_more::Display)]
 pub struct OnnxOpsetVersion(u32);
+
+impl AsPartial for OnnxOpsetVersion {
+    type Partial = u32;
+}
+
 impl TryFrom<u32> for OnnxOpsetVersion{
     type Error = ModelWeightsParsingError;
     fn try_from(value: u32) -> Result<Self, Self::Error> {
@@ -131,7 +153,8 @@ impl From<OnnxOpsetVersion> for u32{
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialOnnxWeightsDescrBase)]
 pub struct OnnxWeightsDescr{
     #[serde(flatten)]
     pub base: WeightsDescrBase,

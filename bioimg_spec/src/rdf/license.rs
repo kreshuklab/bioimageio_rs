@@ -1,3 +1,4 @@
+use aspartial::AsPartial;
 use serde::{Deserialize, Serialize};
 
 #[allow(non_camel_case_types)]
@@ -1059,6 +1060,11 @@ pub enum LicenseId {
     #[serde(rename = "ZPL-2.1")]
     ZPL_2_1,
 }
+
+impl AsPartial for LicenseId {
+    type Partial = String;
+}
+
 
 #[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq)]
 #[allow(non_camel_case_types)]
