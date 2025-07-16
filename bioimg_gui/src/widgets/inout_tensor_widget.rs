@@ -1,7 +1,7 @@
 use std::marker::PhantomData;
 use std::sync::Arc;
 
-use bioimg_spec::rdf::model::axes::output_axes::OutputSpacetimeSize;
+use bioimg_spec::rdf::model::axes::output_axes::{HaloedOutputSpacetimeSize, OutputSpacetimeSize, StandardOutputSpacetimeSize};
 use bioimg_spec::rdf::model::axis_size::FixedOrRefAxisSize;
 use indoc::indoc;
 
@@ -50,8 +50,8 @@ impl IAnyAxisSizeExt for AnyAxisSize{
 impl IAnyAxisSizeExt for OutputSpacetimeSize{
     fn as_header(&self, axis_id: &AxisId) -> String{
         match self{
-            Self::Haloed { size, .. } => size.as_header(axis_id), //FIXME: use halo
-            Self::Standard { size } => size.as_header(axis_id),
+            Self::Haloed(HaloedOutputSpacetimeSize { size, .. }) => size.as_header(axis_id), //FIXME: use halo
+            Self::Standard(StandardOutputSpacetimeSize { size }) => size.as_header(axis_id),
         }
     }
 }

@@ -122,6 +122,10 @@ pub enum HaloParsingError {
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct Halo(u64);
 
+impl AsPartial for Halo {
+    type Partial = u64;
+}
+
 impl From<Halo> for u64{
     fn from(value: Halo) -> Self {
         value.0

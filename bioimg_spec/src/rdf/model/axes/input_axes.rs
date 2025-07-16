@@ -7,7 +7,7 @@ use crate::rdf::model::{AnyAxisSize, SpaceUnit, TimeUnit};
 
 use super::{
     AxisDescription, AxisId, AxisScale, AxisType, BatchAxis, ChannelAxis, IndexAxis,
-    _default_space_axis_id, _default_time_axis_id, impl_axis_group, PartialBatchAxis, PartialChannelAxis, PartialIndexAxis
+    _default_space_axis_id, _default_time_axis_id, impl_axis_group
 };
 
 #[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]

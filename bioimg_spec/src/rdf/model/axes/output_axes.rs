@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use aspartial::AsPartial;
 use serde::{Deserialize, Serialize};
 
 use crate::rdf::model::axis_size::FixedOrRefAxisSize;
@@ -12,32 +13,44 @@ use super::{
 use crate::rdf::model::time_unit::TimeUnit;
 use crate::rdf::model::space_unit::SpaceUnit;
 
-#[derive(Serialize, Deserialize, Clone, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug, AsPartial)]
+#[aspartial(name = PartialOutputSpacetimeSize)]
 #[serde(untagged)]
 pub enum OutputSpacetimeSize{
-    Haloed{
-        size: FixedOrRefAxisSize,
-        halo: Halo,
-    },
-    Standard{size: AnyAxisSize},
+    Haloed(HaloedOutputSpacetimeSize),
+    Standard(StandardOutputSpacetimeSize),
+}
+
+#[derive(AsPartial, Debug, Clone, Serialize, Deserialize)]
+#[aspartial(name = PartialHaloedOutputSpacetimeSize)]
+pub struct HaloedOutputSpacetimeSize{
+    pub size: FixedOrRefAxisSize,
+    pub halo: Halo,
+}
+
+#[derive(AsPartial, Debug, Clone, Serialize, Deserialize)]
+#[aspartial(name = PartialStandardOutputSpacetimeSize)]
+pub struct StandardOutputSpacetimeSize{
+    pub size: AnyAxisSize
 }
 
 impl From<AnyAxisSize> for OutputSpacetimeSize{
     fn from(size: AnyAxisSize) -> Self {
-        Self::Standard{size}
+        Self::Standard(StandardOutputSpacetimeSize{size})
     }
 }
 
 impl OutputSpacetimeSize{
     pub fn size(&self) -> AnyAxisSize{
         match self{
-            Self::Standard{ size } => size.clone(),
-            Self::Haloed { size, .. } => size.clone().into(),
+            Self::Standard(StandardOutputSpacetimeSize { size }) => size.clone(),
+            Self::Haloed(HaloedOutputSpacetimeSize { size, .. }) => size.clone().into(),
         }
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialTimeOutputAxis)]
 pub struct TimeOutputAxis {
     #[serde(default = "_default_time_axis_id")]
     pub id: AxisId,
@@ -57,7 +70,8 @@ impl Display for TimeOutputAxis{
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialSpaceOutputAxis)]
 pub struct SpaceOutputAxis {
     #[serde(default = "_default_space_axis_id")]
     pub id: AxisId,
@@ -77,7 +91,8 @@ impl Display for SpaceOutputAxis{
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialOutputAxis)]
 #[serde(tag = "type")]
 pub enum OutputAxis {
     #[serde(rename = "batch")]
@@ -165,5 +180,9 @@ impl OutputAxis{
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 #[serde(try_from = "Vec::<OutputAxis>")]
 pub struct OutputAxisGroup(Vec<OutputAxis>);
+
+impl AsPartial for OutputAxisGroup{
+    type Partial = Vec<<OutputAxis as AsPartial>::Partial>;
+}
 
 impl_axis_group!(Output);
