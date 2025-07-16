@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use bioimg_codegen::AsPartial;
+use ::aspartial::AsPartial;
 
 use crate::rdf::model::{AxisId, TensorId};
 
@@ -19,6 +19,7 @@ pub enum ScaleRangeParsingError{
     BadEpsilon(PreprocessingEpsilonParsingError),
 }
 
+//FIXME: this isn't used anywhere but i think it should
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub enum ScaleRangeMode {
     #[serde(rename = "per_dataset")]
@@ -28,6 +29,7 @@ pub enum ScaleRangeMode {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
+#[aspartial(name = PartialScaleRangePercentile)]
 #[serde(try_from = "ScaleRangePercentileMessage")]
 #[serde(into = "ScaleRangePercentileMessage")]
 pub struct ScaleRangePercentile{
@@ -88,6 +90,7 @@ struct ScaleRangePercentileMessage{
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
+#[aspartial(name=PartialScaleRangeDescr)]
 pub struct ScaleRangeDescr{
     /// The subset of axes to normalize jointly, i.e. axes to reduce to compute the min/max percentile value.
     /// For example to normalize 'batch', 'x' and 'y' jointly in a tensor ('batch', 'channel', 'y', 'x')

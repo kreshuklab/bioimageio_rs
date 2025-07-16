@@ -11,14 +11,6 @@ use std::str::FromStr;
 
 use ::aspartial::AsPartial;
 
-use binarize::PartialBinarizeDescr;
-use clip::PartialClipDescr;
-use ensure_dtype::PartialEnsureDtype;
-use scale_linear::PartialScaleLinearDescr;
-use scale_range::PartialScaleRangeDescr;
-use sigmoid::PartialSigmoid;
-use zero_mean_unit_variance::{PartialFixedZmuv, PartialZmuv};
-
 pub use self::scale_linear::{ScaleLinearDescr, SimpleScaleLinearDescr, ScaleLinearAlongAxisDescr};
 pub use self::binarize::{BinarizeDescr, SimpleBinarizeDescr, BinarizeAlongAxisDescr};
 pub use self::clip::ClipDescr;
@@ -93,7 +85,8 @@ impl FromStr for PreprocessingEpsilon{
 }
 // //////////////////
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialPreprocessingDescr)]
 #[serde(tag = "id", content = "kwargs")]
 pub enum PreprocessingDescr {
     #[serde(rename = "binarize")]
@@ -112,83 +105,6 @@ pub enum PreprocessingDescr {
     ZeroMeanUnitVariance(Zmuv),
     #[serde(rename = "scale_range")]
     ScaleRange(ScaleRangeDescr),
-}
-
-impl AsPartial for PreprocessingDescr {
-    type Partial = PartialPreprocessingDescr;
-}
-
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
-#[serde(try_from="serde_json::Value")]
-pub struct PartialPreprocessingDescr {
-    pub binarize: Option<PartialBinarizeDescr>,
-    pub clip: Option<PartialClipDescr>,
-    pub ensure_dtype: Option<PartialEnsureDtype>,
-    pub scale_linear: Option<PartialScaleLinearDescr>,
-    pub sigmoid: Option<PartialSigmoid>,
-    pub fixed_zero_mean_unit_variance: Option<PartialFixedZmuv>,
-    pub zero_mean_unit_variance: Option<PartialZmuv>,
-    pub scale_range: Option<PartialScaleRangeDescr>,
-}
-
-impl AsPartial for PartialPreprocessingDescr {
-    type Partial = Self;
-}
-
-impl TryFrom<serde_json::Value> for PartialPreprocessingDescr {
-    type Error = serde_json::Error;
-
-    fn try_from(value: serde_json::Value) -> Result<Self, Self::Error> {
-
-        fn do_from_value(value: &serde_json::Value) -> Result<PartialPreprocessingDescr, serde_json::Error>{
-            Ok(PartialPreprocessingDescr{
-                binarize: serde_json::from_value(value.clone()).ok(),
-                clip: serde_json::from_value(value.clone()).ok(),
-                ensure_dtype: serde_json::from_value(value.clone()).ok(),
-                scale_linear: serde_json::from_value(value.clone()).ok(),
-                sigmoid: serde_json::from_value(value.clone()).ok(),
-                fixed_zero_mean_unit_variance: serde_json::from_value(value.clone()).ok(),
-                zero_mean_unit_variance: serde_json::from_value(value.clone()).ok(),
-                scale_range: serde_json::from_value(value.clone()).ok(),
-            })
-        }
-
-        let id = match value.get("id") {
-            Some(serde_json::Value::String(s)) => Some(s),
-            _ => None,
-        };
-        let kwargs = value.get("kwargs");
-
-        let (id, value) = match (id, kwargs) {
-            (None, None) => return do_from_value(&value),
-            (None, Some(kwargs)) => return do_from_value(kwargs),
-            (Some(id), None) => (id, &value),
-            (Some(id), Some(kwargs)) => (id, kwargs),
-        };
-
-        let empty = Self{
-            binarize: None,
-            clip: None,
-            ensure_dtype: None,
-            scale_linear: None,
-            sigmoid: None,
-            fixed_zero_mean_unit_variance: None,
-            zero_mean_unit_variance: None,
-            scale_range: None,
-        };
-
-        Ok(match id.as_str() {
-            "binarize" => Self{ binarize: serde_json::from_value(value.clone()).ok(), ..empty },
-            "clip" => Self{ clip: serde_json::from_value(value.clone()).ok(), ..empty },
-            "ensure_dtype" => Self{ ensure_dtype: serde_json::from_value(value.clone()).ok(), ..empty },
-            "scale_linear" => Self{ scale_linear: serde_json::from_value(value.clone()).ok(), ..empty },
-            "sigmoid" => Self{ sigmoid: serde_json::from_value(value.clone()).ok(), ..empty },
-            "fixed_zero_mean_unit_variance" => Self{ fixed_zero_mean_unit_variance: serde_json::from_value(value.clone()).ok(), ..empty },
-            "zero_mean_unit_variance" => Self{ zero_mean_unit_variance: serde_json::from_value(value.clone()).ok(), ..empty },
-            "scale_range" => Self{ scale_range: serde_json::from_value(value.clone()).ok(), ..empty },
-            _ => return do_from_value(&value),
-        })
-    }
 }
 
 impl Display for PreprocessingDescr{

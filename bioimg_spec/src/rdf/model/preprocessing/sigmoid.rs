@@ -1,8 +1,9 @@
 use std::fmt::Display;
 
-use crate::util::AsPartial;
+use ::aspartial::AsPartial;
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
+#[aspartial(name = PartialSigmoid)]
 pub struct Sigmoid;
 
 impl Display for Sigmoid{

@@ -22,7 +22,7 @@ impl Display for ScaleLinearDescr{
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]\
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
 #[aspartial(name = PartialSimpleScaleLinearDescr)]
 pub struct SimpleScaleLinearDescr{
     /// multiplicative factor

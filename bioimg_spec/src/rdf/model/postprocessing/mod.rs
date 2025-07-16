@@ -3,15 +3,8 @@ use std::fmt::Display;
 use crate::rdf::NonEmptyList;
 use aspartial::AsPartial;
 
-use super::preprocessing::clip::PartialClipDescr;
-use super::preprocessing::ensure_dtype::PartialEnsureDtype;
-use super::preprocessing::scale_linear::PartialScaleLinearDescr;
-use super::preprocessing::scale_range::PartialScaleRangeDescr;
-use super::preprocessing::sigmoid::PartialSigmoid;
-use super::preprocessing::zero_mean_unit_variance::{PartialFixedZmuv, PartialZmuv};
 use super::{AxisId, TensorId};
 use super::preprocessing::{BinarizeDescr, ClipDescr, EnsureDtype, FixedZmuv, PreprocessingEpsilon, ScaleLinearDescr, ScaleRangeDescr, Sigmoid, Zmuv};
-use super::preprocessing::binarize::PartialBinarizeDescr;
 
 
 // Note: be careful when editing this, as the partial version has to match

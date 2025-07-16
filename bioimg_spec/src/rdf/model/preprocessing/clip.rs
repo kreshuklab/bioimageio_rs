@@ -55,7 +55,7 @@ impl TryFrom<ClipDescrMessage> for ClipDescr{
 
 #[derive(serde::Serialize, serde::Deserialize, AsPartial)]
 #[aspartial(name = PartialClipDescrMessage )]
-struct ClipDescrMessage {
+pub struct ClipDescrMessage {
     pub min: f32,
     pub max: f32,
 }

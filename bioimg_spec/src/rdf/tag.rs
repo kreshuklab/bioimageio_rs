@@ -1,6 +1,6 @@
 use std::{borrow::Borrow, str::FromStr};
 
-use crate::util::AsPartial;
+use ::aspartial::AsPartial;
 
 use super::{bounded_string::BoundedStringParsingError, BoundedString};
 
