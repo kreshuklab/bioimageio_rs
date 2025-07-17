@@ -161,7 +161,8 @@ pub struct OnnxWeightsDescr{
     pub opset_version: OnnxOpsetVersion,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq, AsPartial)]
+#[aspartial(name=PartialPyTorchArchitectureFromFileDescr)]
 pub struct PyTorchArchitectureFromFileDescr{
     #[serde(flatten)]
     pub file_descr: FileDescription,
@@ -172,7 +173,8 @@ pub struct PyTorchArchitectureFromFileDescr{
     pub kwargs: serde_json::Map<String, serde_json::Value>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq, AsPartial)]
+#[aspartial(name = PartialPyTorchArchitectureFromLibraryDescr)]
 pub struct PyTorchArchitectureFromLibraryDescr{
     /// Identifier of the callable that returns a torch.nn.Module instance.
     /// examples: "MyNetworkClass", "get_my_model"
@@ -184,7 +186,8 @@ pub struct PyTorchArchitectureFromLibraryDescr{
 }
 
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, PartialEq, Eq, Debug, AsPartial)]
+#[aspartial(name = PartialPytorchArchitectureDescr)]
 #[serde(untagged)]
 pub enum PytorchArchitectureDescr{
     FromLibraryDescr(PyTorchArchitectureFromLibraryDescr), // must come first because untagged
@@ -203,7 +206,8 @@ impl From<PyTorchArchitectureFromFileDescr> for PytorchArchitectureDescr{
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialPytorchStateDictWeightsDescr)]
 pub struct PytorchStateDictWeightsDescr{
     #[serde(flatten)]
     pub base: WeightsDescrBase,
@@ -220,7 +224,8 @@ pub struct PytorchStateDictWeightsDescr{
     pub dependencies: Option<FileDescription<EnvironmentFile>>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialTensorflowJsWeightsDescr)]
 pub struct TensorflowJsWeightsDescr{
     #[serde(flatten)]
     pub base: WeightsDescrBase,
@@ -228,7 +233,8 @@ pub struct TensorflowJsWeightsDescr{
     pub tensorflow_version: Version,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone, AsPartial)]
+#[aspartial(name=PartialTensorflowSavedModelBundleWeightsDescr)]
 pub struct TensorflowSavedModelBundleWeightsDescr{
     #[serde(flatten)]
     pub base: WeightsDescrBase,
@@ -241,7 +247,8 @@ pub struct TensorflowSavedModelBundleWeightsDescr{
     pub dependencies: Option<FileDescription<EnvironmentFile>>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialTorchscriptWeightsDescr)]
 pub struct TorchscriptWeightsDescr{
     #[serde(flatten)]
     pub base: WeightsDescrBase,
