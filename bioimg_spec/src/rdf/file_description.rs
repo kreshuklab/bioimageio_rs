@@ -35,6 +35,9 @@ pub struct Sha256(Lowercase<BoundedString<64, 64>>);
 
 impl AsPartial for Sha256 {
     type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        self.0.into()
+    }
 }
 
 pub type EnvironmentFileDescr = FileDescription<EnvironmentFile>;

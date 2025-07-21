@@ -7,6 +7,9 @@ pub struct BasicCharsString<T>(T);
 
 impl<T: Borrow<str>> AsPartial for BasicCharsString<T> {
     type Partial = String;
+    fn to_partial(self) -> Self::Partial{
+        self.0.borrow().to_owned()
+    }
 }
 
 impl<T> BasicCharsString<T>{

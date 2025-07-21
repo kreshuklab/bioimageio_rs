@@ -7,6 +7,9 @@ pub struct SlashlessString<T>(T);
 
 impl<T: Borrow<str>> AsPartial for SlashlessString<T>{
     type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        self.0.borrow().to_owned()
+    }
 }
 
 impl<T: Display> Display for SlashlessString<T>{

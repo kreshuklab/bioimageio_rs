@@ -11,12 +11,9 @@ pub enum LowercaseParsingError {
     IsNotLowercase { value: String, idx: usize },
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, AsPartial)]
+#[aspartial(newtype)]
 pub struct Lowercase<T>(T);
-
-impl<T> AsPartial for Lowercase<T> {
-    type Partial = String;
-}
 
 impl<T: Into<String>> From<Lowercase<T>> for String{
     fn from(value: Lowercase<T>) -> Self {

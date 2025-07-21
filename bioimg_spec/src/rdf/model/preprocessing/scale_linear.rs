@@ -50,7 +50,10 @@ pub struct ScaleLinearAlongAxisDescr{
 }
 
 impl AsPartial for ScaleLinearAlongAxisDescr {
-    type Partial = ScaleLinearAlongAxisDescrMessage;
+    type Partial = PartialScaleLinearAlongAxisDescrMessage;
+    fn to_partial(self) -> Self::Partial {
+        ScaleLinearAlongAxisDescrMessage::from(self).to_partial()
+    }
 }
 
 impl Display for ScaleLinearAlongAxisDescr{

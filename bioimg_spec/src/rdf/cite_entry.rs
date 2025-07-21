@@ -31,6 +31,9 @@ pub struct CiteEntry2 {
 
 impl AsPartial for CiteEntry2 {
     type Partial = PartialCiteEntry2Msg;
+    fn to_partial(self) -> Self::Partial {
+        CiteEntry2Msg::from(self).to_partial()
+    }
 }
 
 impl CiteEntry2{

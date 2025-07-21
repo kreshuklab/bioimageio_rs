@@ -60,6 +60,9 @@ pub struct RdfTypeModel;
 
 impl AsPartial for RdfTypeModel {
     type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        self.into()
+    }
 }
 
 impl From<RdfTypeModel> for String{

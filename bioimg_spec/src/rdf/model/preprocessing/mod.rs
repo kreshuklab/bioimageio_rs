@@ -52,13 +52,10 @@ pub enum PreprocessingEpsilonParsingError{
     OutOfRange(f32)
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Copy, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Copy, Debug, AsPartial)]
 #[derive(derive_more::Display, derive_more::Into)]
+#[aspartial(newtype)]
 pub struct PreprocessingEpsilon(f32);
-
-impl AsPartial for PreprocessingEpsilon {
-    type Partial = f32;
-}
 
 impl Default for PreprocessingEpsilon{
     fn default() -> Self {

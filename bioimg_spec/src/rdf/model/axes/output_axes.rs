@@ -177,12 +177,9 @@ impl OutputAxis{
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialOutputAxisGroup)]
 #[serde(try_from = "Vec::<OutputAxis>")]
 pub struct OutputAxisGroup(Vec<OutputAxis>);
-
-impl AsPartial for OutputAxisGroup{
-    type Partial = Vec<<OutputAxis as AsPartial>::Partial>;
-}
 
 impl_axis_group!(Output);

@@ -89,4 +89,7 @@ pub enum SpaceUnit{
 
 impl AsPartial for SpaceUnit {
     type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        self.to_string()
+    }
 }

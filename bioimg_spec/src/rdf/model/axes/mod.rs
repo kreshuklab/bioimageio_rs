@@ -31,6 +31,9 @@ pub struct NonBatchAxisId(AxisId);
 
 impl AsPartial for NonBatchAxisId {
     type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        self.0.to_partial()
+    }
 }
 
 impl Display for NonBatchAxisId{
@@ -85,6 +88,9 @@ pub struct AxisScale(f32);
 
 impl AsPartial for AxisScale {
     type Partial = f32;
+    fn to_partial(self) -> Self::Partial {
+        self.0
+    }
 }
 
 impl Display for AxisScale{
@@ -124,6 +130,9 @@ pub struct Halo(u64);
 
 impl AsPartial for Halo {
     type Partial = u64;
+    fn to_partial(self) -> Self::Partial {
+        self.0
+    }
 }
 
 impl From<Halo> for u64{

@@ -1063,6 +1063,9 @@ pub enum LicenseId {
 
 impl AsPartial for LicenseId {
     type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        self.to_string()
+    }
 }
 
 

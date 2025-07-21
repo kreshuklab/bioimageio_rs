@@ -19,6 +19,9 @@ pub struct ClipDescr {
 
 impl AsPartial for ClipDescr {
     type Partial = PartialClipDescrMessage;
+    fn to_partial(self) -> Self::Partial {
+        PartialClipDescrMessage{min: Some(self.min), max: Some(self.max)}
+    }
 }
 
 impl Display for ClipDescr{

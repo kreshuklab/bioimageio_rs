@@ -31,13 +31,11 @@ pub struct MaybeSomeWeightsDescr{
     pub torchscript: Option<TorchscriptWeightsDescr>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
+#[aspartial(newtype)]
 #[serde(try_from = "MaybeSomeWeightsDescr")]
 pub struct WeightsDescr(MaybeSomeWeightsDescr);
 
-impl AsPartial for WeightsDescr {
-    type Partial = <MaybeSomeWeightsDescr as AsPartial>::Partial;
-}
 
 impl WeightsDescr{
     pub fn into_inner(self) -> MaybeSomeWeightsDescr{
@@ -67,27 +65,37 @@ impl TryFrom<MaybeSomeWeightsDescr> for WeightsDescr{
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Clone, Debug, strum::Display)]
 pub enum WeightsFormat{
     #[serde(rename = "keras_hdf5")]
+    #[strum(serialize = "keras_hdf5")]
     KerasHdf5,
     #[serde(rename="onnx")]
+    #[strum(serialize="onnx")]
     Onnx,
     #[serde(rename="pytorch_state_dict")]
+    #[strum(serialize="pytorch_state_dict")]
     PytorchStateDict,
     #[serde(rename="tensorflow_js")]
+    #[strum(serialize="tensorflow_js")]
     TensorflowJs,
     #[serde(rename="tensorflow_saved_model_bundle")]
+    #[strum(serialize="tensorflow_saved_model_bundle")]
     TensorflowSavedModelBundle,
     #[serde(rename="torchscript")]
+    #[strum(serialize="torchscript")]
     Torchscript,
 }
 
 impl AsPartial for WeightsFormat {
     type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        self.to_string()
+    }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Clone, AsPartial)]
+#[aspartial(name = PartialModelWeights)]
 #[serde(tag = "type")]
 pub enum ModelWeightsEnum{
     #[serde(rename = "keras_hdf5")]
@@ -102,10 +110,6 @@ pub enum ModelWeightsEnum{
     TensorflowSavedModelBundleWeightsDescr(TensorflowSavedModelBundleWeightsDescr),
     #[serde(rename="torchscript")]
     TorchscriptWeightsDescr(TorchscriptWeightsDescr),
-}
-
-impl AsPartial for ModelWeightsEnum {
-    type Partial = String;
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug, PartialEq, Eq, AsPartial)]
@@ -128,13 +132,11 @@ pub struct KerasHdf5WeightsDescr{
     pub tensorflow_version: Version,
 }
 
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq, Eq, AsPartial)]
+#[aspartial(newtype)]
 #[derive(derive_more::Display)]
 pub struct OnnxOpsetVersion(u32);
 
-impl AsPartial for OnnxOpsetVersion {
-    type Partial = u32;
-}
 
 impl TryFrom<u32> for OnnxOpsetVersion{
     type Error = ModelWeightsParsingError;

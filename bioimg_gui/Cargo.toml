@@ -13,6 +13,7 @@ bioimg_runtime = {path = "../bioimg_runtime"}
 bioimg_zoo = {path = "../bioimg_zoo"}
 
 serde = { workspace = true, features = ["derive"] }
+serde_yaml = { workspace = true }
 image = { workspace = true }
 url = { workspace=true, features = ["serde"] }
 uuid = { workspace = true, features = ["v4"] }

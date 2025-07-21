@@ -10,13 +10,10 @@ const PYTHON_KEYWORDS: [&'static str; 35] = [
     "return", "try", "while", "with", "yield",
 ];
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, AsPartial)]
+#[aspartial(newtype)]
 #[serde(try_from = "String")]
 pub struct Identifier(Arc<str>);
-
-impl AsPartial for Identifier {
-    type Partial = String;
-}
 
 impl Deref for Identifier{
     type Target = str;

@@ -19,6 +19,12 @@ pub enum Icon {
 
 impl AsPartial for Icon{
     type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        match self {
+            Self::Emoji(e) => e.into(),
+            Self::FileRef(r) => r.to_partial(),
+        }
+    }
 }
 
 #[derive(thiserror::Error, Clone, Debug)]

@@ -3,6 +3,8 @@ use std::path::Path;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
+use bioimg_runtime::zip_archive_ext::SharedZipArchive;
+use bioimg_spec::rdf::model::model_rdf_0_5::PartialModelRdfV0_5;
 use bioimg_spec::rdf::model::ModelRdfName;
 use bioimg_zoo::collection::ZooNickname;
 use indoc::indoc;
@@ -13,6 +15,7 @@ use bioimg_spec::rdf;
 use bioimg_spec::rdf::ResourceId;
 use bioimg_spec::rdf::bounded_string::BoundedString;
 use bioimg_spec::rdf::non_empty_list::NonEmptyList;
+use serde::Deserialize;
 
 use crate::project_data::{AppStateRawData, ProjectLoadError};
 use crate::result::{GuiError, Result, VecResultExt};
@@ -401,6 +404,90 @@ impl AppState1{
         #[cfg(not(target_arch="wasm32"))]
         std::thread::spawn(move || smol::block_on(fut));
     }
+
+    fn load_partial_model(&mut self, archive: SharedZipArchive) -> Result<String>{
+        let model_rdf_yaml: serde_yaml::Value = 'model_rdf: {
+            for file_name in ["rdf.yaml", "bioimageio.yaml"]{
+                let zip_res = archive.with_entry(file_name, |entry|{
+                    let read_result: Result<serde_yaml::Value, _> = serde_yaml::from_reader(entry);
+                    read_result
+                });
+                let model_rdf = match zip_res{
+                    Ok(read_result) => read_result?,
+                    Err(zip_err) => match zip_err{
+                        zip::result::ZipError::FileNotFound => continue,
+                        err => return Err(GuiError::new(format!("could not open model spec file: {err}")))
+                    }
+                };
+                break 'model_rdf model_rdf;
+            }
+            return Err(GuiError::new("Could not find model spec file"))
+        };
+
+        let partial_model_rdf = PartialModelRdfV0_5::deserialize(&model_rdf_yaml)?;
+
+        partial_model_rdf.name.map(|name| self.staging_name.restore(name));
+        partial_model_rdf.description.map(|descr| self.staging_description.restore(descr));
+
+        partial_model_rdf.covers.into_iter()
+            .map(|rdf_cover| println!("aaaaaaaaaaaaaaaaaa: {rdf_cover}"));
+            // .map(|rdf_cover| CoverImage::try_load(rdf_cover, &archive))
+            // .collect::<Result<_, _>>()?;
+
+        // let attachments: Vec<FileSource> = model_rdf.attachments.into_iter()
+        //     .map(|att| match att.source{
+        //         rdf::FileReference::Url(_) => return Err(ModelLoadingError::UrlFileReferenceNotSupportedYet),
+        //         rdf::FileReference::Path(fs_path) => {
+        //             Ok(FileSource::FileInZipArchive { archive: archive.clone(), inner_path: Arc::from(String::from(fs_path).as_str()) })
+        //         }
+        //     })
+        //     .collect::<Result<_, _>>()?;
+        // let icon = model_rdf.icon.map(|icon| Icon::try_load(icon, &archive)).transpose()?;
+
+        // let mut documentation = String::new();
+        // match model_rdf.documentation{
+        //     rdf::FileReference::Url(_) => return Err(ModelLoadingError::UrlFileReferenceNotSupportedYet),
+        //     FileReference::Path(path) => {
+        //         let path_string: String = path.into();
+        //         archive.with_entry(&path_string, |entry| {
+        //             entry.read_to_string(&mut documentation)
+        //         })??;
+        //     },
+        // }
+        // let weights = ModelWeights::try_from_rdf(model_rdf.weights, archive.clone())?;
+
+        // let input_slots: Vec<_> = model_rdf.inputs.into_inner().into_iter()
+        //     .map(|rdf| InputSlot::<Arc<NpyArray>>::try_from_rdf(rdf, archive.clone()))
+        //     .collect::<Result<_, _>>()?;
+        // let output_slots: Vec<_> = model_rdf.outputs.into_inner().into_iter()
+        //     .map(|rdf| OutputSlot::<Arc<NpyArray>>::try_from_rdf(rdf, archive.clone()))
+        //     .collect::<Result<_, _>>()?;
+
+        // let model_interface = ModelInterface::try_build(input_slots, output_slots)?;
+
+        // Ok(Self{
+        //     description: model_rdf.description,
+        //     covers,
+        //     attachments,
+        //     cite: model_rdf.cite,
+        //     config: model_rdf.config,
+        //     git_repo: model_rdf.git_repo,
+        //     icon,
+        //     links: model_rdf.links,
+        //     maintainers: model_rdf.maintainers,
+        //     tags: model_rdf.tags,
+        //     version: model_rdf.version,
+        //     authors: model_rdf.authors,
+        //     documentation,
+        //     license: model_rdf.license,
+        //     name: model_rdf.name,
+        //     id: model_rdf.id,
+        //     weights,
+        //     interface: model_interface,
+        // })
+
+        Ok("Recovered partial file".to_owned())
+    }
 }
 
 
@@ -461,6 +548,21 @@ impl eframe::App for AppState1 {
                     };
                 })});
                 ui.menu_button("File", |ui| {
+                    if ui.button("📦⤴ RECOVER Model")
+                        .on_hover_text("Import a .zip potentiallly broken modell")
+                        .clicked()
+                    {
+                        // ui.close_menu();
+
+                        // if let Some(model_path) = rfd::FileDialog::new().add_filter("bioimage model", &["zip"],).pick_file() {
+                        //     let model_path_str = model_path.to_string_lossy();
+                        //     let message = match rt::zoo_model::ZooModel::try_load(&model_path){
+                        //         Err(err) => TaskResult::Notification(Err(format!("Could not import model {model_path_str}: {err}"))),
+                        //         Ok(zoo_model) => TaskResult::ModelImport(Box::new(zoo_model)),
+                        //     };
+                        //     sender.send(message).unwrap();
+                        // }
+                    }
                     if ui.button("📦⤴ Import Model")
                         .on_hover_text("Import a .zip model file, like the ones you'd get from bioimage.io")
                         .clicked()

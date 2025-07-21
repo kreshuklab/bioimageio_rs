@@ -20,6 +20,9 @@ pub struct Version(versions::Version);
 
 impl AsPartial for Version {
     type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        self.0.to_string()
+    }
 }
 
 impl Version{
@@ -77,13 +80,10 @@ impl From<Version> for String{
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq, Eq, AsPartial)]
+#[aspartial(newtype)]
 #[serde(try_from="Version")]
 pub struct Version_0_5_x(Version);
-
-impl AsPartial for Version_0_5_x{
-    type Partial = String;
-}
 
 impl Version_0_5_x{
     pub fn new() -> Self{

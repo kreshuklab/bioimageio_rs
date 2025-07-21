@@ -67,6 +67,9 @@ pub struct FsPath{
 
 impl AsPartial for FsPath {
     type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        self.into()
+    }
 }
 
 impl FsPath{
@@ -150,6 +153,9 @@ pub struct HttpUrl(url::Url);
 
 impl AsPartial for HttpUrl{
     type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        self.into()
+    }
 }
 
 impl HttpUrl{
@@ -214,6 +220,12 @@ pub enum FileReference {
 
 impl AsPartial for FileReference {
     type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        match self{
+            Self::Url(url) => url.into(),
+            Self::Path(path) => path.into(),
+        }
+    }
 }
 
 impl std::fmt::Display for FileReference{
@@ -294,6 +306,9 @@ macro_rules! suffixed_file_ref {(
 
     impl ::aspartial::AsPartial for $name {
         type Partial = String;
+        fn to_partial(self) -> Self::Partial {
+            self.0.to_partial()
+        }
     }
 };}
 

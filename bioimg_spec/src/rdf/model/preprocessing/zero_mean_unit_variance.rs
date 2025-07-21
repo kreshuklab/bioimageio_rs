@@ -17,12 +17,9 @@ pub enum ZmuvParsingError{
     EmptyList,
 }
 
-#[derive(Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize, Debug)]
+#[derive(Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize, Debug, AsPartial)]
+#[aspartial(newtype)]
 pub struct ZmuvStdDeviation(f32);
-
-impl AsPartial for ZmuvStdDeviation {
-    type Partial = f32;
-}
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
 #[aspartial(name = PartialZmuv)]
@@ -125,6 +122,9 @@ pub struct FixedZmuvAlongAxis{
 
 impl AsPartial for FixedZmuvAlongAxis{
     type Partial = PartialFixedZmuvAlongAxisMsg;
+    fn to_partial(self) -> Self::Partial {
+        FixedZmuvAlongAxisMsg::from(self).to_partial()
+    }
 }
 
 impl Display for FixedZmuvAlongAxis{

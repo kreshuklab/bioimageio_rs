@@ -11,6 +11,9 @@ pub struct LiteralInt<const VAL: usize>;
 
 impl<const VAL: usize> AsPartial for LiteralInt<VAL>{
     type Partial = usize;
+    fn to_partial(self) -> Self::Partial {
+        VAL
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -56,6 +59,9 @@ pub struct LitStr<M: StrMarker>(#[serde(bound = "M: StrMarker")]PhantomData<M>);
 
 impl<M: StrMarker> AsPartial for LitStr<M> {
     type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        M::NAME.to_owned()
+    }
 }
 
 impl<M: StrMarker> LitStr<M>{

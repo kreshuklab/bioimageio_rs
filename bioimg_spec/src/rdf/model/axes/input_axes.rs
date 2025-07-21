@@ -142,6 +142,9 @@ pub struct InputAxisGroup(Vec<InputAxis>);
 
 impl AsPartial for InputAxisGroup {
     type Partial = Vec<<InputAxis as AsPartial>::Partial>;
+    fn to_partial(self) -> Self::Partial {
+        self.0.to_partial()
+    }
 }
 
 impl_axis_group!(Input);

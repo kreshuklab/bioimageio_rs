@@ -25,6 +25,9 @@ pub struct BoundedString<const MIN_CHARS: usize, const MAX_CHARS: usize>(Arc<str
 
 impl<const MIN_CHARS: usize, const MAX_CHARS: usize> AsPartial for BoundedString<MIN_CHARS, MAX_CHARS> {
     type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        self.0.as_ref().to_owned()
+    }
 }
 
 impl<const MAX_CHARS: usize> Default for BoundedString<0, MAX_CHARS> {

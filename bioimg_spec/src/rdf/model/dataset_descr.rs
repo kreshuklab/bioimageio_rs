@@ -20,6 +20,9 @@ pub struct DatasetDescrMarker;
 
 impl AsPartial for DatasetDescrMarker {
     type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        self.into()
+    }
 }
 
 impl From<DatasetDescrMarker> for String{

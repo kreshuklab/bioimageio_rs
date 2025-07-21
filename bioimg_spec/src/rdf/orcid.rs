@@ -25,6 +25,9 @@ pub struct Orcid{
 
 impl AsPartial for Orcid{
     type Partial = String;
+    fn to_partial(self) -> Self::Partial{
+        self.into()
+    }
 }
 
 impl Borrow<str> for Orcid{

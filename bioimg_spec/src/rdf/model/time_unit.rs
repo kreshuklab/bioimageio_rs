@@ -80,4 +80,7 @@ pub enum TimeUnit{
 
 impl AsPartial for TimeUnit {
     type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        self.to_string()
+    }
 }
