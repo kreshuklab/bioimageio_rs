@@ -3,6 +3,7 @@ use std::sync::Arc;
 
 use bioimg_runtime::zip_archive_ext::SharedZipArchive;
 use bioimg_runtime as rt;
+use bioimg_spec::rdf;
 use bioimg_spec::rdf::model::{self as modelrdf, AxisType};
 use crate::widgets::author_widget::AuthorWidget;
 use crate::widgets::onnx_weights_widget::OnnxWeightsWidget;
@@ -85,11 +86,38 @@ pub enum FileSourceWidgetRawData{
     Url(String),
 }
 
+impl FileSourceWidgetRawData {
+    fn from_partial(archive: &SharedZipArchive, partial: Option<String>) -> Self{
+        if let Some(raw) = &partial {
+            if let Ok(url) = rdf::HttpUrl::try_from(raw.clone()) { //FIXME: parse?
+                return Self::Url(url.to_string())
+            };
+        };
+        Self::Local(LocalFileSourceWidgetRawData::from_partial(archive, partial))
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize)]
 pub enum ImageWidget2LoadingStateRawData{
     Empty,
     Forced{img_bytes: Vec<u8>}
 }
+
+impl ImageWidget2LoadingStateRawData {
+    fn from_partial(archive: &SharedZipArchive, partial: Option<String>) -> Self {
+        let Some(entry_path) = partial else {
+            return Self::Empty
+        };
+        match archive.read_full_entry(&entry_path){
+            Ok(img_bytes) => Self::Forced { img_bytes },
+            Err(e) => {
+                log::warn!("Could not load image {}/{entry_path}: {e}", archive.identifier());
+                Self::Empty
+            }
+        }
+    }
+}
+
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct ImageWidget2RawData{
@@ -97,16 +125,42 @@ pub struct ImageWidget2RawData{
     pub loading_state: ImageWidget2LoadingStateRawData,
 }
 
+impl ImageWidget2RawData {
+    fn from_partial(archive: &SharedZipArchive, partial: Option<String>) -> Self {
+        let file_source_state = FileSourceWidgetRawData::from_partial(archive, partial.clone());
+        Self{
+            file_source_widget: file_source_state,
+            // FIXME: double check this. I think it's not forced because that'd be smth like a cpy/paste
+            // and this is loading from the archive
+            loading_state: ImageWidget2LoadingStateRawData::Empty,
+        }
+    }
+}
+
+
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct SpecialImageWidgetRawData{
     pub image_widget: ImageWidget2RawData,
 }
+
+impl SpecialImageWidgetRawData {
+    fn from_partial(archive: &SharedZipArchive, partial: Option<String>) -> Self {
+        Self { image_widget: ImageWidget2RawData::from_partial(archive, partial) }
+    }
+}
+
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub enum IconWidgetRawData{
     Emoji(String),
     Image(SpecialImageWidgetRawData),
 }
+
+// impl IconWidgetRawData {
+//     fn from_partial(archive: &SharedZipArchive, partial: Option<String>) -> Self {
+//         rdf::Icon::
+//     }
+// }
 
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct CollapsibleWidgetRawData<Inner: Restore>{
