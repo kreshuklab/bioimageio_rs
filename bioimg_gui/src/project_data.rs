@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use bioimg_runtime::zip_archive_ext::SharedZipArchive;
+use bioimg_runtime as rt;
 use bioimg_spec::rdf::model::{self as modelrdf, AxisType};
 use crate::widgets::author_widget::AuthorWidget;
 use crate::widgets::onnx_weights_widget::OnnxWeightsWidget;
@@ -52,6 +54,29 @@ pub enum LocalFileSourceWidgetRawData{
     Empty,
     InMemoryData{name: Option<String>, data: Arc<[u8]>},
     AboutToLoad{path: String, inner_path: Option<String>}
+}
+
+impl LocalFileSourceWidgetRawData{
+    pub fn from_partial(archive: &SharedZipArchive, partial: Option<String>) -> Self{
+        let Some(raw_path) = partial else {
+            return Self::Empty
+        };
+        let zip_entry_path = match archive.identifier(){
+            rt::zip_archive_ext::ZipArchiveIdentifier::Path(path) => {
+                return Self::AboutToLoad { path: path.to_string_lossy().to_string(), inner_path: Some(raw_path) };
+            },
+            rt::zip_archive_ext::ZipArchiveIdentifier::Name(name) => name,
+        };
+        match archive.read_full_entry(&zip_entry_path) {
+            Ok(data) => {
+                Self::InMemoryData { name: Some(zip_entry_path.clone()), data: Arc::from(data.as_slice()) }
+            },
+            Err(e) => {
+                log::warn!("Could not load contents of {raw_path}/{zip_entry_path}: {e}");
+                Self::Empty
+            },
+        }
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
