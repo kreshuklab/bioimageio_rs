@@ -8,6 +8,8 @@ use super::file_reference::FileReference;
 pub enum IconParsingError {
     #[error("Not emoji: '{0}'")]
     NotEmoji(String),
+    #[error("More than 2 graphemes: '{0}'")]
+    MoreThanTwoGraphemes(String),
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
@@ -48,11 +50,49 @@ impl FromStr for EmojiIcon{
     type Err = IconParsingError;
     //FIXME: check that characters/glyphs,graphemes/whatever are emoji
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        if !(1..=2).contains(&value.chars().count()) {
-            return Err(IconParsingError::NotEmoji(value.to_owned()));
+        let mut graphemes = ::unic::segment::Graphemes::new(value);
+
+        fn grapheme_is_emoji(grapheme: &str) -> bool {
+            let Some(first_char) = grapheme.chars().nth(0) else {
+                return false
+            };
+            ::unic::emoji::char::is_emoji(first_char)
         }
+
+        let Some(g) = graphemes.next() else {
+            return Err(IconParsingError::NotEmoji(value.into()))
+        };
+        println!("This is the first grapheme: {g}");
+        if !grapheme_is_emoji(g) {
+            return Err(IconParsingError::NotEmoji(value.into()))
+        }
+
+        let Some(g) = graphemes.next() else {
+            return Ok(Self(value.into()))
+        };
+        println!("This is the second grapheme: {g}");
+        if !grapheme_is_emoji(g) {
+            return Err(IconParsingError::NotEmoji(value.into()))
+        }
+
+        if graphemes.next().is_some(){
+            return Err(IconParsingError::MoreThanTwoGraphemes(value.into()))
+        }
+
         return Ok(Self(value.to_owned()));
     }
+}
+
+#[test]
+fn test_emoji_icon_parsing(){
+    // This is "woman" followed by "microscope", which collapses to "female scientist".
+    // It might still show up as two glyphs for you if your font doesn't have the
+    // "female scientist" glyph or if your editor does different text shaping shenanigans.
+    let female_scientist = "👩‍🔬";
+    let crab = "🦀";
+    let test_str = format!("{female_scientist}{crab}");
+
+    EmojiIcon::from_str(&test_str).expect("This should work as 2 graphemes");
 }
 
 impl TryFrom<String> for EmojiIcon {
