@@ -62,7 +62,6 @@ impl FromStr for EmojiIcon{
         let Some(g) = graphemes.next() else {
             return Err(IconParsingError::NotEmoji(value.into()))
         };
-        println!("This is the first grapheme: {g}");
         if !grapheme_is_emoji(g) {
             return Err(IconParsingError::NotEmoji(value.into()))
         }
@@ -70,7 +69,6 @@ impl FromStr for EmojiIcon{
         let Some(g) = graphemes.next() else {
             return Ok(Self(value.into()))
         };
-        println!("This is the second grapheme: {g}");
         if !grapheme_is_emoji(g) {
             return Err(IconParsingError::NotEmoji(value.into()))
         }
