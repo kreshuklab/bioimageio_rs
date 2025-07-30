@@ -19,9 +19,9 @@ pub struct VersionParsingError {
 pub struct Version(versions::Version);
 
 impl AsPartial for Version {
-    type Partial = String;
+    type Partial = VersionMsg;
     fn to_partial(self) -> Self::Partial {
-        self.0.to_string()
+        VersionMsg::Text(self.0.to_string())
     }
 }
 
@@ -50,6 +50,13 @@ pub enum VersionMsg{
     Text(String),
     Float(f32),
     Int(u32),
+}
+
+impl AsPartial for VersionMsg {
+    type Partial = Self;
+    fn to_partial(self) -> Self::Partial {
+        self
+    }
 }
 
 impl TryFrom<String> for Version{
