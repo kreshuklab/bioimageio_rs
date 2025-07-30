@@ -73,7 +73,9 @@ impl NotificationsWidget{
                 .outer_margin(0.0);
             frame.show(ui, |ui| {
                 self.messages.retain_mut(|msg|{
-                    if !self.stop_fade{
+                    if self.stop_fade{
+                        msg.num_remaining_frames = NUM_FRAMES_TO_FADE;
+                    } else {
                         msg.num_remaining_frames = (msg.num_remaining_frames - 1.0).at_least(0.0);
                     }
                     if msg.is_done(){
