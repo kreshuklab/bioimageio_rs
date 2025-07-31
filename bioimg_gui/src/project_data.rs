@@ -4,6 +4,10 @@ use std::sync::Arc;
 use bioimg_runtime::zip_archive_ext::SharedZipArchive;
 use bioimg_runtime as rt;
 use bioimg_spec::rdf;
+use bioimg_spec::rdf::author::PartialAuthor2;
+use bioimg_spec::rdf::cite_entry::{CiteEntry2Msg, PartialCiteEntry, PartialCiteEntry2Msg};
+use bioimg_spec::rdf::file_description::PartialFileDescription;
+use bioimg_spec::rdf::maintainer::PartialMaintainer;
 use bioimg_spec::rdf::model::{self as modelrdf, AxisType};
 use crate::widgets::author_widget::AuthorWidget;
 use crate::widgets::onnx_weights_widget::OnnxWeightsWidget;
@@ -13,7 +17,7 @@ use crate::widgets::pytorch_statedict_weights_widget::PytorchStateDictWidget;
 use crate::widgets::weights_widget::{KerasHdf5WeightsWidget, TorchscriptWeightsWidget};
 use crate::widgets::Restore;
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct AuthorWidgetRawData{
     pub name_widget: String,
     pub affiliation_widget: Option<String>,
@@ -22,20 +26,63 @@ pub struct AuthorWidgetRawData{
     pub orcid_widget: Option<String>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+impl AuthorWidgetRawData {
+    pub fn from_partial(_archive: &SharedZipArchive, partial: Option<PartialAuthor2>) -> Self {
+        let Some(partial_author) = partial else {
+            return Default::default()
+        };
+        Self{
+            name_widget: partial_author.name.unwrap_or(String::new()),
+            affiliation_widget: partial_author.affiliation.unwrap_or(None),
+            email_widget: partial_author.email.unwrap_or(None),
+            github_user_widget: partial_author.github_user.unwrap_or(None),
+            orcid_widget: partial_author.orcid.unwrap_or(None),
+        }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct CiteEntryWidgetRawData {
     pub citation_text_widget: String,
     pub doi_widget: Option<String>,
     pub url_widget: Option<String>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+impl CiteEntryWidgetRawData {
+    pub fn from_partial(_archive: &SharedZipArchive, partial: Option<PartialCiteEntry2Msg>) -> Self {
+        let Some(partial_cite) = partial else {
+            return Self::default()
+        };
+        Self{
+            citation_text_widget: partial_cite.text.unwrap_or(String::new()),
+            doi_widget: partial_cite.doi,
+            url_widget: partial_cite.url,
+        }
+    }
+}
+
+#[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct MaintainerWidgetRawData {
     pub github_user_widget: String,
     pub affiliation_widget: Option<String>,
     pub email_widget: Option<String>,
     pub orcid_widget: Option<String>,
     pub name_widget: Option<String>,
+}
+
+impl MaintainerWidgetRawData {
+    pub fn from_partial(_archive: &SharedZipArchive, partial: Option<PartialMaintainer>) -> Self{
+        let Some(partial_maintainer) = partial else {
+            return Self::default()
+        };
+        Self {
+            github_user_widget: partial_maintainer.github_user.unwrap_or(String::new()),
+            affiliation_widget: partial_maintainer.affiliation.unwrap_or(None),
+            email_widget: partial_maintainer.email.unwrap_or(None),
+            orcid_widget: partial_maintainer.orcid.unwrap_or(None),
+            name_widget: partial_maintainer.name.unwrap_or(None),
+        }
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -95,6 +142,12 @@ impl FileSourceWidgetRawData {
         };
         Self::Local(LocalFileSourceWidgetRawData::from_partial(archive, partial))
     }
+    pub fn from_partial_file_descr(archive: &SharedZipArchive, partial: Option<PartialFileDescription>) -> Self{
+        let Some(partial_descr) = partial else {
+            return Self::Local(LocalFileSourceWidgetRawData::Empty)
+        };
+        Self::from_partial(archive, partial_descr.source)
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -104,7 +157,7 @@ pub enum ImageWidget2LoadingStateRawData{
 }
 
 impl ImageWidget2LoadingStateRawData {
-    fn from_partial(archive: &SharedZipArchive, partial: Option<String>) -> Self {
+    pub fn from_partial(archive: &SharedZipArchive, partial: Option<String>) -> Self {
         let Some(entry_path) = partial else {
             return Self::Empty
         };
@@ -126,7 +179,7 @@ pub struct ImageWidget2RawData{
 }
 
 impl ImageWidget2RawData {
-    fn from_partial(archive: &SharedZipArchive, partial: Option<String>) -> Self {
+    pub fn from_partial(archive: &SharedZipArchive, partial: Option<String>) -> Self {
         let file_source_state = FileSourceWidgetRawData::from_partial(archive, partial.clone());
         Self{
             file_source_widget: file_source_state,
@@ -144,7 +197,7 @@ pub struct SpecialImageWidgetRawData{
 }
 
 impl SpecialImageWidgetRawData {
-    fn from_partial(archive: &SharedZipArchive, partial: Option<String>) -> Self {
+    pub fn from_partial(archive: &SharedZipArchive, partial: Option<String>) -> Self {
         Self { image_widget: ImageWidget2RawData::from_partial(archive, partial) }
     }
 }
@@ -173,9 +226,20 @@ pub struct VersionWidgetRawData{
     pub raw: String,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct CodeEditorWidgetRawData{
     pub raw: String,
+}
+
+type JsonMap = serde_json::Map<String, serde_json::Value>;
+
+impl CodeEditorWidgetRawData {
+    pub fn from_partial(_archive: &SharedZipArchive, partial: Option<JsonMap>) -> Self {
+        let Some(partial) = partial else {
+            return Self::default()
+        };
+        Self{raw: serde_json::to_string_pretty(&partial).unwrap()}
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -286,6 +350,13 @@ pub struct TorchscriptWeightsWidgetRawData{
 #[derive(serde::Serialize, serde::Deserialize)]
 pub struct JsonObjectEditorWidgetRawData{
     pub code_editor_widget: CodeEditorWidgetRawData,
+}
+
+impl JsonObjectEditorWidgetRawData {
+    pub fn from_partial(archive: &SharedZipArchive, partial: Option<JsonMap>) -> Self {
+        let code_editor_widget = CodeEditorWidgetRawData::from_partial(archive, partial);
+        Self{code_editor_widget}
+    }
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]

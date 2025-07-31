@@ -15,15 +15,15 @@ use bioimg_spec::rdf;
 use bioimg_spec::rdf::ResourceId;
 use bioimg_spec::rdf::bounded_string::BoundedString;
 use bioimg_spec::rdf::non_empty_list::NonEmptyList;
-use serde::Deserialize;
 
-use crate::project_data::{AppStateRawData, ProjectLoadError};
+use crate::project_data::{AppStateRawData, CiteEntryWidgetRawData, FileSourceWidgetRawData, JsonObjectEditorWidgetRawData, ProjectLoadError};
 use crate::result::{GuiError, Result, VecResultExt};
 use crate::widgets::attachments_widget::AttachmentsWidget;
 
 use crate::widgets::code_editor_widget::MarkdwownLang;
 use crate::widgets::collapsible_widget::SummarizableWidget;
 use crate::widgets::cover_image_widget::CoverImageItemConf;
+use crate::widgets::file_source_widget::FileSourceWidget;
 // use crate::widgets::cover_image_widget::CoverImageWidget;
 use crate::widgets::icon_widget::IconWidgetValue;
 use crate::widgets::image_widget_2::SpecialImageWidget;
@@ -405,7 +405,8 @@ impl AppState1{
         std::thread::spawn(move || smol::block_on(fut));
     }
 
-    fn load_partial_model(&mut self, archive: SharedZipArchive) -> Result<String>{
+    fn load_partial_model(&mut self, archive: SharedZipArchive) -> Result<()>{
+        let mut errors = Vec::<String>::new();
         let model_rdf_yaml: serde_yaml::Value = 'model_rdf: {
             for file_name in ["rdf.yaml", "bioimageio.yaml"]{
                 let zip_res = archive.with_entry(file_name, |entry|{
@@ -424,36 +425,70 @@ impl AppState1{
             return Err(GuiError::new("Could not find model spec file"))
         };
 
-        let partial_model_rdf = PartialModelRdfV0_5::deserialize(&model_rdf_yaml)?;
+        let partial_model_rdf: PartialModelRdfV0_5 = ::serde_path_to_error::deserialize(&model_rdf_yaml)?;
 
-        partial_model_rdf.name.map(|name| self.staging_name.restore(name));
-        partial_model_rdf.description.map(|descr| self.staging_description.restore(descr));
+        self.staging_name.restore(partial_model_rdf.name.unwrap_or(String::new()));
+        self.staging_description.restore(partial_model_rdf.description.unwrap_or(String::new()));
+        self.cover_images.staging = partial_model_rdf.covers.into_iter()
+            .map(|rdf_cover| {
+                use crate::project_data::SpecialImageWidgetRawData;
+                let mut widget = SpecialImageWidget::<rt::CoverImage>::default();
+                let state = SpecialImageWidgetRawData::from_partial(&archive, Some(rdf_cover));
+                widget.restore(state);
+                widget
+            })
+            .collect();
+        self.model_id_widget.restore(partial_model_rdf.id);
+        self.attachments_widget = partial_model_rdf.attachments.into_iter()
+            .map(|att|{
+                let mut widget = FileSourceWidget::default();
+                widget.restore(FileSourceWidgetRawData::from_partial_file_descr(&archive, Some(att)));
+                widget
+            })
+            .collect();
+        self.staging_citations = partial_model_rdf.cite
+            .map(|partial_cites| {
+                partial_cites.into_iter()
+                    .map(|partial_cite| {
+                        let mut widget = CiteEntryWidget::default();
+                        widget.restore(CiteEntryWidgetRawData::from_partial(&archive, Some(partial_cite)));
+                        widget
+                    })
+                    .collect()
+            })
+            .unwrap_or(vec![]);
+        self.custom_config_widget.restore(Some(
+            JsonObjectEditorWidgetRawData::from_partial(&archive, Some(partial_model_rdf.config))
+        ));
+        self.staging_git_repo.restore(partial_model_rdf.git_repo);
 
-        partial_model_rdf.covers.into_iter()
-            .map(|rdf_cover| println!("aaaaaaaaaaaaaaaaaa: {rdf_cover}"));
-            // .map(|rdf_cover| CoverImage::try_load(rdf_cover, &archive))
-            // .collect::<Result<_, _>>()?;
+        if let Some(doc_file_descr) = partial_model_rdf.documentation { 'documentation: {
+            let path_in_archive = match rdf::FileReference::try_from(doc_file_descr.clone()){
+                Err(e) => {
+                    errors.push(format!("Can't parse documentation value ({doc_file_descr}) as a file descriptor: {e}"));
+                    break 'documentation;
+                },
+                Ok(rdf::FileReference::Url(_url)) => {
+                    errors.push("Can't read documentation from URLs yet".into()); //FIXME
+                    break 'documentation
+                },
+                Ok(rdf::FileReference::Path(fspath)) => fspath,
+            };
+            let doc_bytes = match archive.read_full_entry(&path_in_archive.to_string()){
+                Ok(doc_bytes) => doc_bytes,
+                Err(e) => {
+                    errors.push(format!("Could not read documentation at {}: {e}", path_in_archive));
+                    break 'documentation;
+                }
+            };
+            match String::from_utf8(doc_bytes) {
+                Ok(doc) => {
+                    self.staging_documentation.raw = doc;
+                },
+                Err(_) => errors.push("Could not decode model documentation".into())
+            }
+        } }
 
-        // let attachments: Vec<FileSource> = model_rdf.attachments.into_iter()
-        //     .map(|att| match att.source{
-        //         rdf::FileReference::Url(_) => return Err(ModelLoadingError::UrlFileReferenceNotSupportedYet),
-        //         rdf::FileReference::Path(fs_path) => {
-        //             Ok(FileSource::FileInZipArchive { archive: archive.clone(), inner_path: Arc::from(String::from(fs_path).as_str()) })
-        //         }
-        //     })
-        //     .collect::<Result<_, _>>()?;
-        // let icon = model_rdf.icon.map(|icon| Icon::try_load(icon, &archive)).transpose()?;
-
-        // let mut documentation = String::new();
-        // match model_rdf.documentation{
-        //     rdf::FileReference::Url(_) => return Err(ModelLoadingError::UrlFileReferenceNotSupportedYet),
-        //     FileReference::Path(path) => {
-        //         let path_string: String = path.into();
-        //         archive.with_entry(&path_string, |entry| {
-        //             entry.read_to_string(&mut documentation)
-        //         })??;
-        //     },
-        // }
         // let weights = ModelWeights::try_from_rdf(model_rdf.weights, archive.clone())?;
 
         // let input_slots: Vec<_> = model_rdf.inputs.into_inner().into_iter()
@@ -486,7 +521,7 @@ impl AppState1{
         //     interface: model_interface,
         // })
 
-        Ok("Recovered partial file".to_owned())
+        Ok(())
     }
 }
 
@@ -551,18 +586,30 @@ impl eframe::App for AppState1 {
                     if ui.button("📦⤴ RECOVER Model")
                         .on_hover_text("Import a .zip potentiallly broken modell")
                         .clicked()
-                    {
-                        // ui.close_menu();
+                    { 'recover_model: {
+                        ui.close_menu();
+                        let sender = self.notifications_channel.sender().clone();
 
-                        // if let Some(model_path) = rfd::FileDialog::new().add_filter("bioimage model", &["zip"],).pick_file() {
-                        //     let model_path_str = model_path.to_string_lossy();
-                        //     let message = match rt::zoo_model::ZooModel::try_load(&model_path){
-                        //         Err(err) => TaskResult::Notification(Err(format!("Could not import model {model_path_str}: {err}"))),
-                        //         Ok(zoo_model) => TaskResult::ModelImport(Box::new(zoo_model)),
-                        //     };
-                        //     sender.send(message).unwrap();
-                        // }
-                    }
+                        let Some(model_path) = rfd::FileDialog::new().add_filter("bioimage model", &["zip"],).pick_file() else {
+                            break 'recover_model;
+                        };
+                        let model_path_str = model_path.to_string_lossy();
+                        let archive = match SharedZipArchive::open(&model_path){
+                            Ok(archive) => archive,
+                            Err(e) => {
+                                _ = sender.send(TaskResult::err_message(format!("Could not load archive at {model_path_str}: {e}")));
+                                break 'recover_model;
+                            }
+                        };
+                        _ = match self.load_partial_model(archive){
+                            Ok(_) => sender.send(TaskResult::ok_message(format!(
+                                "Recovered model {model_path_str}"
+                            ))),
+                            Err(e) => sender.send(TaskResult::err_message(format!(
+                                "Could not recover model at {model_path_str}: {e}"
+                            )))
+                        };
+                    } }
                     if ui.button("📦⤴ Import Model")
                         .on_hover_text("Import a .zip model file, like the ones you'd get from bioimage.io")
                         .clicked()
