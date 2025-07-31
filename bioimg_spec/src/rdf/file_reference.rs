@@ -116,17 +116,26 @@ impl From<FsPath> for String{
     }
 }
 
+impl Display for FsPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut components = self.components.iter();
+        if let Some(comp) = components.next() {
+            write!(f, "{}", comp.0)?;
+        }
+        for comp in components {
+            write!(f, "/{}", comp.0)?;
+        }
+        Ok(())
+    }
+}
+
 impl From<&FsPath> for String{
     fn from(value: &FsPath) -> Self {
+        use std::fmt::Write;
         let mut out = String::with_capacity(
             value.components.iter().map(|comp| comp.0.len()).sum::<usize>() + value.components.len()
         );
-        for (comp_idx, comp) in value.components.iter().enumerate(){
-            if comp_idx != 0{
-                out += "/"
-            }
-            out += &comp.0;
-        }
+        write!(&mut out, "{value}").unwrap();
         out
     }
 }
