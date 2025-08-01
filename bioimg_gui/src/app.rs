@@ -4,6 +4,7 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 
 use bioimg_runtime::zip_archive_ext::SharedZipArchive;
+use bioimg_spec::rdf::model::input_tensor::PartialInputTensorMetadata;
 use bioimg_spec::rdf::model::model_rdf_0_5::PartialModelRdfV0_5;
 use bioimg_spec::rdf::model::ModelRdfName;
 use bioimg_zoo::collection::ZooNickname;
@@ -16,7 +17,7 @@ use bioimg_spec::rdf::ResourceId;
 use bioimg_spec::rdf::bounded_string::BoundedString;
 use bioimg_spec::rdf::non_empty_list::NonEmptyList;
 
-use crate::project_data::{AppStateRawData, CiteEntryWidgetRawData, FileSourceWidgetRawData, JsonObjectEditorWidgetRawData, ProjectLoadError};
+use crate::project_data::{AppStateRawData, CiteEntryWidgetRawData, FileSourceWidgetRawData, IconWidgetRawData, JsonObjectEditorWidgetRawData, MaintainerWidgetRawData, ProjectLoadError, VersionWidgetRawData, WeightsWidgetRawData};
 use crate::result::{GuiError, Result, VecResultExt};
 use crate::widgets::attachments_widget::AttachmentsWidget;
 
@@ -451,17 +452,41 @@ impl AppState1{
                 partial_cites.into_iter()
                     .map(|partial_cite| {
                         let mut widget = CiteEntryWidget::default();
-                        widget.restore(CiteEntryWidgetRawData::from_partial(&archive, Some(partial_cite)));
+                        widget.restore(CiteEntryWidgetRawData::from_partial(&archive, partial_cite));
                         widget
                     })
                     .collect()
             })
             .unwrap_or(vec![]);
-        self.custom_config_widget.restore(Some(
-            JsonObjectEditorWidgetRawData::from_partial(&archive, Some(partial_model_rdf.config))
-        ));
+        self.custom_config_widget.restore(Some(JsonObjectEditorWidgetRawData::from_partial(&archive, partial_model_rdf.config)));
         self.staging_git_repo.restore(partial_model_rdf.git_repo);
-
+        self.icon_widget.restore(partial_model_rdf.icon.map(|partial_icon|{
+            IconWidgetRawData::from_partial(&archive, partial_icon)
+        }));
+        self.links_widget.staging = partial_model_rdf.links.into_iter()
+            .map(|partial_link| {
+                let mut widget = StagingString::default();
+                widget.restore(partial_link);
+                widget
+            })
+            .collect();
+        self.staging_maintainers = partial_model_rdf.maintainers.into_iter()
+            .map(|partial_maintainer|{
+                let mut widget = MaintainerWidget::default();
+                widget.restore(MaintainerWidgetRawData::from_partial(&archive, partial_maintainer));
+                widget
+            })
+            .collect();
+        self.staging_tags.staging = partial_model_rdf.tags.into_iter()
+            .map(|partial_tag|{
+                let mut widget = StagingString::default();
+                widget.restore(partial_tag);
+                widget
+            })
+            .collect();
+        self.staging_version.restore(partial_model_rdf.version.map(|partial_version| {
+            VersionWidgetRawData::from_partial(&archive, partial_version)
+        }));
         if let Some(doc_file_descr) = partial_model_rdf.documentation { 'documentation: {
             let path_in_archive = match rdf::FileReference::try_from(doc_file_descr.clone()){
                 Err(e) => {
@@ -488,6 +513,11 @@ impl AppState1{
                 Err(_) => errors.push("Could not decode model documentation".into())
             }
         } }
+        self.weights_widget.restore(
+            partial_model_rdf.weights
+                .map(|partial| WeightsWidgetRawData::from_partial(&archive, partial))
+                .unwrap_or_default()
+        );
 
         // let weights = ModelWeights::try_from_rdf(model_rdf.weights, archive.clone())?;
 
