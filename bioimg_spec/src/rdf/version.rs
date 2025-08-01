@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{fmt::Display, str::FromStr};
 
 use aspartial::AsPartial;
 
@@ -50,6 +50,16 @@ pub enum VersionMsg{
     Text(String),
     Float(f32),
     Int(u32),
+}
+
+impl Display for VersionMsg {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self{
+            Self::Text(text) => write!(f, "{text}"),
+            Self::Float(val) => write!(f, "{val}"),
+            Self::Int(val) => write!(f, "{val}"),
+        }
+    }
 }
 
 impl AsPartial for VersionMsg {
