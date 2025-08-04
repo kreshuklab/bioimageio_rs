@@ -451,22 +451,27 @@ impl PytorchArchWidgetRawData {
         let mut source_widget = FileSourceWidgetRawData::default();
 
         if let Some(from_file_descr) = partial.from_file_descr {
-            mode_widget = PytorchArchModeRawData::FromFile;
-            callable += from_file_descr.callable.as_ref().map(|c| c.as_str()).unwrap_or("");
+            callable = from_file_descr.callable.unwrap_or_default();
             if let Some(kwargs) = &from_file_descr.kwargs {
-                kwargs_state += &serde_json::to_string_pretty(kwargs).unwrap();
+                kwargs_state = serde_json::to_string_pretty(kwargs).unwrap();
+            }
+            if from_file_descr.file_descr.is_some(){
+                mode_widget = PytorchArchModeRawData::FromFile;
             }
             source_widget = FileSourceWidgetRawData::from_partial_file_descr(archive, from_file_descr.file_descr);
         }
-        if let Some(from_lib) = &partial.from_library_descr {
-            mode_widget = PytorchArchModeRawData::FromLib;
-            callable += from_lib.callable.as_ref().map(|c| c.as_str()).unwrap_or("");
-            import_from = from_lib.import_from.clone().unwrap_or_default();
+        if let Some(from_lib) = partial.from_library_descr {
+            if callable.is_empty(){
+                callable = from_lib.callable.unwrap_or_default();
+            }
+            if let Some(imp_from) = from_lib.import_from {
+                import_from = imp_from;
+                mode_widget = PytorchArchModeRawData::FromLib;
+            }
             if let Some(kwargs) = &from_lib.kwargs {
-                if !kwargs_state.is_empty() {
-                    kwargs_state += "\n";
+                if kwargs_state.is_empty() {
+                    kwargs_state = serde_json::to_string_pretty(kwargs).unwrap();
                 }
-                kwargs_state += &serde_json::to_string_pretty(kwargs).unwrap();
             }
         }
 
