@@ -65,6 +65,14 @@ impl TaskResult{
     }
 }
 
+#[derive(Default, Copy, Clone)]
+enum ExitingStatus{
+    #[default]
+    NotExiting,
+    Confirming,
+    Exiting,
+}
+
 #[derive(Restore)]
 pub struct AppState1 {
     pub staging_name: StagingString<ModelRdfName>,
@@ -107,9 +115,7 @@ pub struct AppState1 {
     #[restore_default]
     pub notifications_channel: TaskChannel<TaskResult>,
     #[restore_default]
-    close_confirmed: bool,
-    #[restore_default]
-    show_confirmation_dialog: bool,
+    exiting_status: ExitingStatus,
 }
 
 impl ValueWidget for AppState1{
@@ -197,8 +203,7 @@ impl Default for AppState1 {
             zoo_model_creation_task: Default::default(),
             pipeline_widget: Default::default(),
 
-            close_confirmed: false,
-            show_confirmation_dialog: false,
+            exiting_status: Default::default(),
         }
     }
 }
@@ -953,42 +958,51 @@ impl eframe::App for AppState1 {
             });
         });
 
-        if ctx.input(|i| i.viewport().close_requested()) {
-            if self.close_confirmed {
-                // do nothing - we will close
-            } else {
-                ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-                self.show_confirmation_dialog = true;
-            }
-        }
+        let close_requested = ctx.input(|i| i.viewport().close_requested());
+        self.exiting_status = match self.exiting_status {
+            ExitingStatus::NotExiting => {
+                if close_requested {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+                    ExitingStatus::Confirming
+                } else {
+                    ExitingStatus::NotExiting
+                }
+            },
+            ExitingStatus::Confirming => {
+                if close_requested {
+                    ExitingStatus::Exiting
+                } else {
+                    ExitingStatus::Confirming
+                }
+            },
+            ExitingStatus::Exiting => {
+                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                ExitingStatus::Exiting
+            },
+        };
 
         #[cfg(not(target_arch="wasm32"))]
-        if self.show_confirmation_dialog {
+        if matches!(self.exiting_status, ExitingStatus::Confirming) {
             egui::Modal::new(egui::Id::from("confirmation dialog"))
                 .show(ctx, |ui| {
                     ui.label("Save draft before quitting?");
                     ui.horizontal(|ui| {
                         if ui.button("Yes 💾").clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter)){ 'save_draft: {
-                            self.show_confirmation_dialog = false;
                             let Some(path) = rfd::FileDialog::new().set_file_name("MyDraft.bmb").save_file() else {
+                                self.exiting_status = ExitingStatus::NotExiting;
                                 break 'save_draft;
                             };
                             let result = self.save_project(&path);
                             if result.is_ok(){
-                                self.show_confirmation_dialog = false;
-                                self.close_confirmed = true;
-                                ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                                self.exiting_status = ExitingStatus::Exiting;
                             }
                             self.notifications_widget.push_message(result);
                         }}
                         if ui.button("No 🗑").clicked() {
-                            self.show_confirmation_dialog = false;
-                            self.close_confirmed = true;
-                            ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                            self.exiting_status = ExitingStatus::Exiting;
                         }
                         if ui.button("Cancel 🗙").clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-                            self.show_confirmation_dialog = false;
-                            self.close_confirmed = false;
+                            self.exiting_status = ExitingStatus::NotExiting;
                         }
                     });
                 });
