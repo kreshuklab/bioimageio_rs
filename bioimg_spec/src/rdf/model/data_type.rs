@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use aspartial::AsPartial;
 
 #[derive(Default, Serialize, Deserialize, Eq, PartialEq, Debug, Copy, Clone)]
-#[derive(strum::VariantArray, strum::VariantNames, strum::Display)]
+#[derive(strum::EnumString, strum::VariantArray, strum::VariantNames, strum::Display)]
 pub enum DataType {
     #[serde(rename = "bool")]
     #[strum(serialize = "bool")]
@@ -48,7 +48,8 @@ impl AsPartial for DataType {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, strum::Display)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(strum::EnumString, strum::Display)]
 pub enum UintDataType{
     #[serde(rename = "uint8")]
     #[strum(serialize= "uint8")]

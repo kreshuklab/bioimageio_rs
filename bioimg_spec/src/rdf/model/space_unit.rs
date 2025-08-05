@@ -2,9 +2,8 @@ use serde::{Serialize, Deserialize};
 
 use aspartial::AsPartial;
 
-#[derive(
-    Default, Serialize, Deserialize, Eq, PartialEq, Debug, Copy, Clone, strum::VariantArray, strum::VariantNames, strum::Display
-)]
+#[derive(Default, Serialize, Deserialize, Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(strum::VariantArray, strum::VariantNames, strum::EnumString, strum::Display)]
 pub enum SpaceUnit{
     #[serde(rename = "attometer")]
     #[strum(to_string = "attometer")]

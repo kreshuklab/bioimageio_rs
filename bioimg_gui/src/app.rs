@@ -4,7 +4,6 @@ use std::sync::Arc;
 use std::thread::JoinHandle;
 
 use bioimg_runtime::zip_archive_ext::SharedZipArchive;
-use bioimg_spec::rdf::model::input_tensor::PartialInputTensorMetadata;
 use bioimg_spec::rdf::model::model_rdf_0_5::PartialModelRdfV0_5;
 use bioimg_spec::rdf::model::ModelRdfName;
 use bioimg_zoo::collection::ZooNickname;
@@ -17,14 +16,13 @@ use bioimg_spec::rdf::ResourceId;
 use bioimg_spec::rdf::bounded_string::BoundedString;
 use bioimg_spec::rdf::non_empty_list::NonEmptyList;
 
-use crate::project_data::{AppStateRawData, CiteEntryWidgetRawData, FileSourceWidgetRawData, IconWidgetRawData, JsonObjectEditorWidgetRawData, MaintainerWidgetRawData, ProjectLoadError, VersionWidgetRawData, WeightsWidgetRawData};
+use crate::project_data::{AppState1RawData, AppStateRawData, ProjectLoadError};
 use crate::result::{GuiError, Result, VecResultExt};
 use crate::widgets::attachments_widget::AttachmentsWidget;
 
 use crate::widgets::code_editor_widget::MarkdwownLang;
 use crate::widgets::collapsible_widget::SummarizableWidget;
 use crate::widgets::cover_image_widget::CoverImageItemConf;
-use crate::widgets::file_source_widget::FileSourceWidget;
 // use crate::widgets::cover_image_widget::CoverImageWidget;
 use crate::widgets::icon_widget::IconWidgetValue;
 use crate::widgets::image_widget_2::SpecialImageWidget;
@@ -432,130 +430,8 @@ impl AppState1{
         };
 
         let partial_model_rdf: PartialModelRdfV0_5 = ::serde_path_to_error::deserialize(&model_rdf_yaml)?;
-
-        self.staging_name.restore(partial_model_rdf.name.unwrap_or(String::new()));
-        self.staging_description.restore(partial_model_rdf.description.unwrap_or(String::new()));
-        self.cover_images.staging = partial_model_rdf.covers.into_iter()
-            .map(|rdf_cover| {
-                use crate::project_data::SpecialImageWidgetRawData;
-                let mut widget = SpecialImageWidget::<rt::CoverImage>::default();
-                let state = SpecialImageWidgetRawData::from_partial(&archive, Some(rdf_cover));
-                widget.restore(state);
-                widget
-            })
-            .collect();
-        self.model_id_widget.restore(partial_model_rdf.id);
-        self.attachments_widget = partial_model_rdf.attachments.into_iter()
-            .map(|att|{
-                let mut widget = FileSourceWidget::default();
-                widget.restore(FileSourceWidgetRawData::from_partial_file_descr(&archive, Some(att)));
-                widget
-            })
-            .collect();
-        self.staging_citations = partial_model_rdf.cite
-            .map(|partial_cites| {
-                partial_cites.into_iter()
-                    .map(|partial_cite| {
-                        let mut widget = CiteEntryWidget::default();
-                        widget.restore(CiteEntryWidgetRawData::from_partial(&archive, partial_cite));
-                        widget
-                    })
-                    .collect()
-            })
-            .unwrap_or(vec![]);
-        self.custom_config_widget.restore(Some(JsonObjectEditorWidgetRawData::from_partial(&archive, partial_model_rdf.config)));
-        self.staging_git_repo.restore(partial_model_rdf.git_repo);
-        self.icon_widget.restore(partial_model_rdf.icon.map(|partial_icon|{
-            IconWidgetRawData::from_partial(&archive, partial_icon)
-        }));
-        self.links_widget.staging = partial_model_rdf.links.into_iter()
-            .map(|partial_link| {
-                let mut widget = StagingString::default();
-                widget.restore(partial_link);
-                widget
-            })
-            .collect();
-        self.staging_maintainers = partial_model_rdf.maintainers.into_iter()
-            .map(|partial_maintainer|{
-                let mut widget = MaintainerWidget::default();
-                widget.restore(MaintainerWidgetRawData::from_partial(&archive, partial_maintainer));
-                widget
-            })
-            .collect();
-        self.staging_tags.staging = partial_model_rdf.tags.into_iter()
-            .map(|partial_tag|{
-                let mut widget = StagingString::default();
-                widget.restore(partial_tag);
-                widget
-            })
-            .collect();
-        self.staging_version.restore(partial_model_rdf.version.map(|partial_version| {
-            VersionWidgetRawData::from_partial(&archive, partial_version)
-        }));
-        if let Some(doc_file_descr) = partial_model_rdf.documentation { 'documentation: {
-            let path_in_archive = match rdf::FileReference::try_from(doc_file_descr.clone()){
-                Err(e) => {
-                    errors.push(format!("Can't parse documentation value ({doc_file_descr}) as a file descriptor: {e}"));
-                    break 'documentation;
-                },
-                Ok(rdf::FileReference::Url(_url)) => {
-                    errors.push("Can't read documentation from URLs yet".into()); //FIXME
-                    break 'documentation
-                },
-                Ok(rdf::FileReference::Path(fspath)) => fspath,
-            };
-            let doc_bytes = match archive.read_full_entry(&path_in_archive.to_string()){
-                Ok(doc_bytes) => doc_bytes,
-                Err(e) => {
-                    errors.push(format!("Could not read documentation at {}: {e}", path_in_archive));
-                    break 'documentation;
-                }
-            };
-            match String::from_utf8(doc_bytes) {
-                Ok(doc) => {
-                    self.staging_documentation.raw = doc;
-                },
-                Err(_) => errors.push("Could not decode model documentation".into())
-            }
-        } }
-        self.weights_widget.restore(
-            partial_model_rdf.weights
-                .map(|partial| WeightsWidgetRawData::from_partial(&archive, partial))
-                .unwrap_or_default()
-        );
-
-        // let weights = ModelWeights::try_from_rdf(model_rdf.weights, archive.clone())?;
-
-        // let input_slots: Vec<_> = model_rdf.inputs.into_inner().into_iter()
-        //     .map(|rdf| InputSlot::<Arc<NpyArray>>::try_from_rdf(rdf, archive.clone()))
-        //     .collect::<Result<_, _>>()?;
-        // let output_slots: Vec<_> = model_rdf.outputs.into_inner().into_iter()
-        //     .map(|rdf| OutputSlot::<Arc<NpyArray>>::try_from_rdf(rdf, archive.clone()))
-        //     .collect::<Result<_, _>>()?;
-
-        // let model_interface = ModelInterface::try_build(input_slots, output_slots)?;
-
-        // Ok(Self{
-        //     description: model_rdf.description,
-        //     covers,
-        //     attachments,
-        //     cite: model_rdf.cite,
-        //     config: model_rdf.config,
-        //     git_repo: model_rdf.git_repo,
-        //     icon,
-        //     links: model_rdf.links,
-        //     maintainers: model_rdf.maintainers,
-        //     tags: model_rdf.tags,
-        //     version: model_rdf.version,
-        //     authors: model_rdf.authors,
-        //     documentation,
-        //     license: model_rdf.license,
-        //     name: model_rdf.name,
-        //     id: model_rdf.id,
-        //     weights,
-        //     interface: model_interface,
-        // })
-
+        let state = AppState1RawData::from_partial(&archive, partial_model_rdf); //FIXME: retrieve errors and notify
+        self.restore(state);
         Ok(())
     }
 }

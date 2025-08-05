@@ -2,9 +2,8 @@ use aspartial::AsPartial;
 use serde::{Deserialize, Serialize};
 
 #[allow(non_camel_case_types)]
-#[derive(
-    Default, Serialize, Deserialize, Eq, PartialEq, Debug, Copy, Clone, strum::VariantArray, strum::VariantNames, strum::Display
-)]
+#[derive(Default, Serialize, Deserialize, Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(strum::EnumString, strum::VariantArray, strum::VariantNames, strum::Display)]
 pub enum LicenseId {
     #[serde(rename = "0BSD")]
     ZERO_BSD,

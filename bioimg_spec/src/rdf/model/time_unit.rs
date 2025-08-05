@@ -2,9 +2,8 @@ use serde::{Serialize, Deserialize};
 
 use aspartial::AsPartial;
 
-#[derive(
-    Default, Serialize, Deserialize, Eq, PartialEq, Debug, Copy, Clone, strum::VariantArray, strum::VariantNames, strum::Display
-)]
+#[derive(Default, Serialize, Deserialize, Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(strum::EnumString, strum::VariantArray, strum::VariantNames, strum::Display)]
 pub enum TimeUnit{
     #[serde(rename = "attosecond")]
     #[strum(to_string = "attosecond")]
