@@ -342,11 +342,15 @@ impl AnyAxisSizeWidgetRawData {
             staging_fixed_size = fixed.into();
         }
         if let Some(refer) = partial.reference {
-            mode = AxisSizeModeRawData::Reference;
+            if refer.qualified_axis_id.is_some(){
+                mode = AxisSizeModeRawData::Reference;
+            }
             staging_size_ref = AxisSizeReferenceWidgetRawData::from_partial(archive, refer);
         }
         if let Some(params) = partial.parameterized {
-            mode = AxisSizeModeRawData::Parameterized;
+            if params.step.is_some() || params.step.is_some(){
+                mode = AxisSizeModeRawData::Parameterized;
+            }
             staging_parameterized = ParameterizedAxisSizeWidgetRawData::from_partial(archive, params);
         }
         Self{
