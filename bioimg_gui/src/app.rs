@@ -430,7 +430,8 @@ impl AppState1{
         };
 
         let partial_model_rdf: PartialModelRdfV0_5 = ::serde_path_to_error::deserialize(&model_rdf_yaml)?;
-        let state = AppState1RawData::from_partial(&archive, partial_model_rdf); //FIXME: retrieve errors and notify
+        let mut warnings = String::with_capacity(16 * 1024);
+        let state = AppState1RawData::from_partial(&archive, partial_model_rdf, &mut warnings); //FIXME: retrieve errors and notify
         self.restore(state);
         Ok(())
     }

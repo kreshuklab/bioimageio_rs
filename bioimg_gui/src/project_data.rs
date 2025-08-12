@@ -95,14 +95,18 @@ pub enum TestTensorWidgetRawData{
 }
 
 impl TestTensorWidgetRawData {
-    pub fn from_partial(archive: &SharedZipArchive, partial: Partial<rdf::FileDescription>) -> Self {
+    pub fn from_partial<W: std::fmt::Write>(
+        archive: &SharedZipArchive,
+        partial: Partial<rdf::FileDescription>,
+        mut warnings: W
+    ) -> Self {
         let Some(source) = partial.source else {
             return Self::Empty
         };
         let data = match archive.read_full_entry(&source){
             Ok(bytes) => bytes,
             Err(e) => {
-                log::warn!("Could not read test tensor bytes at '{source}': {e}");
+                writeln!(warnings, "Could not read test tensor bytes at '{source}': {e}");
                 return Self::Empty;
             }
         };
@@ -119,7 +123,7 @@ pub enum LocalFileSourceWidgetRawData{
 }
 
 impl LocalFileSourceWidgetRawData{
-    pub fn from_partial(archive: &SharedZipArchive, raw_path: String) -> Self{
+    pub fn from_partial<W: std::fmt::Write>(archive: &SharedZipArchive, raw_path: String, warnings: &mut W) -> Self{
         let zip_entry_path = match archive.identifier(){
             rt::zip_archive_ext::ZipArchiveIdentifier::Path(path) => {
                 return Self::AboutToLoad { path: path.to_string_lossy().to_string(), inner_path: Some(raw_path) };
@@ -131,7 +135,7 @@ impl LocalFileSourceWidgetRawData{
                 Self::InMemoryData { name: Some(zip_entry_path.clone()), data: Arc::from(data.as_slice()) }
             },
             Err(e) => {
-                log::warn!("Could not load contents of {raw_path}/{zip_entry_path}: {e}");
+                writeln!(warnings, "Could not load contents of {raw_path}/{zip_entry_path}: {e}");
                 Self::Empty
             },
         }
@@ -151,17 +155,21 @@ impl Default for FileSourceWidgetRawData {
 }
 
 impl FileSourceWidgetRawData {
-    fn from_partial(archive: &SharedZipArchive, partial: String) -> Self{
+    fn from_partial<W: std::fmt::Write>(archive: &SharedZipArchive, partial: String, warnings: &mut W) -> Self{
         if let Ok(url) = rdf::HttpUrl::try_from(partial.clone()) { //FIXME: parse?
             return Self::Url(url.to_string())
         };
-        Self::Local(LocalFileSourceWidgetRawData::from_partial(archive, partial))
+        Self::Local(LocalFileSourceWidgetRawData::from_partial(archive, partial, warnings))
     }
-    pub fn from_partial_file_descr(archive: &SharedZipArchive, partial: PartialFileDescription) -> Self{
+    pub fn from_partial_file_descr(
+        archive: &SharedZipArchive,
+        partial: PartialFileDescription,
+        warnings: &mut impl std::fmt::Write,
+    ) -> Self {
         let Some(source) = partial.source else {
             return Default::default()
         };
-        Self::from_partial(archive, source)
+        Self::from_partial(archive, source, warnings)
     }
 }
 
@@ -194,8 +202,8 @@ pub struct ImageWidget2RawData{
 }
 
 impl ImageWidget2RawData {
-    pub fn from_partial(archive: &SharedZipArchive, partial: String) -> Self {
-        let file_source_state = FileSourceWidgetRawData::from_partial(archive, partial.clone());
+    pub fn from_partial(archive: &SharedZipArchive, partial: String, warnings: &mut impl std::fmt::Write) -> Self {
+        let file_source_state = FileSourceWidgetRawData::from_partial(archive, partial.clone(), warnings);
         Self{
             file_source_widget: file_source_state,
             // FIXME: double check this. I think it's not forced because that'd be smth like a cpy/paste
@@ -212,8 +220,12 @@ pub struct SpecialImageWidgetRawData{
 }
 
 impl SpecialImageWidgetRawData {
-    pub fn from_partial(archive: &SharedZipArchive, partial: String) -> Self {
-        Self { image_widget: ImageWidget2RawData::from_partial(archive, partial) }
+    pub fn from_partial(
+        archive: &SharedZipArchive,
+        partial: String,
+        warnings: &mut impl std::fmt::Write,
+    ) -> Self {
+        Self { image_widget: ImageWidget2RawData::from_partial(archive, partial, warnings) }
     }
 }
 
@@ -225,9 +237,13 @@ pub enum IconWidgetRawData{
 }
 
 impl IconWidgetRawData {
-    pub fn from_partial(archive: &SharedZipArchive, partial: <rdf::Icon as AsPartial>::Partial) -> Self {
+    pub fn from_partial(
+        archive: &SharedZipArchive,
+        partial: <rdf::Icon as AsPartial>::Partial,
+        warnings: &mut impl std::fmt::Write,
+    ) -> Self {
         if archive.has_entry(&partial) {
-            let img_data = SpecialImageWidgetRawData::from_partial(archive, partial);
+            let img_data = SpecialImageWidgetRawData::from_partial(archive, partial, warnings);
             return Self::Image(img_data);
         }
         Self::Emoji(partial)
@@ -450,7 +466,7 @@ pub struct InputSpaceAxisWidgetRawData {
 }
 
 impl InputSpaceAxisWidgetRawData {
-    pub fn from_partial(archive: &SharedZipArchive, partial: Partial<rdf::model::SpaceInputAxis>) -> Self{
+    pub fn from_partial<W: std::fmt::Write>(archive: &SharedZipArchive, partial: Partial<rdf::model::SpaceInputAxis>, warnings: &mut W) -> Self{
         Self{
             id_widget: partial.id.to_string(),
             description_widget: partial.description.to_string(),
@@ -466,7 +482,7 @@ impl InputSpaceAxisWidgetRawData {
                     let parsed_unit = match unit.parse::<modelrdf::SpaceUnit>() {
                         Ok(parsed_unit) => parsed_unit,
                         Err(e) => {
-                            log::warn!("Could not parse spacial unit '{unit}': {e}");
+                            writeln!(warnings, "Could not parse spacial unit '{unit}': {e}");
                             break 'unit None
                         },
                     };
@@ -525,7 +541,11 @@ pub struct InputAxisWidgetRawData {
 }
 
 impl InputAxisWidgetRawData {
-    pub fn from_partial(archive: &SharedZipArchive, partial: Partial<modelrdf::InputAxis>) -> Self {
+    pub fn from_partial(
+        archive: &SharedZipArchive,
+        partial: Partial<modelrdf::InputAxis>,
+        warnings: &mut impl std::fmt::Write,
+    ) -> Self {
         let mut axis_type_widget = modelrdf::axes::AxisType::Space;
         let batch_axis_widget = match partial.batch {
             Some(partial) => {
@@ -551,7 +571,7 @@ impl InputAxisWidgetRawData {
         let space_axis_widget = match partial.space{
             Some(partial) => {
                 axis_type_widget = modelrdf::axes::AxisType::Space;
-                InputSpaceAxisWidgetRawData::from_partial(archive, partial)
+                InputSpaceAxisWidgetRawData::from_partial(archive, partial, warnings)
             }
            None => Default::default(),
         };
@@ -583,9 +603,10 @@ impl WeightsDescrBaseWidgetRawData {
     pub fn from_partial(
         archive: &SharedZipArchive,
         partial: <rdf::model::WeightsDescrBase as AsPartial>::Partial,
+        warnings: &mut impl std::fmt::Write,
     ) -> Self{
         let source = partial.source
-            .map(|src| FileSourceWidgetRawData::from_partial(archive, src))
+            .map(|src| FileSourceWidgetRawData::from_partial(archive, src, warnings))
             .unwrap_or_default();
         let authors = partial.authors.map(|authors| {
             authors.into_iter()
@@ -606,8 +627,12 @@ pub struct TorchscriptWeightsWidgetRawData{
 }
 
 impl TorchscriptWeightsWidgetRawData {
-    pub fn from_partial(archive: &SharedZipArchive, partial: Partial<rdf::model::TorchscriptWeightsDescr>) -> Self {
-        let base = partial.base.map(|partial| WeightsDescrBaseWidgetRawData::from_partial(archive, partial)).unwrap_or_default();
+    pub fn from_partial(
+        archive: &SharedZipArchive,
+        partial: Partial<rdf::model::TorchscriptWeightsDescr>,
+        warnings: &mut impl std::fmt::Write,
+    ) -> Self {
+        let base = partial.base.map(|partial| WeightsDescrBaseWidgetRawData::from_partial(archive, partial, warnings)).unwrap_or_default();
         let version = partial.pytorch_version.map(|partial| VersionWidgetRawData::from_partial(archive, partial)).unwrap_or_default();
         Self{base_widget: base, pytorch_version_widget: version}
     }
@@ -674,6 +699,7 @@ impl PytorchArchWidgetRawData {
     pub fn from_partial(
         archive: &SharedZipArchive,
         partial: Partial<rdf::model::PytorchArchitectureDescr>,
+        warnings: &mut impl std::fmt::Write,
     ) -> Self{
         let mut mode_widget = PytorchArchModeRawData::FromFile;
         let mut callable = String::new();
@@ -694,7 +720,7 @@ impl PytorchArchWidgetRawData {
                     let Some(src) = fd.source else {
                         return Default::default();
                     };
-                    FileSourceWidgetRawData::from_partial(archive, src)
+                    FileSourceWidgetRawData::from_partial(archive, src, warnings)
                 })
                 .unwrap_or_default();
         }
@@ -737,12 +763,13 @@ impl PytorchStateDictWidgetRawData{
     pub fn from_partial(
         archive: &SharedZipArchive,
         partial: <rdf::model::PytorchStateDictWeightsDescr as AsPartial>::Partial,
+        warnings: &mut impl std::fmt::Write,
     ) -> Self{
         let base = partial.base
-            .map(|base| WeightsDescrBaseWidgetRawData::from_partial(archive, base))
+            .map(|base| WeightsDescrBaseWidgetRawData::from_partial(archive, base, warnings))
             .unwrap_or_default();
         let architecture = partial.architecture
-            .map(|arch| PytorchArchWidgetRawData::from_partial(archive, arch))
+            .map(|arch| PytorchArchWidgetRawData::from_partial(archive, arch, warnings))
             .unwrap_or_default();
         let version = partial.pytorch_version
             .map(|ver| VersionWidgetRawData::from_partial(archive, ver))
@@ -763,9 +790,10 @@ impl OnnxWeightsWidgetRawData{
     pub fn from_partial(
         archive: &SharedZipArchive,
         partial: <rdf::model::OnnxWeightsDescr as AsPartial>::Partial,
+        warnings: &mut impl std::fmt::Write,
     ) -> Self{
         let base = partial.base
-            .map(|base| WeightsDescrBaseWidgetRawData::from_partial(archive, base))
+            .map(|base| WeightsDescrBaseWidgetRawData::from_partial(archive, base, warnings))
             .unwrap_or_default();
         let version = partial.opset_version.unwrap_or_default();
         Self{base_widget: base, opset_version_widget: version}
@@ -782,9 +810,10 @@ impl KerasHdf5WeightsWidgetRawData {
     pub fn from_partial(
         archive: &SharedZipArchive,
         partial: <rdf::model::KerasHdf5WeightsDescr as AsPartial>::Partial,
+        warnings: &mut impl std::fmt::Write,
     ) -> Self{
         let base = partial.base
-            .map(|base| WeightsDescrBaseWidgetRawData::from_partial(archive, base))
+            .map(|base| WeightsDescrBaseWidgetRawData::from_partial(archive, base, warnings))
             .unwrap_or_default();
         let version = partial.tensorflow_version
             .map(|version| VersionWidgetRawData::from_partial(archive, version))
@@ -802,21 +831,25 @@ pub struct WeightsWidgetRawData{
 }
 
 impl WeightsWidgetRawData {
-    pub fn from_partial(archive: &SharedZipArchive, partial: Partial<rdf::model::WeightsDescr>) -> Self{
+    pub fn from_partial(
+        archive: &SharedZipArchive,
+        partial: Partial<rdf::model::WeightsDescr>,
+        warnings: &mut impl std::fmt::Write,
+    ) -> Self{
         let keras = partial.keras_hdf5.map(|partial| {
-            let weights = KerasHdf5WeightsWidgetRawData::from_partial(archive, partial);
+            let weights = KerasHdf5WeightsWidgetRawData::from_partial(archive, partial, warnings);
             CollapsibleWidgetRawData{is_closed: true, inner: weights}
         });
         let torchscript = partial.torchscript.map(|partial| {
-            let weights = TorchscriptWeightsWidgetRawData::from_partial(archive, partial);
+            let weights = TorchscriptWeightsWidgetRawData::from_partial(archive, partial, warnings);
             CollapsibleWidgetRawData{is_closed: true, inner: weights}
         });
         let pytorch_state_dict = partial.pytorch_state_dict.map(|partial|{
-            let weights = PytorchStateDictWidgetRawData::from_partial(archive, partial);
+            let weights = PytorchStateDictWidgetRawData::from_partial(archive, partial, warnings);
             CollapsibleWidgetRawData{is_closed: true, inner: weights}
         });
         let onnx = partial.onnx.map(|partial|{
-            let weights = OnnxWeightsWidgetRawData::from_partial(archive, partial);
+            let weights = OnnxWeightsWidgetRawData::from_partial(archive, partial, warnings);
             CollapsibleWidgetRawData{is_closed: true, inner: weights}
         });
         Self{
@@ -839,7 +872,11 @@ pub struct InputTensorWidgetRawData {
 }
 
 impl InputTensorWidgetRawData {
-    pub fn from_partial(archive: &SharedZipArchive, partial: Partial<modelrdf::InputTensorDescr>) -> Self {
+    pub fn from_partial(
+        archive: &SharedZipArchive,
+        partial: Partial<modelrdf::InputTensorDescr>,
+        warnings: &mut impl std::fmt::Write,
+    ) -> Self {
         let mut id_widget = String::new();
         let mut is_optional = false;
         let mut description_widget = String::new();
@@ -856,7 +893,7 @@ impl InputTensorWidgetRawData {
             }
             if let Some(axes) = meta.axes {
                 for partial_axis in axes{
-                    axis_widgets.push(InputAxisWidgetRawData::from_partial(archive, partial_axis));
+                    axis_widgets.push(InputAxisWidgetRawData::from_partial(archive, partial_axis, warnings));
                 }
             }
             if let Some(preprocs) = meta.preprocessing {
@@ -866,7 +903,7 @@ impl InputTensorWidgetRawData {
             }
         }
         let test_tensor_widget = partial.test_tensor
-            .map(|tt| TestTensorWidgetRawData::from_partial(archive, tt))
+            .map(|tt| TestTensorWidgetRawData::from_partial(archive, tt, warnings))
             .unwrap_or_default();
 
         Self{id_widget, is_optional, description_widget, axis_widgets, test_tensor_widget, preprocessing_widget}
@@ -1579,7 +1616,11 @@ pub struct OutputTensorWidgetRawData {
 }
 
 impl OutputTensorWidgetRawData {
-    pub fn from_partial(archive: &SharedZipArchive, partial: Partial<modelrdf::OutputTensorDescr>) -> Self {
+    pub fn from_partial<W: std::fmt::Write>(
+        archive: &SharedZipArchive,
+        partial: Partial<modelrdf::OutputTensorDescr>,
+        warnings: &mut W,
+    ) -> Self {
         let mut id_widget = String::new();
         let mut description_widget = String::new();
         let mut axis_widgets = Vec::<OutputAxisWidgetRawData>::new();
@@ -1607,7 +1648,7 @@ impl OutputTensorWidgetRawData {
             }
         }
         let test_tensor_widget = partial.test_tensor
-            .map(|tt| TestTensorWidgetRawData::from_partial(archive, tt))
+            .map(|tt| TestTensorWidgetRawData::from_partial(archive, tt, warnings))
             .unwrap_or_default();
 
         Self{id_widget, description_widget, axis_widgets, test_tensor_widget, postprocessing_widgets}
@@ -1626,15 +1667,19 @@ pub struct ModelInterfaceWidgetRawData {
 }
 
 impl ModelInterfaceWidgetRawData {
-    pub fn from_partial(
+    pub fn from_partial<W: std::fmt::Write>(
         archive: &SharedZipArchive,
         inputs: Vec<Partial<modelrdf::InputTensorDescr>>,
         outputs: Vec<Partial<modelrdf::OutputTensorDescr>>,
+        warnings: &mut W,
     ) -> Self {
         Self{
-            input_widgets: inputs.into_iter().map(|i| InputTensorWidgetRawData::from_partial(archive, i)).collect(),
-            output_widgets: outputs.into_iter().map(|o| OutputTensorWidgetRawData::from_partial(archive, o)).collect(),
-            
+            input_widgets: inputs.into_iter()
+                .map(|i| InputTensorWidgetRawData::from_partial(archive, i, warnings))
+                .collect(),
+            output_widgets: outputs.into_iter()
+                .map(|o| OutputTensorWidgetRawData::from_partial(archive, o, warnings))
+                .collect(),
         }
     }
 }
@@ -1713,12 +1758,16 @@ pub struct AppState1RawData{
 }
 
 impl AppState1RawData {
-    pub fn from_partial(archive: &SharedZipArchive, partial: Partial<modelrdf::ModelRdfV0_5>) -> Self{
+    pub fn from_partial(
+        archive: &SharedZipArchive,
+        partial: Partial<modelrdf::ModelRdfV0_5>,
+        warnings: &mut impl std::fmt::Write,
+    ) -> Self{
         Self{
             staging_name: partial.name.unwrap_or_default(),
             staging_description: partial.description.unwrap_or_default(),
             cover_images: partial.covers.into_iter()
-                .map(|ci| SpecialImageWidgetRawData::from_partial(archive, ci))
+                .map(|ci| SpecialImageWidgetRawData::from_partial(archive, ci, warnings))
                 .collect(),
             model_id_widget: partial.id,
             staging_authors: partial.authors
@@ -1728,7 +1777,7 @@ impl AppState1RawData {
                 .collect(),
             attachments_widget: partial.attachments
                 .into_iter()
-                .map(|partial_fd| FileSourceWidgetRawData::from_partial_file_descr(archive, partial_fd))
+                .map(|partial_fd| FileSourceWidgetRawData::from_partial_file_descr(archive, partial_fd, warnings))
                 .collect(),
             staging_citations: partial.cite
                 .unwrap_or_default()
@@ -1737,7 +1786,7 @@ impl AppState1RawData {
                 .collect(),
             custom_config_widget: Some(JsonObjectEditorWidgetRawData::from_partial(archive, partial.config)),
             staging_git_repo: partial.git_repo,
-            icon_widget: partial.icon.map(|partial| IconWidgetRawData::from_partial(archive, partial)),
+            icon_widget: partial.icon.map(|partial| IconWidgetRawData::from_partial(archive, partial, warnings)),
             links_widget: partial.links,
             staging_maintainers: partial.maintainers.into_iter()
                 .map(|partial| MaintainerWidgetRawData::from_partial(archive, partial))
@@ -1787,11 +1836,11 @@ impl AppState1RawData {
                 })
                 .unwrap_or(rdf::LicenseId::MIT),
             model_interface_widget: ModelInterfaceWidgetRawData::from_partial(
-                archive, partial.inputs.unwrap_or_default(), partial.outputs.unwrap_or_default()
+                archive, partial.inputs.unwrap_or_default(), partial.outputs.unwrap_or_default(), warnings
             ),
             // //badges
             weights_widget: partial.weights
-                .map(|w| WeightsWidgetRawData::from_partial(archive, w))
+                .map(|w| WeightsWidgetRawData::from_partial(archive, w, warnings))
                 .unwrap_or_default(),
         }
     }
