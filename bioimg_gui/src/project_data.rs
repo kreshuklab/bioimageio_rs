@@ -106,7 +106,7 @@ impl TestTensorWidgetRawData {
         let data = match archive.read_full_entry(&source){
             Ok(bytes) => bytes,
             Err(e) => {
-                writeln!(warnings, "Could not read test tensor bytes at '{source}': {e}");
+                _ = writeln!(warnings, "Could not read test tensor bytes at '{source}': {e}");
                 return Self::Empty;
             }
         };
@@ -135,7 +135,7 @@ impl LocalFileSourceWidgetRawData{
                 Self::InMemoryData { name: Some(zip_entry_path.clone()), data: Arc::from(data.as_slice()) }
             },
             Err(e) => {
-                writeln!(warnings, "Could not load contents of {raw_path}/{zip_entry_path}: {e}");
+                _ = writeln!(warnings, "Could not load contents of {raw_path}/{zip_entry_path}: {e}");
                 Self::Empty
             },
         }
@@ -482,7 +482,7 @@ impl InputSpaceAxisWidgetRawData {
                     let parsed_unit = match unit.parse::<modelrdf::SpaceUnit>() {
                         Ok(parsed_unit) => parsed_unit,
                         Err(e) => {
-                            writeln!(warnings, "Could not parse spacial unit '{unit}': {e}");
+                            _ = writeln!(warnings, "Could not parse spacial unit '{unit}': {e}");
                             break 'unit None
                         },
                     };

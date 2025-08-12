@@ -29,7 +29,7 @@ use crate::widgets::image_widget_2::SpecialImageWidget;
 use crate::widgets::json_editor_widget::JsonObjectEditorWidget;
 use crate::widgets::model_interface_widget::ModelInterfaceWidget;
 use crate::widgets::model_links_widget::ModelLinksWidget;
-use crate::widgets::notice_widget::NotificationsWidget;
+use crate::widgets::notice_widget::{Notification, NotificationsWidget};
 use crate::widgets::pipeline_widget::PipelineWidget;
 use crate::widgets::search_and_pick_widget::SearchAndPickWidget;
 use crate::widgets::staging_opt::StagingOpt;
@@ -410,7 +410,6 @@ impl AppState1{
     }
 
     fn load_partial_model(&mut self, archive: SharedZipArchive) -> Result<()>{
-        let mut errors = Vec::<String>::new();
         let model_rdf_yaml: serde_yaml::Value = 'model_rdf: {
             for file_name in ["rdf.yaml", "bioimageio.yaml"]{
                 let zip_res = archive.with_entry(file_name, |entry|{
@@ -433,6 +432,7 @@ impl AppState1{
         let mut warnings = String::with_capacity(16 * 1024);
         let state = AppState1RawData::from_partial(&archive, partial_model_rdf, &mut warnings); //FIXME: retrieve errors and notify
         self.restore(state);
+        self.notifications_widget.push(Notification::warning(warnings, None));
         Ok(())
     }
 }
@@ -464,7 +464,7 @@ impl eframe::App for AppState1 {
                         let model = match self.create_model(){
                             Ok(model) => model,
                             Err(err) => {
-                                self.notifications_widget.push_message(Err(err.to_string()));
+                                self.notifications_widget.push(Notification::error(err.to_string(), None));
                                 return;
                             }
                         };
@@ -486,11 +486,11 @@ impl eframe::App for AppState1 {
                         return;
                     }
                     match packing_task.join().unwrap(){
-                        Ok(nickname) => self.notifications_widget.push_message(
-                            Ok(format!("Model successfully uploaded: {nickname}"))
+                        Ok(nickname) => self.notifications_widget.push(
+                            Notification::info(format!("Model successfully uploaded: {nickname}"), None)
                         ),
-                        Err(upload_err) => self.notifications_widget.push_message(
-                            Err(format!("Could not upload model: {upload_err}"))
+                        Err(upload_err) => self.notifications_widget.push(
+                            Notification::error(format!("Could not upload model: {upload_err}"), None)
                         ),
                     };
                 })});
@@ -564,7 +564,7 @@ impl eframe::App for AppState1 {
                             break 'save_project;
                         };
                         let result = self.save_project(&path);
-                        self.notifications_widget.push_message(result);
+                        self.notifications_widget.push(result.into());
                     }}
                     #[cfg(not(target_arch="wasm32"))]
                     if ui.button("🗊⤴ Load Draft")
@@ -576,7 +576,7 @@ impl eframe::App for AppState1 {
                             break 'load_project;
                         };
                         if let Err(err) = self.load_project(&path){
-                            self.notifications_widget.push_message(Err(err));
+                            self.notifications_widget.push(Notification::error(err, None));
                         }
                     }}
                 });
@@ -591,7 +591,7 @@ impl eframe::App for AppState1 {
         egui::CentralPanel::default().show(ctx, |ui| {
             while let Ok(msg) = self.notifications_channel.receiver().try_recv(){
                 match msg{
-                    TaskResult::Notification(msg) => self.notifications_widget.push_message(msg),
+                    TaskResult::Notification(msg) => self.notifications_widget.push(msg.into()),
                     TaskResult::ModelImport(model) => self.set_value(*model),
                 }
             }
@@ -827,8 +827,8 @@ impl eframe::App for AppState1 {
                 if save_button_clicked {
                     match self.create_model(){
                         Ok(zoo_model) => self.launch_model_saving(zoo_model),
-                        Err(err) => self.notifications_widget.push_gui_error(
-                            GuiError::new(format!("Could not create zoo model: {err}"))
+                        Err(err) => self.notifications_widget.push(
+                            Notification::error(format!("Could not create zoo model: {err}"), None)
                         ),
                     }
                 }
@@ -873,7 +873,7 @@ impl eframe::App for AppState1 {
                             if result.is_ok(){
                                 self.exiting_status = ExitingStatus::Exiting;
                             }
-                            self.notifications_widget.push_message(result);
+                            self.notifications_widget.push(result.into());
                         }}
                         if ui.button("No 🗑").clicked() {
                             self.exiting_status = ExitingStatus::Exiting;
