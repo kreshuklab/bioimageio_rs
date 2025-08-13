@@ -3,6 +3,8 @@ use std::path::Path;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
+use serde_json::Value as JsVal;
+
 use bioimg_runtime::zip_archive_ext::SharedZipArchive;
 use bioimg_spec::rdf::model::model_rdf_0_5::PartialModelRdfV0_5;
 use bioimg_spec::rdf::model::ModelRdfName;
@@ -15,8 +17,9 @@ use bioimg_spec::rdf;
 use bioimg_spec::rdf::ResourceId;
 use bioimg_spec::rdf::bounded_string::BoundedString;
 use bioimg_spec::rdf::non_empty_list::NonEmptyList;
+use serde::Deserialize;
 
-use crate::project_data::{AppState1RawData, AppStateRawData, ProjectLoadError};
+use crate::project_data::{json_diff, AppState1RawData, AppStateRawData, ProjectLoadError};
 use crate::result::{GuiError, Result, VecResultExt};
 use crate::widgets::attachments_widget::AttachmentsWidget;
 
@@ -428,11 +431,26 @@ impl AppState1{
             return Err(GuiError::new("Could not find model spec file"))
         };
 
+        let raw_spec: JsVal = JsVal::deserialize(&model_rdf_yaml).unwrap();
         let partial_model_rdf: PartialModelRdfV0_5 = ::serde_path_to_error::deserialize(&model_rdf_yaml)?;
+        let partial_raw: JsVal = serde_json::to_value(&partial_model_rdf).unwrap();
+
+        
         let mut warnings = String::with_capacity(16 * 1024);
         let state = AppState1RawData::from_partial(&archive, partial_model_rdf, &mut warnings); //FIXME: retrieve errors and notify
+
         self.restore(state);
         self.notifications_widget.push(Notification::warning(warnings, None));
+
+        
+        if let Some(diff) = json_diff(raw_spec, partial_raw) {
+            println!("FOUND SOME EXTRA STUFF ON THE RAW FILE!!!!!");
+            self.notifications_widget.push(Notification::warning(
+                serde_json::to_string_pretty(&diff).unwrap(),
+                None
+            ));
+        }
+        
         Ok(())
     }
 }

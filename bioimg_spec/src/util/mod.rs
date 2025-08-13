@@ -20,7 +20,7 @@ impl<T: AsPartial> AsPartial for SingleOrMultiple<T> {
     }
 }
 
-#[derive(Deserialize, Debug, PartialEq, Clone)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 #[serde(untagged)]
 pub enum PartialSingleOrMultiple<T: AsPartial> {
     Single(T::Partial),

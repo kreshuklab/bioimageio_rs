@@ -44,7 +44,7 @@ impl Version{
     }
 }
 
-#[derive(serde::Deserialize)]
+#[derive(serde::Deserialize, serde::Serialize)]
 #[serde(untagged)]
 pub enum VersionMsg{
     Text(String),

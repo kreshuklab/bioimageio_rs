@@ -515,3 +515,15 @@ where
         });
     });
 }
+
+
+/// Produces a json value that is the structural equivalent of a - b
+pub fn json_structural_minus(a: serde_json::Value, b: serde_json::Value) -> serde_json::Value {
+    use serde_json::Value as JsonVal;
+    match (a, b) {
+        (JsonVal::Object(obj_a), JsonVal::Object(obj_b)) => {
+            panic!()
+        },
+        _ => panic!("asd")
+    }
+}
