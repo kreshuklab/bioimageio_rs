@@ -427,9 +427,14 @@ impl AppState1{
 
         let mut warnings = String::with_capacity(16 * 1024);
         let state = AppState1RawData::from_partial(&archive, partial_model_rdf, &mut warnings); //FIXME: retrieve errors and notify
+        warnings += indoc!("
+            PLEASE BE AWARE THAT RECOVERING AND THEN RE-EXPORTING A MODEL MIGHT PRODUCE A NEW, VALID MODEL THAT DOES NOT
+            BEHAVE LIKE THE ORIGINAL\n"
+        );
 
         self.restore(state);
         self.notifications_widget.push(Notification::warning(warnings, None));
+
         Ok(())
     }
 }
