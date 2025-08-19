@@ -130,12 +130,13 @@ impl LocalFileSourceWidgetRawData{
             },
             rt::zip_archive_ext::ZipArchiveIdentifier::Name(name) => name,
         };
-        match archive.read_full_entry(&zip_entry_path) {
+        println!("Gonna aread full entry for {raw_path}");
+        match archive.read_full_entry(&raw_path) {
             Ok(data) => {
                 Self::InMemoryData { name: Some(zip_entry_path.clone()), data: Arc::from(data.as_slice()) }
             },
             Err(e) => {
-                _ = writeln!(warnings, "Could not load contents of {raw_path}/{zip_entry_path}: {e}");
+                _ = writeln!(warnings, "Could not load contents of {zip_entry_path}/{raw_path}: {e}");
                 Self::Empty
             },
         }
