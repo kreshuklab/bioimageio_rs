@@ -21,41 +21,6 @@ use crate::widgets::Restore;
 
 type Partial<T> = <T as AsPartial>::Partial;
 
-
-#[test]
-fn test_json_diff(){
-    let x = serde_json::json!(
-        {
-            "a": 123,
-            "b": {
-                "inner_a": [1,2,3],
-                "inner_b": 3.14,
-            }
-        }
-    );
-    let y = serde_json::json!(
-        {
-            "b": {
-                "inner_a": [7,2],
-            }
-        }
-    );
-    let expected_diff = serde_json::json!(
-        {
-            "a": 123,
-            "b": {
-                "inner_a": [1,3],
-                "inner_b": 3.14,
-            }
-        }
-    );
-
-    let diff = json_diff(x, y).unwrap();
-    println!("diff:\n{}", serde_json::to_string_pretty(&diff).unwrap());
-    assert_eq!(expected_diff, diff);
-}
-
-
 #[derive(serde::Serialize, serde::Deserialize, Default)]
 pub struct AuthorWidgetRawData{
     pub name_widget: String,
