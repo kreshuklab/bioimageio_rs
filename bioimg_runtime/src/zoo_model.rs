@@ -17,7 +17,6 @@ use bioimg_spec::rdf::file_reference::FsPathComponent;
 use bioimg_spec::rdf::author::Author2;
 use bioimg_spec::rdf::model as  modelrdf;
 use image::ImageError;
-use serde::Deserialize;
 
 use crate::{FileSource, Icon, ModelInterface, NpyArray, TensorValidationError};
 use crate::zip_archive_ext::{SharedZipArchive, ZipArchiveOpenError};
