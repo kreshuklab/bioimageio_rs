@@ -26,6 +26,8 @@ url = "2.5.2"
 uuid = "1.10.0"
 http = "1.1.0"
 sha2 = "0.10.9"
+aspartial = { version="0.0.4", features = ["iso8601"] }
+unic = "0.9.0"
 
 
 # FIXME: this is from the egui example app

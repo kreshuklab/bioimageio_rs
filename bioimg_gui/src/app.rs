@@ -3,6 +3,8 @@ use std::path::Path;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
+use bioimg_runtime::zip_archive_ext::SharedZipArchive;
+use bioimg_spec::rdf::model::model_rdf_0_5::PartialModelRdfV0_5;
 use bioimg_spec::rdf::model::ModelRdfName;
 use bioimg_zoo::collection::ZooNickname;
 use indoc::indoc;
@@ -14,20 +16,19 @@ use bioimg_spec::rdf::ResourceId;
 use bioimg_spec::rdf::bounded_string::BoundedString;
 use bioimg_spec::rdf::non_empty_list::NonEmptyList;
 
-use crate::project_data::{AppStateRawData, ProjectLoadError};
+use crate::project_data::{AppState1RawData, AppStateRawData, ProjectLoadError};
 use crate::result::{GuiError, Result, VecResultExt};
 use crate::widgets::attachments_widget::AttachmentsWidget;
 
 use crate::widgets::code_editor_widget::MarkdwownLang;
 use crate::widgets::collapsible_widget::SummarizableWidget;
 use crate::widgets::cover_image_widget::CoverImageItemConf;
-// use crate::widgets::cover_image_widget::CoverImageWidget;
 use crate::widgets::icon_widget::IconWidgetValue;
 use crate::widgets::image_widget_2::SpecialImageWidget;
 use crate::widgets::json_editor_widget::JsonObjectEditorWidget;
 use crate::widgets::model_interface_widget::ModelInterfaceWidget;
 use crate::widgets::model_links_widget::ModelLinksWidget;
-use crate::widgets::notice_widget::NotificationsWidget;
+use crate::widgets::notice_widget::{Notification, NotificationsWidget};
 use crate::widgets::pipeline_widget::PipelineWidget;
 use crate::widgets::search_and_pick_widget::SearchAndPickWidget;
 use crate::widgets::staging_opt::StagingOpt;
@@ -59,6 +60,14 @@ impl TaskResult{
     pub fn err_message(msg: impl Into<String>) -> Self{
         Self::Notification(Err(msg.into()))
     }
+}
+
+#[derive(Default, Copy, Clone)]
+enum ExitingStatus{
+    #[default]
+    NotExiting,
+    Confirming,
+    Exiting,
 }
 
 #[derive(Restore)]
@@ -103,9 +112,7 @@ pub struct AppState1 {
     #[restore_default]
     pub notifications_channel: TaskChannel<TaskResult>,
     #[restore_default]
-    close_confirmed: bool,
-    #[restore_default]
-    show_confirmation_dialog: bool,
+    exiting_status: ExitingStatus,
 }
 
 impl ValueWidget for AppState1{
@@ -193,8 +200,7 @@ impl Default for AppState1 {
             zoo_model_creation_task: Default::default(),
             pipeline_widget: Default::default(),
 
-            close_confirmed: false,
-            show_confirmation_dialog: false,
+            exiting_status: Default::default(),
         }
     }
 }
@@ -401,6 +407,31 @@ impl AppState1{
         #[cfg(not(target_arch="wasm32"))]
         std::thread::spawn(move || smol::block_on(fut));
     }
+
+    fn load_partial_model(&mut self, archive: SharedZipArchive) -> Result<()>{
+        let model_rdf_bytes: Vec<u8> = 'model_rdf: {
+            for file_name in ["rdf.yaml", "bioimageio.yaml"]{
+                match archive.read_full_entry(file_name) {
+                    Ok(bytes) => break 'model_rdf bytes,
+                    Err(zip_err) => match zip_err{
+                        zip::result::ZipError::FileNotFound => continue,
+                        err => return Err(GuiError::new(format!("Could not read rdf file: {err}")))
+                    }
+                };
+            }
+            return Err(GuiError::new("Could not find rdf file inside archive"))
+        };
+
+        let yaml_deserializer = serde_yaml::Deserializer::from_slice(&model_rdf_bytes);
+        let partial_model_rdf: PartialModelRdfV0_5 = ::serde_path_to_error::deserialize(yaml_deserializer)?;
+
+        let mut warnings = String::with_capacity(16 * 1024);
+        let state = AppState1RawData::from_partial(&archive, partial_model_rdf, &mut warnings); //FIXME: retrieve errors and notify
+
+        self.restore(state);
+        self.notifications_widget.push(Notification::warning(warnings, None));
+        Ok(())
+    }
 }
 
 
@@ -430,7 +461,7 @@ impl eframe::App for AppState1 {
                         let model = match self.create_model(){
                             Ok(model) => model,
                             Err(err) => {
-                                self.notifications_widget.push_message(Err(err.to_string()));
+                                self.notifications_widget.push(Notification::error(err.to_string(), None));
                                 return;
                             }
                         };
@@ -452,11 +483,11 @@ impl eframe::App for AppState1 {
                         return;
                     }
                     match packing_task.join().unwrap(){
-                        Ok(nickname) => self.notifications_widget.push_message(
-                            Ok(format!("Model successfully uploaded: {nickname}"))
+                        Ok(nickname) => self.notifications_widget.push(
+                            Notification::info(format!("Model successfully uploaded: {nickname}"), None)
                         ),
-                        Err(upload_err) => self.notifications_widget.push_message(
-                            Err(format!("Could not upload model: {upload_err}"))
+                        Err(upload_err) => self.notifications_widget.push(
+                            Notification::error(format!("Could not upload model: {upload_err}"), None)
                         ),
                     };
                 })});
@@ -493,6 +524,35 @@ impl eframe::App for AppState1 {
                             sender.send(message).unwrap();
                         }
                     }
+                    if ui.button("♻📦⤴ Recover Model")
+                        .on_hover_text(
+                            "Import data from a model .zip archive that is potentially broken or incompatible with this application"
+                        )
+                        .clicked()
+                    { 'recover_model: {
+                        ui.close_menu();
+                        let sender = self.notifications_channel.sender().clone();
+
+                        let Some(model_path) = rfd::FileDialog::new().add_filter("bioimage model", &["zip"],).pick_file() else {
+                            break 'recover_model;
+                        };
+                        let model_path_str = model_path.to_string_lossy();
+                        let archive = match SharedZipArchive::open(&model_path){
+                            Ok(archive) => archive,
+                            Err(e) => {
+                                _ = sender.send(TaskResult::err_message(format!("Could not load archive at {model_path_str}: {e}")));
+                                break 'recover_model;
+                            }
+                        };
+                        _ = match self.load_partial_model(archive){
+                            Ok(_) => sender.send(TaskResult::ok_message(format!(
+                                "Recovered model {model_path_str}"
+                            ))),
+                            Err(e) => sender.send(TaskResult::err_message(format!(
+                                "Could not recover model at {model_path_str}: {e}"
+                            )))
+                        };
+                    } }
                     #[cfg(not(target_arch="wasm32"))]
                     if ui.button("🗊⤵ Save Draft ")
                         .on_hover_text("Save your current work as-is, even with unresolved errors")
@@ -503,7 +563,7 @@ impl eframe::App for AppState1 {
                             break 'save_project;
                         };
                         let result = self.save_project(&path);
-                        self.notifications_widget.push_message(result);
+                        self.notifications_widget.push(result.into());
                     }}
                     #[cfg(not(target_arch="wasm32"))]
                     if ui.button("🗊⤴ Load Draft")
@@ -515,7 +575,7 @@ impl eframe::App for AppState1 {
                             break 'load_project;
                         };
                         if let Err(err) = self.load_project(&path){
-                            self.notifications_widget.push_message(Err(err));
+                            self.notifications_widget.push(Notification::error(err, None));
                         }
                     }}
                 });
@@ -530,7 +590,7 @@ impl eframe::App for AppState1 {
         egui::CentralPanel::default().show(ctx, |ui| {
             while let Ok(msg) = self.notifications_channel.receiver().try_recv(){
                 match msg{
-                    TaskResult::Notification(msg) => self.notifications_widget.push_message(msg),
+                    TaskResult::Notification(msg) => self.notifications_widget.push(msg.into()),
                     TaskResult::ModelImport(model) => self.set_value(*model),
                 }
             }
@@ -766,50 +826,59 @@ impl eframe::App for AppState1 {
                 if save_button_clicked {
                     match self.create_model(){
                         Ok(zoo_model) => self.launch_model_saving(zoo_model),
-                        Err(err) => self.notifications_widget.push_gui_error(
-                            GuiError::new(format!("Could not create zoo model: {err}"))
+                        Err(err) => self.notifications_widget.push(
+                            Notification::error(format!("Could not create zoo model: {err}"), None)
                         ),
                     }
                 }
             });
         });
 
-        if ctx.input(|i| i.viewport().close_requested()) {
-            if self.close_confirmed {
-                // do nothing - we will close
-            } else {
-                ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
-                self.show_confirmation_dialog = true;
-            }
-        }
+        let close_requested = ctx.input(|i| i.viewport().close_requested());
+        self.exiting_status = match self.exiting_status {
+            ExitingStatus::NotExiting => {
+                if close_requested {
+                    ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+                    ExitingStatus::Confirming
+                } else {
+                    ExitingStatus::NotExiting
+                }
+            },
+            ExitingStatus::Confirming => {
+                if close_requested {
+                    ExitingStatus::Exiting
+                } else {
+                    ExitingStatus::Confirming
+                }
+            },
+            ExitingStatus::Exiting => {
+                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                ExitingStatus::Exiting
+            },
+        };
 
         #[cfg(not(target_arch="wasm32"))]
-        if self.show_confirmation_dialog {
+        if matches!(self.exiting_status, ExitingStatus::Confirming) {
             egui::Modal::new(egui::Id::from("confirmation dialog"))
                 .show(ctx, |ui| {
                     ui.label("Save draft before quitting?");
                     ui.horizontal(|ui| {
                         if ui.button("Yes 💾").clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter)){ 'save_draft: {
-                            self.show_confirmation_dialog = false;
                             let Some(path) = rfd::FileDialog::new().set_file_name("MyDraft.bmb").save_file() else {
+                                self.exiting_status = ExitingStatus::NotExiting;
                                 break 'save_draft;
                             };
                             let result = self.save_project(&path);
                             if result.is_ok(){
-                                self.show_confirmation_dialog = false;
-                                self.close_confirmed = true;
-                                ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                                self.exiting_status = ExitingStatus::Exiting;
                             }
-                            self.notifications_widget.push_message(result);
+                            self.notifications_widget.push(result.into());
                         }}
                         if ui.button("No 🗑").clicked() {
-                            self.show_confirmation_dialog = false;
-                            self.close_confirmed = true;
-                            ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                            self.exiting_status = ExitingStatus::Exiting;
                         }
                         if ui.button("Cancel 🗙").clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-                            self.show_confirmation_dialog = false;
-                            self.close_confirmed = false;
+                            self.exiting_status = ExitingStatus::NotExiting;
                         }
                     });
                 });

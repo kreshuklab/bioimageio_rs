@@ -9,6 +9,8 @@ pub mod ensure_dtype;
 use std::fmt::Display;
 use std::str::FromStr;
 
+use ::aspartial::AsPartial;
+
 pub use self::scale_linear::{ScaleLinearDescr, SimpleScaleLinearDescr, ScaleLinearAlongAxisDescr};
 pub use self::binarize::{BinarizeDescr, SimpleBinarizeDescr, BinarizeAlongAxisDescr};
 pub use self::clip::ClipDescr;
@@ -50,14 +52,10 @@ pub enum PreprocessingEpsilonParsingError{
     OutOfRange(f32)
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Copy, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Copy, Debug, AsPartial)]
+#[derive(derive_more::Display, derive_more::Into)]
+#[aspartial(newtype)]
 pub struct PreprocessingEpsilon(f32);
-
-impl Display for PreprocessingEpsilon{
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
 
 impl Default for PreprocessingEpsilon{
     fn default() -> Self {
@@ -76,13 +74,6 @@ impl TryFrom<f32> for PreprocessingEpsilon{
     }
 }
 
-impl From<PreprocessingEpsilon> for f32{
-    fn from(value: PreprocessingEpsilon) -> Self {
-        value.0
-    }
-}
-
-
 impl FromStr for PreprocessingEpsilon{
     type Err = PreprocessingEpsilonParsingError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -91,7 +82,8 @@ impl FromStr for PreprocessingEpsilon{
 }
 // //////////////////
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialPreprocessingDescr)]
 #[serde(tag = "id", content = "kwargs")]
 pub enum PreprocessingDescr {
     #[serde(rename = "binarize")]

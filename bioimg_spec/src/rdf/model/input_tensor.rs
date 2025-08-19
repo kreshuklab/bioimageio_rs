@@ -1,9 +1,9 @@
 use std::borrow::Borrow;
 
+use aspartial::AsPartial;
 use serde::{Deserialize, Serialize};
 
 use crate::rdf::FileDescription;
-
 use super::{axes::input_axes::InputAxisGroup, preprocessing::{BinarizeDescr, PreprocessingDescr, ScaleLinearDescr, ScaleRangeDescr, Zmuv}, AxisId, TensorId, TensorTextDescription};
 
 #[derive(thiserror::Error, Debug)]
@@ -13,7 +13,8 @@ pub enum InputTensorParsingError{
 }
 
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialInputTensorDescr)]
 pub struct InputTensorDescr {
     #[serde(flatten)]
     pub meta: InputTensorMetadata,
@@ -21,8 +22,15 @@ pub struct InputTensorDescr {
     pub sample_tensor: Option<FileDescription>,
 }
 
+// pub struct PartialInputTensorDescr {
+//     pub meta: InputTensorMetadata,
+//     pub test_tensor: FileDescription,
+//     pub sample_tensor: Option<FileDescription>,
+// }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialInputTensorMetadata )]
 #[serde(into = "InputTensorMetadataMsg")]
 #[serde(try_from = "InputTensorMetadataMsg")]
 pub struct InputTensorMetadata {

@@ -1,5 +1,6 @@
 use std::borrow::Borrow;
 
+use aspartial::AsPartial;
 use serde::{Deserialize, Serialize};
 
 use crate::rdf::{model::{postprocessing::ScaleMeanVarianceDescr, preprocessing::{BinarizeDescr, ScaleLinearDescr, ScaleRangeDescr, Zmuv}, AxisId}, FileDescription};
@@ -14,7 +15,8 @@ pub enum OutputTensorParsingError{
     SelfReference{tensor_id: TensorId}
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialOutputTensorDescr )]
 pub struct OutputTensorDescr {
     #[serde(flatten)]
     pub metadata: OutputTensorMetadata,
@@ -28,7 +30,8 @@ fn _default_to_output() -> TensorId{
     TensorId::try_from("output").unwrap()
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialOutputTensorMetadata)]
 #[serde(try_from = "OutputTensorMetadataMsg")]
 #[serde(into = "OutputTensorMetadataMsg")]
 pub struct OutputTensorMetadata{

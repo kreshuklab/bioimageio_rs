@@ -1,10 +1,12 @@
 use std::fmt::Display;
 
-use crate::{rdf::{model::axes::NonBatchAxisId, non_empty_list::NonEmptyList}, util::SingleOrMultiple};
+use ::aspartial::AsPartial;
 
+use crate::{rdf::{model::axes::NonBatchAxisId, non_empty_list::NonEmptyList}, util::SingleOrMultiple};
 use super::{_default_to_1, _default_to_single_1, _default_to_single_0};
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
+#[aspartial(name = PartialScaleLinearDescr)]
 #[serde(untagged)]
 pub enum ScaleLinearDescr{
     AlongAxis(ScaleLinearAlongAxisDescr),
@@ -20,7 +22,8 @@ impl Display for ScaleLinearDescr{
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
+#[aspartial(name = PartialSimpleScaleLinearDescr)]
 pub struct SimpleScaleLinearDescr{
     /// multiplicative factor
     #[serde(default = "_default_to_1")]
@@ -46,6 +49,13 @@ pub struct ScaleLinearAlongAxisDescr{
     pub gain_offsets: NonEmptyList<(f32, f32)>,
 }
 
+impl AsPartial for ScaleLinearAlongAxisDescr {
+    type Partial = PartialScaleLinearAlongAxisDescrMessage;
+    fn to_partial(self) -> Self::Partial {
+        ScaleLinearAlongAxisDescrMessage::from(self).to_partial()
+    }
+}
+
 impl Display for ScaleLinearAlongAxisDescr{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "Scale Linear along {}", self.axis)
@@ -58,7 +68,8 @@ pub enum ScaleLinearDescrParsingError{
     MismatchedGainsAndOffsets{num_gains: usize, num_offsets: usize},
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
+#[aspartial(name = PartialScaleLinearAlongAxisDescrMessage)]
 pub struct ScaleLinearAlongAxisDescrMessage{
     /// The axis of of gains/offsets values
     pub axis: NonBatchAxisId,

@@ -1,7 +1,8 @@
 use std::{fmt::Display, str::FromStr};
 
-use crate::rdf::{model::{axes::NonBatchAxisId, AxisId}, non_empty_list::NonEmptyList};
+use aspartial::AsPartial;
 
+use crate::rdf::{model::{axes::NonBatchAxisId, AxisId}, non_empty_list::NonEmptyList};
 use super::PreprocessingEpsilon;
 
 #[derive(thiserror::Error, Debug, Clone)]
@@ -16,10 +17,12 @@ pub enum ZmuvParsingError{
     EmptyList,
 }
 
-#[derive(Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize, Debug)]
+#[derive(Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize, Debug, AsPartial)]
+#[aspartial(newtype)]
 pub struct ZmuvStdDeviation(f32);
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialZmuv)]
 pub struct Zmuv {
     /// The subset of axes to normalize jointly, i.e. axes to reduce to compute mean/std.
     /// For example to normalize 'batch', 'x' and 'y' jointly in a tensor ('batch', 'channel', 'y', 'x')
@@ -43,7 +46,8 @@ impl Display for Zmuv{
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
+#[aspartial(name = PartialFixedZmuv)]
 #[serde(untagged)]
 pub enum FixedZmuv{
     Simple(SimpleFixedZmuv),
@@ -90,7 +94,8 @@ impl From<ZmuvStdDeviation> for f32{
 
 ///Normalize with fixed, precomputed values for mean and variance.
 ///See `zero_mean_unit_variance` for data dependent normalization.
-#[derive(Clone, serde::Serialize, serde::Deserialize, Debug)]
+#[derive(Clone, serde::Serialize, serde::Deserialize, Debug, AsPartial)]
+#[aspartial(name = PartialSimpleFixedZmuv)]
 pub struct SimpleFixedZmuv{
     ///The mean value to normalize with.
     pub mean: f32,
@@ -113,6 +118,13 @@ impl Display for SimpleFixedZmuv{
 pub struct FixedZmuvAlongAxis{
     pub mean_and_std: NonEmptyList<SimpleFixedZmuv>,
     pub axis: NonBatchAxisId,
+}
+
+impl AsPartial for FixedZmuvAlongAxis{
+    type Partial = PartialFixedZmuvAlongAxisMsg;
+    fn to_partial(self) -> Self::Partial {
+        FixedZmuvAlongAxisMsg::from(self).to_partial()
+    }
 }
 
 impl Display for FixedZmuvAlongAxis{
@@ -149,8 +161,9 @@ impl From<FixedZmuvAlongAxis> for FixedZmuvAlongAxisMsg{
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone)]
-struct FixedZmuvAlongAxisMsg{
+#[derive(serde::Serialize, serde::Deserialize, Clone, AsPartial)]
+#[aspartial(name = PartialFixedZmuvAlongAxisMsg)]
+pub struct FixedZmuvAlongAxisMsg{
     /// The mean value(s) to normalize with.
     mean: NonEmptyList<f32>,
     /// The standard deviation value(s) to normalize with.

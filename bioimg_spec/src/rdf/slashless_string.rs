@@ -1,7 +1,16 @@
 use std::{borrow::Borrow, error::Error, fmt::Display, str::FromStr};
 
+use aspartial::AsPartial;
+
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct SlashlessString<T>(T);
+
+impl<T: Borrow<str>> AsPartial for SlashlessString<T>{
+    type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        self.0.borrow().to_owned()
+    }
+}
 
 impl<T: Display> Display for SlashlessString<T>{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

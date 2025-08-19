@@ -1,9 +1,9 @@
 use std::fmt::Display;
 
+use aspartial::AsPartial;
 use serde::{Deserialize, Serialize};
 
 use crate::rdf::BoundedString;
-
 use super::HttpUrl;
 
 #[derive(thiserror::Error, Debug)]
@@ -12,7 +12,8 @@ pub enum CiteEntryParsingError{
     MustHaveDoiOrUrl,
 }
 
-#[derive(PartialEq, Eq, Debug, Serialize, Deserialize)]
+#[derive(PartialEq, Eq, Debug, Serialize, Deserialize, AsPartial)]
+#[aspartial(name = PartialCiteEntry)]
 pub struct CiteEntry {
     pub text: BoundedString<1, 1024>, //(String) free text description
     pub doi: BoundedString<1, 1024>, // FIXME: make it stricter (DOI→String) digital object identifier, see https://www.doi.org/ (alternatively specify url)
@@ -28,6 +29,13 @@ pub struct CiteEntry2 {
     url: Option<HttpUrl>,
 }
 
+impl AsPartial for CiteEntry2 {
+    type Partial = PartialCiteEntry2Msg;
+    fn to_partial(self) -> Self::Partial {
+        CiteEntry2Msg::from(self).to_partial()
+    }
+}
+
 impl CiteEntry2{
     pub fn doi(&self) -> Option<&BoundedString<1, 1024>>{
         self.doi.as_ref()
@@ -37,7 +45,8 @@ impl CiteEntry2{
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(serde::Serialize, serde::Deserialize, AsPartial)]
+#[aspartial(name = PartialCiteEntry2Msg)]
 pub struct CiteEntry2Msg{
     pub text: BoundedString<1, 1024>,        //(String) free text description
     #[serde(default)]

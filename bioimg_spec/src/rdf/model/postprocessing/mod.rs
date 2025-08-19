@@ -1,11 +1,16 @@
 use std::fmt::Display;
 
 use crate::rdf::NonEmptyList;
+use aspartial::AsPartial;
 
-use super::{preprocessing::{BinarizeDescr, ClipDescr, EnsureDtype, FixedZmuv, PreprocessingEpsilon, ScaleLinearDescr, ScaleRangeDescr, Sigmoid, Zmuv}, AxisId, TensorId};
+use super::{AxisId, TensorId};
+use super::preprocessing::{BinarizeDescr, ClipDescr, EnsureDtype, FixedZmuv, PreprocessingEpsilon, ScaleLinearDescr, ScaleRangeDescr, Sigmoid, Zmuv};
 
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+// Note: be careful when editing this, as the partial version has to match
+// precisely
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialPostprocessingDescr )]
 #[serde(tag = "id", content = "kwargs")]
 pub enum PostprocessingDescr {
     #[serde(rename = "binarize")]
@@ -45,7 +50,8 @@ impl Display for PostprocessingDescr{
 }
 /// Scale a tensor's data distribution to match another tensor's mean/std.
 /// `out  = (tensor - mean) / (std + eps) * (ref_std + eps) + ref_mean.`
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialScaleMeanVarianceDescr)]
 pub struct ScaleMeanVarianceDescr{
     /// Name of tensor to match.
     pub reference_tensor: TensorId,

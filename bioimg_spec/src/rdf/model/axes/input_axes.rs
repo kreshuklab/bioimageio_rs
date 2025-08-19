@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
+use ::aspartial::AsPartial;
 
 use crate::rdf::model::{AnyAxisSize, SpaceUnit, TimeUnit};
 
@@ -9,7 +10,8 @@ use super::{
     _default_space_axis_id, _default_time_axis_id, impl_axis_group
 };
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialTimeInputAxis)]
 pub struct TimeInputAxis {
     #[serde(default = "_default_time_axis_id")]
     pub id: AxisId,
@@ -28,7 +30,8 @@ impl Display for TimeInputAxis{
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialSpaceInputAxis)]
 pub struct SpaceInputAxis {
     #[serde(default = "_default_space_axis_id")]
     pub id: AxisId,
@@ -47,7 +50,8 @@ impl Display for SpaceInputAxis{
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialInputAxis)]
 #[serde(tag = "type")]
 pub enum InputAxis {
     #[serde(rename = "batch")]
@@ -135,5 +139,12 @@ impl InputAxis{
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 #[serde(try_from = "Vec::<InputAxis>")]
 pub struct InputAxisGroup(Vec<InputAxis>);
+
+impl AsPartial for InputAxisGroup {
+    type Partial = Vec<<InputAxis as AsPartial>::Partial>;
+    fn to_partial(self) -> Self::Partial {
+        self.0.to_partial()
+    }
+}
 
 impl_axis_group!(Input);

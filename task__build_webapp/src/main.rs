@@ -19,13 +19,15 @@ fn main() {
         dir
     };
 
-    let a = std::process::Command::new("trunk")
+    let trunk_execution = std::process::Command::new("trunk")
         .current_dir(&bioimg_gui_dir)
         .arg("build")
         .arg("--release=true")
         .arg("--public-url=https://kreshuklab.github.io/bioimageio_rs/")
         .arg(format!("--dist={}", docs_dir.to_string_lossy()))
         .output().expect("Expected trunk to run");
+
+    assert!(trunk_execution.status.success());
 
     //de-ignore the docs dir so that it can be committed to the gh-pages branch
     std::fs::write(&docs_gitignore, "!*").unwrap();

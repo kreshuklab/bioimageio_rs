@@ -1,8 +1,9 @@
 use serde::{Serialize, Deserialize};
 
-#[derive(
-    Default, Serialize, Deserialize, Eq, PartialEq, Debug, Copy, Clone, strum::VariantArray, strum::VariantNames, strum::Display
-)]
+use aspartial::AsPartial;
+
+#[derive(Default, Serialize, Deserialize, Eq, PartialEq, Debug, Copy, Clone)]
+#[derive(strum::EnumString, strum::VariantArray, strum::VariantNames, strum::Display)]
 pub enum TimeUnit{
     #[serde(rename = "attosecond")]
     #[strum(to_string = "attosecond")]
@@ -74,4 +75,11 @@ pub enum TimeUnit{
     #[serde(rename = "zettasecond")]
     #[strum(to_string = "zettasecond")]
     Zettasecond,
+}
+
+impl AsPartial for TimeUnit {
+    type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        self.to_string()
+    }
 }

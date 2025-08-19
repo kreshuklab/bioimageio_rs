@@ -1,6 +1,7 @@
 use std::{borrow::Borrow, error::Error, fmt::Display, ops::Deref, str::FromStr};
-
 use serde::{Deserialize, Serialize};
+
+use aspartial::AsPartial;
 
 #[derive(thiserror::Error, Debug)]
 pub enum LowercaseParsingError {
@@ -10,7 +11,8 @@ pub enum LowercaseParsingError {
     IsNotLowercase { value: String, idx: usize },
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, Clone, Hash, PartialEq, Eq, PartialOrd, Ord, AsPartial)]
+#[aspartial(newtype)]
 pub struct Lowercase<T>(T);
 
 impl<T: Into<String>> From<Lowercase<T>> for String{

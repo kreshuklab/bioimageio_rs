@@ -1,8 +1,11 @@
 use std::fmt::Display;
 
+use ::aspartial::AsPartial;
+
 use crate::rdf::model::data_type::DataType;
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialEnsureDtype)]
 pub struct EnsureDtype{
     pub dtype: DataType
 }
