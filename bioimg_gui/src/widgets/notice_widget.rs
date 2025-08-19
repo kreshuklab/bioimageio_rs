@@ -1,13 +1,11 @@
 use std::collections::VecDeque;
 
-use egui::NumExt;
-
 use crate::result::GuiError;
 
-const NUM_FRAMES_TO_FADE: f32 = 60.0 * 5.0; // fade in 5 seconds, assuming 60 fps
+const NUM_SECS_TO_FADE: f64 = 5.0;
 
 pub struct Notification{
-    num_remaining_frames: f32,
+    first_display_time: Option<f64>,
     text: String,
     color: egui::Color32,
     link_target: Option<egui::Rect>
@@ -16,7 +14,7 @@ pub struct Notification{
 impl Notification{
     fn new(text: String, link_target: Option<egui::Rect>, color: egui::Color32) -> Self {
         Self{
-            num_remaining_frames: NUM_FRAMES_TO_FADE,
+            first_display_time: None,
             text,
             color,
             link_target,
@@ -48,15 +46,6 @@ impl From<Result<String, String>> for Notification {
     }
 }
 
-impl Notification{
-    fn progress(&self) -> f32{
-        1.0 - (self.num_remaining_frames / NUM_FRAMES_TO_FADE)
-    }
-    fn is_done(&self) -> bool{
-        self.num_remaining_frames == 0.0
-    }
-}
-
 #[derive(Default)]
 pub struct NotificationsWidget{
     notifications: VecDeque<Notification>,
@@ -72,6 +61,7 @@ impl NotificationsWidget{
     }
 
     pub fn draw(&mut self, ui: &mut egui::Ui, id: egui::Id) -> Option<egui::Rect>{
+        let current_time: f64 = ui.ctx().input(|inp| inp.time);
         let mut scroll_to: Option<egui::Rect> = None;
         if self.notifications.len() == 0{
             return scroll_to
@@ -91,30 +81,32 @@ impl NotificationsWidget{
                 .outer_margin(0.0);
             frame.show(ui, |ui| {
                 self.notifications.retain_mut(|msg|{
-                    if self.stop_fade{
-                        msg.num_remaining_frames = NUM_FRAMES_TO_FADE;
-                    } else {
-                        msg.num_remaining_frames = (msg.num_remaining_frames - 1.0).at_least(0.0);
+                    if self.stop_fade || msg.first_display_time.is_none() {
+                        msg.first_display_time = Some(current_time);
                     }
-                    if msg.is_done(){
-                        false
-                    } else {
-                        let alpha = 1.0 - msg.progress();
-                        let rich_text = egui::RichText::new(&msg.text).color(msg.color.gamma_multiply(alpha));
-                        match msg.link_target{
-                            Some(rect) => {
-                                let rich_text = rich_text.underline();
-                                if ui.link(rich_text).clicked(){
-                                    scroll_to.replace(rect);
-                                }
-                            },
-                            None => {
-                                ui.label(rich_text);
-                            },
-                        }
-                        ui.ctx().request_repaint();
-                        true
+                    let msg_first_display_time: f64 = match msg.first_display_time {
+                        Some(t) => t,
+                        None => current_time,
+                    };
+                    let delta = current_time - msg_first_display_time;
+                    if delta > NUM_SECS_TO_FADE {
+                        return false
                     }
+                    let alpha = 1.0 - (delta / NUM_SECS_TO_FADE);
+                    let rich_text = egui::RichText::new(&msg.text).color(msg.color.gamma_multiply(alpha as f32));
+                    match msg.link_target{
+                        Some(rect) => {
+                            let rich_text = rich_text.underline();
+                            if ui.link(rich_text).clicked(){
+                                scroll_to.replace(rect);
+                            }
+                        },
+                        None => {
+                            ui.label(rich_text);
+                        },
+                    }
+                    ui.ctx().request_repaint();
+                    true
                 });
             });
         });
