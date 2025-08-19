@@ -2,7 +2,6 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use ::aspartial::AsPartial;
-use serde_json::Value as JsVal;
 
 use bioimg_runtime::zip_archive_ext::SharedZipArchive;
 use bioimg_runtime as rt;
@@ -22,68 +21,6 @@ use crate::widgets::Restore;
 
 type Partial<T> = <T as AsPartial>::Partial;
 
-/// Produces a json value from `a - b`, that is,
-/// "what parts of `a` are contemplated in `b`". If `b` has data
-/// without a correspondent in `a`, those will just be ignored
-pub fn json_diff(a: JsVal, b: JsVal) -> Option<JsVal> {
-    match (a, b) {
-        (JsVal::Object(mut a_obj), JsVal::Object(b_obj)) => {
-            for (b_member_key, b_member_val) in b_obj.into_iter(){
-                let Some(a_member_val) = a_obj.remove(&b_member_key) else {
-                    continue
-                };
-                let Some(member_diff) = json_diff(a_member_val, b_member_val) else {
-                    continue
-                };
-                a_obj.insert(b_member_key, member_diff);
-            }
-            if a_obj.len() > 0 {
-                Some(JsVal::Object(a_obj))
-            } else {
-                None
-            }
-        },
-        (JsVal::Array(a_arr), JsVal::Array(b_arr)) => {
-            let mut diffs = Vec::<JsVal>::with_capacity(a_arr.len());
-            let mut a_iter = a_arr.into_iter();
-            let mut b_iter = b_arr.into_iter();
-            while let Some(a_item) = a_iter.next(){
-                let Some(b_item) = b_iter.next() else {
-                    diffs.push(a_item);
-                    continue
-                };
-                if let Some(diff) = json_diff(a_item, b_item) {
-                    diffs.push(diff)
-                }
-            }
-            if diffs.is_empty() {
-                None
-            } else {
-                Some(JsVal::Array(diffs))
-            }
-        },
-        (JsVal::String(a_leaf), JsVal::String(b_leaf)) => {
-            if a_leaf == b_leaf {
-                None
-            } else {
-                Some(JsVal::String(a_leaf))
-            }
-        },
-        (JsVal::Number(a_leaf), JsVal::Number(b_leaf)) => {
-            if a_leaf == b_leaf {
-                None
-            } else {
-                Some(JsVal::Number(a_leaf))
-            }
-        },
-        (JsVal::Null, JsVal::Null) => {
-            None
-        },
-        (a, _) => {
-            Some(a)
-        }
-    }
-}
 
 #[test]
 fn test_json_diff(){

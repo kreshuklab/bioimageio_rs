@@ -1,12 +1,16 @@
-use std::{fmt::Display, str::FromStr};
+use std::str::FromStr;
 
 use aspartial::AsPartial;
 
 
 #[derive(thiserror::Error, Debug)]
-#[error("Error parsing version: {reason}")]
-pub struct VersionParsingError {
-    reason: String,
+pub enum VersionParsingError {
+    #[error(transparent)]
+    BadVersionString{#[from] source: versions::Error},
+    #[error("Version '{version}' is too low")]
+    TooLow{ version: Version },
+    #[error("Version '{version}' is too high. Max supported is {max_supported}")]
+    TooHigh{ version: Version, max_supported: Version },
 }
 
 #[derive(
@@ -14,14 +18,14 @@ pub struct VersionParsingError {
     serde::Deserialize, serde::Serialize,
     derive_more::Display, derive_more::Deref, derive_more::FromStr,
 )]
-#[serde(try_from="VersionMsg")]
+#[serde(try_from="String")]
 #[serde(into="String")]
 pub struct Version(versions::Version);
 
 impl AsPartial for Version {
-    type Partial = VersionMsg;
+    type Partial = String;
     fn to_partial(self) -> Self::Partial {
-        VersionMsg::Text(self.0.to_string())
+        self.0.to_string()
     }
 }
 
@@ -44,49 +48,11 @@ impl Version{
     }
 }
 
-#[derive(serde::Deserialize, serde::Serialize)]
-#[serde(untagged)]
-pub enum VersionMsg{
-    Text(String),
-    Float(f32),
-    Int(u32),
-}
-
-impl Display for VersionMsg {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self{
-            Self::Text(text) => write!(f, "{text}"),
-            Self::Float(val) => write!(f, "{val}"),
-            Self::Int(val) => write!(f, "{val}"),
-        }
-    }
-}
-
-impl AsPartial for VersionMsg {
-    type Partial = Self;
-    fn to_partial(self) -> Self::Partial {
-        self
-    }
-}
-
 impl TryFrom<String> for Version{
     type Error = VersionParsingError;
     fn try_from(value: String) -> Result<Self, Self::Error> {
-        match versions::Version::from_str(&value){
-            Err(e) => Err(VersionParsingError{reason: e.to_string()}),
-            Ok(v) => Ok(Version(v))
-        }
-    }
-}
-
-impl TryFrom<VersionMsg> for Version{
-    type Error = VersionParsingError;
-    fn try_from(value: VersionMsg) -> Result<Self, Self::Error> {
-        match value{
-            VersionMsg::Text(s) => Self::try_from(s.to_owned()),
-            VersionMsg::Float(f) => Self::try_from(f.to_string()),
-            VersionMsg::Int(i) => Self::try_from(i.to_string()),
-        }
+        let inner = versions::Version::from_str(&value)?;
+        Ok(Self(inner))
     }
 }
 
@@ -118,12 +84,10 @@ impl TryFrom<Version> for Version_0_5_x {
     type Error = VersionParsingError;
     fn try_from(version: Version) -> Result<Self, Self::Error> {
         if  version < Version::version_0_5_0() {
-            return Err(VersionParsingError { reason: format!("Version is too low: {version}") })
+            return Err(VersionParsingError::TooLow { version })
         }
         if  version > Version::version_0_5_3() {
-            return Err(VersionParsingError {
-                reason: format!("Version is too high: {version}. Max supported rdf version is {}", Version::version_0_5_3())
-            })
+            return Err(VersionParsingError::TooHigh { version, max_supported: Version::version_0_5_3() })
         }
         Ok(Self(version))
     }

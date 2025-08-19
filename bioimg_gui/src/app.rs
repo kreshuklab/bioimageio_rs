@@ -3,8 +3,6 @@ use std::path::Path;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
-use serde_json::Value as JsVal;
-
 use bioimg_runtime::zip_archive_ext::SharedZipArchive;
 use bioimg_spec::rdf::model::model_rdf_0_5::PartialModelRdfV0_5;
 use bioimg_spec::rdf::model::ModelRdfName;
@@ -17,16 +15,14 @@ use bioimg_spec::rdf;
 use bioimg_spec::rdf::ResourceId;
 use bioimg_spec::rdf::bounded_string::BoundedString;
 use bioimg_spec::rdf::non_empty_list::NonEmptyList;
-use serde::Deserialize;
 
-use crate::project_data::{json_diff, AppState1RawData, AppStateRawData, ProjectLoadError};
+use crate::project_data::{AppState1RawData, AppStateRawData, ProjectLoadError};
 use crate::result::{GuiError, Result, VecResultExt};
 use crate::widgets::attachments_widget::AttachmentsWidget;
 
 use crate::widgets::code_editor_widget::MarkdwownLang;
 use crate::widgets::collapsible_widget::SummarizableWidget;
 use crate::widgets::cover_image_widget::CoverImageItemConf;
-// use crate::widgets::cover_image_widget::CoverImageWidget;
 use crate::widgets::icon_widget::IconWidgetValue;
 use crate::widgets::image_widget_2::SpecialImageWidget;
 use crate::widgets::json_editor_widget::JsonObjectEditorWidget;
@@ -413,44 +409,27 @@ impl AppState1{
     }
 
     fn load_partial_model(&mut self, archive: SharedZipArchive) -> Result<()>{
-        let model_rdf_yaml: serde_yaml::Value = 'model_rdf: {
+        let model_rdf_bytes: Vec<u8> = 'model_rdf: {
             for file_name in ["rdf.yaml", "bioimageio.yaml"]{
-                let zip_res = archive.with_entry(file_name, |entry|{
-                    let read_result: Result<serde_yaml::Value, _> = serde_yaml::from_reader(entry);
-                    read_result
-                });
-                let model_rdf = match zip_res{
-                    Ok(read_result) => read_result?,
+                match archive.read_full_entry(file_name) {
+                    Ok(bytes) => break 'model_rdf bytes,
                     Err(zip_err) => match zip_err{
                         zip::result::ZipError::FileNotFound => continue,
-                        err => return Err(GuiError::new(format!("could not open model spec file: {err}")))
+                        err => return Err(GuiError::new(format!("Could not read rdf file: {err}")))
                     }
                 };
-                break 'model_rdf model_rdf;
             }
-            return Err(GuiError::new("Could not find model spec file"))
+            return Err(GuiError::new("Could not find rdf file inside archive"))
         };
 
-        let raw_spec: JsVal = JsVal::deserialize(&model_rdf_yaml).unwrap();
-        let partial_model_rdf: PartialModelRdfV0_5 = ::serde_path_to_error::deserialize(&model_rdf_yaml)?;
-        let partial_raw: JsVal = serde_json::to_value(&partial_model_rdf).unwrap();
+        let yaml_deserializer = serde_yaml::Deserializer::from_slice(&model_rdf_bytes);
+        let partial_model_rdf: PartialModelRdfV0_5 = ::serde_path_to_error::deserialize(yaml_deserializer)?;
 
-        
         let mut warnings = String::with_capacity(16 * 1024);
         let state = AppState1RawData::from_partial(&archive, partial_model_rdf, &mut warnings); //FIXME: retrieve errors and notify
 
         self.restore(state);
         self.notifications_widget.push(Notification::warning(warnings, None));
-
-        
-        if let Some(diff) = json_diff(raw_spec, partial_raw) {
-            println!("FOUND SOME EXTRA STUFF ON THE RAW FILE!!!!!");
-            self.notifications_widget.push(Notification::warning(
-                serde_json::to_string_pretty(&diff).unwrap(),
-                None
-            ));
-        }
-        
         Ok(())
     }
 }
@@ -513,33 +492,6 @@ impl eframe::App for AppState1 {
                     };
                 })});
                 ui.menu_button("File", |ui| {
-                    if ui.button("📦⤴ RECOVER Model")
-                        .on_hover_text("Import a .zip potentiallly broken modell")
-                        .clicked()
-                    { 'recover_model: {
-                        ui.close_menu();
-                        let sender = self.notifications_channel.sender().clone();
-
-                        let Some(model_path) = rfd::FileDialog::new().add_filter("bioimage model", &["zip"],).pick_file() else {
-                            break 'recover_model;
-                        };
-                        let model_path_str = model_path.to_string_lossy();
-                        let archive = match SharedZipArchive::open(&model_path){
-                            Ok(archive) => archive,
-                            Err(e) => {
-                                _ = sender.send(TaskResult::err_message(format!("Could not load archive at {model_path_str}: {e}")));
-                                break 'recover_model;
-                            }
-                        };
-                        _ = match self.load_partial_model(archive){
-                            Ok(_) => sender.send(TaskResult::ok_message(format!(
-                                "Recovered model {model_path_str}"
-                            ))),
-                            Err(e) => sender.send(TaskResult::err_message(format!(
-                                "Could not recover model at {model_path_str}: {e}"
-                            )))
-                        };
-                    } }
                     if ui.button("📦⤴ Import Model")
                         .on_hover_text("Import a .zip model file, like the ones you'd get from bioimage.io")
                         .clicked()
@@ -572,6 +524,35 @@ impl eframe::App for AppState1 {
                             sender.send(message).unwrap();
                         }
                     }
+                    if ui.button("♻📦⤴ Recover Model")
+                        .on_hover_text(
+                            "Import data from a model .zip archive that is potentially broken or incompatible with this application"
+                        )
+                        .clicked()
+                    { 'recover_model: {
+                        ui.close_menu();
+                        let sender = self.notifications_channel.sender().clone();
+
+                        let Some(model_path) = rfd::FileDialog::new().add_filter("bioimage model", &["zip"],).pick_file() else {
+                            break 'recover_model;
+                        };
+                        let model_path_str = model_path.to_string_lossy();
+                        let archive = match SharedZipArchive::open(&model_path){
+                            Ok(archive) => archive,
+                            Err(e) => {
+                                _ = sender.send(TaskResult::err_message(format!("Could not load archive at {model_path_str}: {e}")));
+                                break 'recover_model;
+                            }
+                        };
+                        _ = match self.load_partial_model(archive){
+                            Ok(_) => sender.send(TaskResult::ok_message(format!(
+                                "Recovered model {model_path_str}"
+                            ))),
+                            Err(e) => sender.send(TaskResult::err_message(format!(
+                                "Could not recover model at {model_path_str}: {e}"
+                            )))
+                        };
+                    } }
                     #[cfg(not(target_arch="wasm32"))]
                     if ui.button("🗊⤵ Save Draft ")
                         .on_hover_text("Save your current work as-is, even with unresolved errors")
