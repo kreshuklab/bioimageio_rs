@@ -47,10 +47,16 @@ use crate::widgets::{
     util::group_frame, StatefulWidget,
 };
 
+pub struct AppStateFromPartial{
+    state: AppState1RawData,
+    warnings: String,
+}
+
 #[must_use]
 pub enum TaskResult{
     Notification(Result<String, String>),
     ModelImport(Box<rt::zoo_model::ZooModel>),
+    PartialModelLoad(AppStateFromPartial),
 }
 
 impl TaskResult{
@@ -408,7 +414,7 @@ impl AppState1{
         std::thread::spawn(move || smol::block_on(fut));
     }
 
-    fn load_partial_model(&mut self, archive: SharedZipArchive) -> Result<()>{
+    fn load_partial_model(archive: &SharedZipArchive) -> Result<AppStateFromPartial>{
         let model_rdf_bytes: Vec<u8> = 'model_rdf: {
             for file_name in ["rdf.yaml", "bioimageio.yaml"]{
                 match archive.read_full_entry(file_name) {
@@ -421,21 +427,15 @@ impl AppState1{
             }
             return Err(GuiError::new("Could not find rdf file inside archive"))
         };
-
         let yaml_deserializer = serde_yaml::Deserializer::from_slice(&model_rdf_bytes);
-        let partial_model_rdf: PartialModelRdfV0_5 = ::serde_path_to_error::deserialize(yaml_deserializer)?;
-
+        let partial: PartialModelRdfV0_5 = ::serde_path_to_error::deserialize(yaml_deserializer)?;
         let mut warnings = String::with_capacity(16 * 1024);
-        let state = AppState1RawData::from_partial(&archive, partial_model_rdf, &mut warnings); //FIXME: retrieve errors and notify
+        let state = AppState1RawData::from_partial(&archive, partial, &mut warnings); //FIXME: retrieve errors and notify
         warnings += indoc!("
             PLEASE BE AWARE THAT RECOVERING AND THEN RE-EXPORTING A MODEL MIGHT PRODUCE A NEW, VALID MODEL THAT DOES NOT
             BEHAVE LIKE THE ORIGINAL\n"
         );
-
-        self.restore(state);
-        self.notifications_widget.push(Notification::warning(warnings, None));
-
-        Ok(())
+        Ok(AppStateFromPartial { state, warnings})
     }
 }
 
@@ -534,30 +534,38 @@ impl eframe::App for AppState1 {
                             "Import data from a model .zip archive that is potentially broken or incompatible with this application"
                         )
                         .clicked()
-                    { 'recover_model: {
+                    {
                         ui.close_menu();
                         let sender = self.notifications_channel.sender().clone();
-
-                        let Some(model_path) = rfd::FileDialog::new().add_filter("bioimage model", &["zip"],).pick_file() else {
-                            break 'recover_model;
+                        let fut = async move {
+                            // On web, file picker is always async, so we make a future.
+                            // Also, we don't want to pass in an entire Arc<Mutex<App>> to the future,
+                            // so it gets a sender: Sender<TaskResult> instead to report its result back.
+                            let Some(handle) = rfd::AsyncFileDialog::new().add_filter("bioimage model", &["zip"]).pick_file().await else {
+                                return
+                            };
+                            // #[cfg(target_arch="wasm32")]
+                            let archive = SharedZipArchive::from_raw_data(handle.read().await, handle.file_name());
+                            // #[cfg(not(target_arch="wasm32"))]
+                            // let archive = match SharedZipArchive::open(handle.path()){
+                            //     Ok(archive) => archive,
+                            //     Err(e) => {
+                            //         let err = Err(format!("Could not open {}: {e}", handle.path().to_string_lossy()));
+                            //         _ = sender.send(TaskResult::Notification(err));
+                            //         return
+                            //     }
+                            // };
+                            let message = match Self::load_partial_model(&archive) {
+                                Err(err) => TaskResult::Notification(Err(format!("Could not recover model: {err}"))),
+                                Ok(state_from_partial) => TaskResult::PartialModelLoad(state_from_partial),
+                            };
+                            sender.send(message).unwrap();
                         };
-                        let model_path_str = model_path.to_string_lossy();
-                        let archive = match SharedZipArchive::open(&model_path){
-                            Ok(archive) => archive,
-                            Err(e) => {
-                                _ = sender.send(TaskResult::err_message(format!("Could not load archive at {model_path_str}: {e}")));
-                                break 'recover_model;
-                            }
-                        };
-                        _ = match self.load_partial_model(archive){
-                            Ok(_) => sender.send(TaskResult::ok_message(format!(
-                                "Recovered model {model_path_str}"
-                            ))),
-                            Err(e) => sender.send(TaskResult::err_message(format!(
-                                "Could not recover model at {model_path_str}: {e}"
-                            )))
-                        };
-                    } }
+                        #[cfg(target_arch="wasm32")]
+                        wasm_bindgen_futures::spawn_local(fut);
+                        #[cfg(not(target_arch="wasm32"))]
+                        std::thread::spawn(move || smol::block_on(fut));
+                    }
                     #[cfg(not(target_arch="wasm32"))]
                     if ui.button("🗊⤵ Save Draft ")
                         .on_hover_text("Save your current work as-is, even with unresolved errors")
@@ -597,6 +605,10 @@ impl eframe::App for AppState1 {
                 match msg{
                     TaskResult::Notification(msg) => self.notifications_widget.push(msg.into()),
                     TaskResult::ModelImport(model) => self.set_value(*model),
+                    TaskResult::PartialModelLoad(AppStateFromPartial{state, warnings}) => {
+                        self.restore(state);
+                        self.notifications_widget.push(Notification::warning(warnings, None));
+                    }
                 }
             }
             if let Some(error_rect) = self.notifications_widget.draw(ui, egui::Id::from("messages_widget")){
