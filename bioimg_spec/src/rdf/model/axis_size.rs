@@ -1,6 +1,7 @@
 use std::{fmt::Display, num::NonZeroUsize};
 
 use serde::{Deserialize, Serialize};
+use aspartial::AsPartial;
 
 use super::{axes::AxisId, tensor_id::TensorId};
 
@@ -18,7 +19,8 @@ impl From<FixedAxisSize> for AnyAxisSize{
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord)]
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Eq, Hash, Clone, Debug, PartialOrd, Ord, AsPartial)]
+#[aspartial(name = PartialQualifiedAxisId )]
 pub struct QualifiedAxisId {
     pub tensor_id: TensorId,
     pub axis_id: AxisId,
@@ -30,7 +32,8 @@ impl Display for QualifiedAxisId {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialAxisSizeReference )]
 pub struct AxisSizeReference {
     #[serde(flatten)]
     pub qualified_axis_id: QualifiedAxisId,
@@ -56,7 +59,8 @@ impl Display for AxisSizeReference {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialParameterizedAxisSize)]
 pub struct ParameterizedAxisSize {
     pub min: NonZeroUsize,
     pub step: NonZeroUsize,
@@ -68,7 +72,11 @@ impl From<ParameterizedAxisSize> for AnyAxisSize{
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+///////////////////////////////////////////
+#[derive(Debug, Clone)]
+#[derive(AsPartial)]
+#[aspartial(name = PartialAnyAxisSize)]
+#[derive(Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum AnyAxisSize {
     Fixed(FixedAxisSize),
@@ -76,7 +84,10 @@ pub enum AnyAxisSize {
     Reference(AxisSizeReference),
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+////////////////////////////////////////////
+
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialResolvedAxisSize )]
 #[serde(untagged)]
 pub enum ResolvedAxisSize {
     Fixed(FixedAxisSize),
@@ -104,7 +115,8 @@ impl From<ResolvedAxisSize> for AnyAxisSize{
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialFixedOrRefAxisSize)]
 #[serde(untagged)]
 pub enum FixedOrRefAxisSize{
     Fixed(FixedAxisSize),

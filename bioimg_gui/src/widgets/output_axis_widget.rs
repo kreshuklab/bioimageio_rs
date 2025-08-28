@@ -1,7 +1,7 @@
 use indoc::indoc;
 
 use bioimg_spec::rdf::bounded_string::BoundedString;
-use bioimg_spec::rdf::model::axes::output_axes::OutputSpacetimeSize;
+use bioimg_spec::rdf::model::axes::output_axes::{HaloedOutputSpacetimeSize, OutputSpacetimeSize, StandardOutputSpacetimeSize};
 use bioimg_spec::rdf::model::axes::AxisType;
 use bioimg_spec::rdf::model::{self as modelrdf, ParameterizedAxisSize};
 
@@ -31,11 +31,11 @@ impl OutputSpacetimeSizeWidget{
     }
     pub fn set_value(&mut self, value: OutputSpacetimeSize){
         match value{
-            OutputSpacetimeSize::Standard{size} => {
+            OutputSpacetimeSize::Standard(StandardOutputSpacetimeSize{size}) => {
                 self.has_halo = false;
                 self.size_widget.set_value(size);
             },
-            OutputSpacetimeSize::Haloed { size, halo } => {
+            OutputSpacetimeSize::Haloed(HaloedOutputSpacetimeSize { size, halo })=> {
                 self.has_halo = true;
                 self.halo_widget.set_value(halo);
                 self.size_widget.set_value(size.into());
@@ -84,16 +84,16 @@ impl StatefulWidget for OutputSpacetimeSizeWidget{
 
     fn state<'p>(&'p self) -> Self::Value<'p> {
         Ok(if self.has_halo{
-            OutputSpacetimeSize::Haloed {
+            OutputSpacetimeSize::Haloed(HaloedOutputSpacetimeSize {
                 size: self.size_widget.state()?
                     .try_into()
                     .map_err(|_: ParameterizedAxisSize| {
                         GuiError::new("Size can't be parameterized when output has halo".to_owned())
                     })?,
                 halo: self.halo_widget.state()?,
-            }
+            })
         }else{
-            OutputSpacetimeSize::Standard{size: self.size_widget.state()?}
+            OutputSpacetimeSize::Standard(StandardOutputSpacetimeSize{size: self.size_widget.state()?})
         })
     }
 }

@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use ::aspartial::AsPartial;
+
 use crate::rdf::model::{AxisId, TensorId};
 
 use super::{PreprocessingEpsilon, PreprocessingEpsilonParsingError, _default_to_0f32, _default_to_100f32};
@@ -17,6 +19,7 @@ pub enum ScaleRangeParsingError{
     BadEpsilon(PreprocessingEpsilonParsingError),
 }
 
+//FIXME: this isn't used anywhere but i think it should
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
 pub enum ScaleRangeMode {
     #[serde(rename = "per_dataset")]
@@ -25,7 +28,8 @@ pub enum ScaleRangeMode {
     PerSample,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
+#[aspartial(name = PartialScaleRangePercentile)]
 #[serde(try_from = "ScaleRangePercentileMessage")]
 #[serde(into = "ScaleRangePercentileMessage")]
 pub struct ScaleRangePercentile{
@@ -85,7 +89,8 @@ struct ScaleRangePercentileMessage{
     pub max_percentile: f32,
 }
 
-#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug, AsPartial)]
+#[aspartial(name=PartialScaleRangeDescr)]
 pub struct ScaleRangeDescr{
     /// The subset of axes to normalize jointly, i.e. axes to reduce to compute the min/max percentile value.
     /// For example to normalize 'batch', 'x' and 'y' jointly in a tensor ('batch', 'channel', 'y', 'x')

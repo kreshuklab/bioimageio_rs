@@ -2,13 +2,16 @@ use std::{borrow::Borrow, error::Error, fmt::Display, ops::Deref, str::FromStr, 
 
 use serde::{Deserialize, Serialize};
 
+use aspartial::AsPartial;
+
 const PYTHON_KEYWORDS: [&'static str; 35] = [
     "False", "None", "True", "and", "as", "assert", "async", "await", "break", "class", "continue", "def", "del", "elif", "else",
     "except", "finally", "for", "from", "global", "if", "import", "in", "is", "lambda", "nonlocal", "not", "or", "pass", "raise",
     "return", "try", "while", "with", "yield",
 ];
 
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord, AsPartial)]
+#[aspartial(newtype)]
 #[serde(try_from = "String")]
 pub struct Identifier(Arc<str>);
 

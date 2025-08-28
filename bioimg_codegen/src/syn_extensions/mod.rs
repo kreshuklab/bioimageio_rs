@@ -1,3 +1,8 @@
+// pub trait IFieldExt{
+//     fn to_partial_field()
+// }
+
+
 // use quote::quote;
 
 // pub trait AttributeExt {
@@ -20,3 +25,4 @@
 //         syn::LitStr::new(&quote!(#self).to_string(), self.span())
 //     }
 // }
+// 

@@ -7,6 +7,7 @@ use proc_macro::TokenStream;
 mod str_marker;
 mod syn_extensions;
 mod restore;
+mod serde_attributes;
 
 ////////////////////////////////////////////
 

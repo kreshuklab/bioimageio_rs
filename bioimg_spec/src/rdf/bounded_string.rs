@@ -1,5 +1,6 @@
 use std::{borrow::Borrow, fmt::Display, ops::RangeInclusive, str::FromStr, sync::Arc};
 
+use aspartial::AsPartial;
 use serde::{Deserialize, Serialize};
 
 #[derive(thiserror::Error, PartialEq, Eq, Debug, Clone)]
@@ -21,6 +22,13 @@ impl std::fmt::Display for BoundedStringParsingError{
 #[serde(try_from = "String")]
 #[serde(into = "String")]
 pub struct BoundedString<const MIN_CHARS: usize, const MAX_CHARS: usize>(Arc<str>);
+
+impl<const MIN_CHARS: usize, const MAX_CHARS: usize> AsPartial for BoundedString<MIN_CHARS, MAX_CHARS> {
+    type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        self.0.as_ref().to_owned()
+    }
+}
 
 impl<const MAX_CHARS: usize> Default for BoundedString<0, MAX_CHARS> {
     fn default() -> Self {

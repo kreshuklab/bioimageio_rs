@@ -17,7 +17,6 @@ use bioimg_spec::rdf::file_reference::FsPathComponent;
 use bioimg_spec::rdf::author::Author2;
 use bioimg_spec::rdf::model as  modelrdf;
 use image::ImageError;
-use serde::Deserialize;
 
 use crate::{FileSource, Icon, ModelInterface, NpyArray, TensorValidationError};
 use crate::zip_archive_ext::{SharedZipArchive, ZipArchiveOpenError};
@@ -116,33 +115,28 @@ impl ZooModel{
     }
 
     pub fn try_load_archive(archive: SharedZipArchive) -> Result<Self, ModelLoadingError>{
-        let model_rdf_yaml: serde_yaml::Value = 'model_rdf: {
+        let model_rdf_bytes: Vec<u8> = 'model_rdf: {
             for file_name in ["rdf.yaml", "bioimageio.yaml"]{
-                let zip_res = archive.with_entry(file_name, |entry|{
-                    let read_result: Result<serde_yaml::Value, _> = serde_yaml::from_reader(entry);
-                    read_result
-                });
-                let model_rdf = match zip_res{
-                    Ok(read_result) => read_result?,
+                match archive.read_full_entry(file_name) {
+                    Ok(bytes) => break 'model_rdf bytes,
                     Err(zip_err) => match zip_err{
                         zip::result::ZipError::FileNotFound => continue,
                         err => return Err(ModelLoadingError::ZipError(err))
                     }
                 };
-                break 'model_rdf model_rdf;
             }
             return Err(ModelLoadingError::RdfYamlNotFound)
         };
-        let model_rdf = match ModelRdfV0_5::deserialize(&model_rdf_yaml){
+        let model_rdf = match serde_yaml::from_slice::<ModelRdfV0_5>(&model_rdf_bytes){
             Ok(model_rdf) => model_rdf,
             Err(v5_err) => {
-                if let Ok(legacy_model) = UnsupportedLegacyModel::deserialize(&model_rdf_yaml){
+                if let Ok(legacy_model) = serde_yaml::from_slice::<UnsupportedLegacyModel>(&model_rdf_bytes){
                     return Err(ModelLoadingError::UnsupportedLegacyModel {
                         version: legacy_model.format_version,
                         earliest_supported: Version_0_5_x::earliest_supported_version(),
                     })
                 }
-                if let Ok(future_model) = UnsupportedFutureModel::deserialize(&model_rdf_yaml){
+                if let Ok(future_model) = serde_yaml::from_slice::<UnsupportedFutureModel>(&model_rdf_bytes){
                     return Err(ModelLoadingError::FutureModel{
                         format_version: future_model.format_version,
                         latest_supported: Version_0_5_x::latest_supported_version(),

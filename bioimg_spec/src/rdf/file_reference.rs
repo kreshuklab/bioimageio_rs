@@ -3,6 +3,9 @@ use std::{fmt::Display, ops::Deref, path::PathBuf};
 use serde::{Deserialize, Serialize};
 use url::Url;
 
+use aspartial::AsPartial;
+
+
 #[derive(thiserror::Error, Debug)]
 pub enum FsPathParsingError{
     #[error("Bad character in file path component '{raw}'")]
@@ -62,6 +65,13 @@ pub struct FsPath{
     components: Vec<FsPathComponent>
 }
 
+impl AsPartial for FsPath {
+    type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        self.into()
+    }
+}
+
 impl FsPath{
     pub fn from_components(components: Vec<FsPathComponent>) -> Result<Self, FsPathParsingError>{
         if components.len() == 0{
@@ -106,17 +116,26 @@ impl From<FsPath> for String{
     }
 }
 
+impl Display for FsPath {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut components = self.components.iter();
+        if let Some(comp) = components.next() {
+            write!(f, "{}", comp.0)?;
+        }
+        for comp in components {
+            write!(f, "/{}", comp.0)?;
+        }
+        Ok(())
+    }
+}
+
 impl From<&FsPath> for String{
     fn from(value: &FsPath) -> Self {
+        use std::fmt::Write;
         let mut out = String::with_capacity(
             value.components.iter().map(|comp| comp.0.len()).sum::<usize>() + value.components.len()
         );
-        for (comp_idx, comp) in value.components.iter().enumerate(){
-            if comp_idx != 0{
-                out += "/"
-            }
-            out += &comp.0;
-        }
+        write!(&mut out, "{value}").unwrap();
         out
     }
 }
@@ -140,6 +159,13 @@ pub enum UrlParsingError{
 #[serde(into = "String")]
 #[serde(try_from = "String")]
 pub struct HttpUrl(url::Url);
+
+impl AsPartial for HttpUrl{
+    type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        self.into()
+    }
+}
 
 impl HttpUrl{
     pub fn path(&self) -> &str{
@@ -199,6 +225,16 @@ pub enum FileReferenceParsingError{
 pub enum FileReference {
     Url(HttpUrl),
     Path(FsPath),
+}
+
+impl AsPartial for FileReference {
+    type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        match self{
+            Self::Url(url) => url.into(),
+            Self::Path(path) => path.into(),
+        }
+    }
 }
 
 impl std::fmt::Display for FileReference{
@@ -274,6 +310,13 @@ macro_rules! suffixed_file_ref {(
     impl core::borrow::Borrow<FileReference> for $name{
         fn borrow(&self) -> &FileReference{
             &self.0
+        }
+    }
+
+    impl ::aspartial::AsPartial for $name {
+        type Partial = String;
+        fn to_partial(self) -> Self::Partial {
+            self.0.to_partial()
         }
     }
 };}

@@ -5,6 +5,7 @@ pub mod input_axes;
 use std::{borrow::Borrow, fmt::Display, str::FromStr};
 
 use serde::{Deserialize, Serialize};
+use aspartial::AsPartial;
 
 use super::FixedAxisSize;
 use super::axis_size::AnyAxisSize;
@@ -27,6 +28,13 @@ pub enum AxisIdParsingError{
 
 #[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
 pub struct NonBatchAxisId(AxisId);
+
+impl AsPartial for NonBatchAxisId {
+    type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        self.0.to_partial()
+    }
+}
 
 impl Display for NonBatchAxisId{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -78,6 +86,13 @@ impl TryFrom<String> for NonBatchAxisId{
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, Copy)]
 pub struct AxisScale(f32);
 
+impl AsPartial for AxisScale {
+    type Partial = f32;
+    fn to_partial(self) -> Self::Partial {
+        self.0
+    }
+}
+
 impl Display for AxisScale{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
@@ -112,6 +127,13 @@ pub enum HaloParsingError {
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy)]
 pub struct Halo(u64);
+
+impl AsPartial for Halo {
+    type Partial = u64;
+    fn to_partial(self) -> Self::Partial {
+        self.0
+    }
+}
 
 impl From<Halo> for u64{
     fn from(value: Halo) -> Self {
@@ -188,7 +210,8 @@ impl TryFrom<f32> for AxisScale {
 
 // ///////////////////////
 
-#[derive(Serialize, Deserialize, Debug, Clone, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default, AsPartial)]
+#[aspartial(name = PartialBatchAxis)]
 pub struct BatchAxis {
     #[serde(default)]
     pub id: LitStr<Batch>,
@@ -204,7 +227,8 @@ impl Display for BatchAxis{
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialChannelAxis)]
 pub struct ChannelAxis {
     #[serde(default)]
     pub id: LitStr<Channel>,
@@ -235,7 +259,8 @@ impl ChannelAxis {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialIndexAxis)]
 pub struct IndexAxis {
     #[serde(default)]
     pub id: LitStr<Index>,

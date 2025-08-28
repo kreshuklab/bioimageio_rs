@@ -2,10 +2,19 @@ use std::marker::PhantomData;
 
 use serde::{Deserialize, Serialize};
 
+use aspartial::AsPartial;
+
 #[derive(Copy, Clone, Serialize, Deserialize, PartialEq, Eq, Debug)]
 #[serde(into = "usize")]
 #[serde(try_from = "usize")]
 pub struct LiteralInt<const VAL: usize>;
+
+impl<const VAL: usize> AsPartial for LiteralInt<VAL>{
+    type Partial = usize;
+    fn to_partial(self) -> Self::Partial {
+        VAL
+    }
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum LiteralIntParsingError {
@@ -47,6 +56,13 @@ pub trait StrMarker: Copy + Clone + Default{
 #[serde(try_from = "String")]
 #[serde(into = "String")]
 pub struct LitStr<M: StrMarker>(#[serde(bound = "M: StrMarker")]PhantomData<M>);
+
+impl<M: StrMarker> AsPartial for LitStr<M> {
+    type Partial = String;
+    fn to_partial(self) -> Self::Partial {
+        M::NAME.to_owned()
+    }
+}
 
 impl<M: StrMarker> LitStr<M>{
     pub fn as_str(&self) -> &'static str{

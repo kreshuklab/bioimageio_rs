@@ -1,5 +1,7 @@
 use std::fmt::Display;
 
+use aspartial::AsPartial;
+
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum ClipDescrParsingError{
     #[error("Max '{max}' not greater than min '{min}'")]
@@ -13,6 +15,13 @@ pub enum ClipDescrParsingError{
 pub struct ClipDescr {
     min: f32,
     max: f32,
+}
+
+impl AsPartial for ClipDescr {
+    type Partial = PartialClipDescrMessage;
+    fn to_partial(self) -> Self::Partial {
+        PartialClipDescrMessage{min: Some(self.min), max: Some(self.max)}
+    }
 }
 
 impl Display for ClipDescr{
@@ -47,8 +56,9 @@ impl TryFrom<ClipDescrMessage> for ClipDescr{
     }
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
-struct ClipDescrMessage {
+#[derive(serde::Serialize, serde::Deserialize, AsPartial)]
+#[aspartial(name = PartialClipDescrMessage )]
+pub struct ClipDescrMessage {
     pub min: f32,
     pub max: f32,
 }

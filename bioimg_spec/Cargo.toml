@@ -12,6 +12,7 @@ name = "bioimg_spec"
 crate-type = ["rlib"]
 
 [dependencies]
+bioimg_codegen = { path = "../bioimg_codegen" }
 image = { workspace = true }
 serde = { workspace = true, features = ["derive", "rc"] }
 serde_json = { workspace = true }
@@ -25,7 +26,9 @@ iso8601-timestamp = { workspace = true }
 serde_yaml = { workspace = true }
 uuid = { workspace = true, features = ["v4"] }
 versions = { version = "6.3.2", features = ["serde"] }
-derive_more = { version = "1.0.0", features = ["display", "deref", "from_str"] }
+derive_more = { version = "1.0.0", features = ["display", "deref", "from_str", "into"] }
+aspartial = { workspace = true }
+unic = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 uuid = { workspace = true, features = ["v4", "js"] }

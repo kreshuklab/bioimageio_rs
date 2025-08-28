@@ -4,13 +4,15 @@ use crate::rdf::{
     version::Version_0_5_x, Author2, CiteEntry2, CoverImageSource, FileReference, HttpUrl, Icon, LicenseId,
     Maintainer, NonEmptyList, ResourceId, ResourceTextDescription, Version
 };
+use aspartial::AsPartial;
 use super::{WeightsDescr, _now};
 
 use super::dataset_descr::DatasetDescrEnum;
 use super::{run_mode::RunMode, InputTensorDescr, ModelRdfName, OutputTensorDescr, RdfTypeModel};
 
 
-#[derive(serde::Serialize, serde::Deserialize, Debug, Clone)]
+#[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
+#[aspartial(name = PartialModelRdfV0_5 )]
 pub struct ModelRdfV0_5 {
     /// Version of the bioimage.io model description specification used.
     /// When creating a new model always use the latest micro/patch version described here.
@@ -147,3 +149,4 @@ pub struct ModelRdfV0_5 {
     /// The available weight formats determine which consumers can use this model
     pub weights: WeightsDescr,
 }
+

@@ -3,9 +3,6 @@ use std::sync::Arc;
 use std::io::{Read, Seek, Write};
 use std::borrow::Borrow;
 
-use sha2::digest::generic_array::GenericArray;
-use sha2::digest::consts::U32;
-
 use bioimg_spec::rdf::{self, FileReference, HttpUrl};
 
 use crate::{zip_archive_ext::SharedZipArchive, zip_writer_ext::ModelZipWriter, zoo_model::ModelPackingError};
@@ -22,7 +19,7 @@ pub enum FileSourceError{
 
 #[derive(Clone, Debug)]
 pub enum FileSource{
-    Data{data: Arc<[u8]>, name: Option<String>, digest: GenericArray<u8, U32>},
+    Data{data: Arc<[u8]>, name: Option<String>},
     #[cfg(not(target_arch="wasm32"))]
     LocalFile{path: Arc<std::path::Path>},
     FileInZipArchive{archive: SharedZipArchive, inner_path: Arc<str>},
@@ -44,8 +41,8 @@ impl PartialEq for FileSource{
                 arch_self == arch_other && path_self == path_other
             },
             (Self::HttpUrl(self_url), Self::HttpUrl(other_url)) => self_url == other_url,
-            (Self::Data{name, digest, ..}, Self::Data{name: other_name, digest: other_digest, ..}) => {
-                name == other_name && digest == other_digest
+            (Self::Data{name, data, ..}, Self::Data{name: other_name, data: other_data, ..}) => {
+                name == other_name && Arc::ptr_eq(data, other_data)
             }
             _ => false
         }
@@ -56,7 +53,7 @@ impl Eq for FileSource{}
 impl Display for FileSource{
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self{
-            Self::Data{name, data, digest: _digest} => {
+            Self::Data{name, data} => {
                 if let Some(name) = name {
                     write!(f, "{name} ")?;
                 }

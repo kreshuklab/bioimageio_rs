@@ -1,5 +1,6 @@
 use std::fmt::Display;
 
+use aspartial::AsPartial;
 use serde::{Deserialize, Serialize};
 
 use crate::rdf::BoundedString;
@@ -15,7 +16,8 @@ pub struct Author {
     pub orcid: Orcid,
 }
 
-#[derive(Debug, Eq, PartialEq, Serialize, Deserialize, Clone)]
+#[derive(Debug, Eq, PartialEq, Serialize, Deserialize, Clone, AsPartial)]
+#[aspartial(name = PartialAuthor2)]
 pub struct Author2 {
     pub name: BoundedString<1, 1024>,                // (Name→String) Full name.
     pub affiliation: Option<BoundedString<1, 1024>>, // (String) Affiliation.

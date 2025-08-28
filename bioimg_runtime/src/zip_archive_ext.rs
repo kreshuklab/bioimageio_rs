@@ -106,6 +106,13 @@ impl SharedZipArchive{
         let out = entry_reader(&mut f);
         Ok(out)
     }
+    pub fn read_full_entry(&self, entry_path: &str) -> Result<Vec<u8>, zip::result::ZipError>{
+        let mut archive_guard = self.archive.lock().unwrap();
+        let mut f = archive_guard.by_name(entry_path)?;
+        let mut data = Vec::<u8>::new();
+        _ = f.read_to_end(&mut data)?;
+        Ok(data)
+    }
     pub fn has_entry(&self, name: &str) -> bool{
         self.archive.lock().unwrap().by_name(name).is_ok()
     }
