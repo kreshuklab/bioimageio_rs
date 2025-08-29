@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-use std::path::Path;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
@@ -16,7 +14,9 @@ use bioimg_spec::rdf::ResourceId;
 use bioimg_spec::rdf::bounded_string::BoundedString;
 use bioimg_spec::rdf::non_empty_list::NonEmptyList;
 
-use crate::project_data::{AppState1RawData, AppStateRawData, ProjectLoadError};
+use crate::project_data::{AppState1RawData};
+#[cfg(not(target_arch="wasm32"))]
+use crate::project_data::{AppStateRawData, ProjectLoadError};
 use crate::result::{GuiError, Result, VecResultExt};
 use crate::widgets::attachments_widget::AttachmentsWidget;
 
@@ -316,7 +316,7 @@ impl AppState1{
     }
 
     #[cfg(not(target_arch="wasm32"))]
-    fn save_project(&self, project_file: &Path) -> Result<String, String>{
+    fn save_project(&self, project_file: &std::path::Path) -> Result<String, String>{
         let writer = std::fs::File::options()
             .write(true)
             .create(true)
@@ -328,7 +328,7 @@ impl AppState1{
     }
 
     #[cfg(not(target_arch="wasm32"))]
-    fn load_project(&mut self, project_file: &Path) -> Result<(), String>{
+    fn load_project(&mut self, project_file: &std::path::Path) -> Result<(), String>{
         let reader = std::fs::File::open(&project_file).map_err(|err| format!("Could not open project file: {err}"))?;
         let proj_data = match AppStateRawData::load(reader){
             Err(ProjectLoadError::FutureVersion{found_version}) => return Err(format!(
@@ -368,6 +368,8 @@ impl AppState1{
 
             #[cfg(not(target_arch="wasm32"))]
             let message = 'packing: {
+                use std::borrow::Cow;
+
                 let file_name = file_handle.file_name();
                 if !file_name.ends_with(".zip"){
                     let msg = TaskResult::err_message(format!("Model extension must be '.zip'. Provided '{file_name}'"));
