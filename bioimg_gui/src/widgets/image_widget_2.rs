@@ -6,6 +6,7 @@ use std::error::Error;
 use image::GenericImageView;
 use bioimg_runtime::{self as rt, FileSource};
 
+use crate::widgets::collapsible_widget::SummarizableWidget;
 use crate::{project_data::{ImageWidget2LoadingStateRawData, ImageWidget2RawData, SpecialImageWidgetRawData}, result::{GuiError, Result}};
 use super::{Restore, StatefulWidget, ValueWidget};
 use super::error_display::show_error;
@@ -269,6 +270,40 @@ impl StatefulWidget for ImageWidget2{
 pub struct SpecialImageWidget<I>{
     image_widget: ImageWidget2,
     marker: PhantomData<I>
+}
+
+impl<I> SummarizableWidget for SpecialImageWidget<I>
+where
+    I : TryFrom<Arc<image::DynamicImage>>,
+    <I as TryFrom<Arc<image::DynamicImage>>>::Error: Error,
+{
+    fn summarize(&mut self, ui: &mut egui::Ui, _id: egui::Id) {
+        let loading_state_guard = self.image_widget.loading_state.lock();
+        match &loading_state_guard.1{
+            LoadingState::Empty => {
+                show_error(ui, "Empty");
+                return
+            },
+            LoadingState::Loading { .. } => {
+                ui.label("Loading...");
+                return;
+            },
+            LoadingState::Ready { img, texture, .. } | LoadingState::Forced { img, texture } => {
+                let Some(texture) = texture else {
+                    ui.label("Loading..");
+                    return;
+                };
+                let (width, height) = img.dimensions();
+                let ratio =  width as f64 / height as f64;
+                texture.show(ui, egui::Vec2 { y: 15.0, x: 15.0 * ratio as f32 }); //FIXME: can we not hardcode this?
+                return
+            },
+            LoadingState::Failed { err, .. } => {
+                show_error(ui, err);
+                return;
+            }
+        }
+    }
 }
 
 impl<I> ValueWidget for SpecialImageWidget<I>

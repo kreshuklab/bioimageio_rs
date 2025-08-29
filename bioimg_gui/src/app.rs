@@ -80,7 +80,7 @@ enum ExitingStatus{
 pub struct AppState1 {
     pub staging_name: StagingString<ModelRdfName>,
     pub staging_description: StagingString<BoundedString<0, 1024>>,
-    pub cover_images: StagingVec<SpecialImageWidget<rt::CoverImage>, CoverImageItemConf>,
+    pub cover_images: Vec<SpecialImageWidget<rt::CoverImage>>,
     pub model_id_widget: StagingOpt<StagingString<ResourceId>, false>,
     pub staging_authors: Vec<AuthorWidget>,
     pub attachments_widget: Vec<AttachmentsWidget>,
@@ -127,11 +127,13 @@ impl ValueWidget for AppState1{
     fn set_value<'v>(&mut self, zoo_model: Self::Value<'v>) {
         self.staging_name.set_value(zoo_model.name);
         self.staging_description.set_value(zoo_model.description);
-        self.cover_images.set_value(
-            zoo_model.covers.into_iter()
-                .map(|cover| (None, Some(cover)))
-                .collect()
-        );
+        self.cover_images = zoo_model.covers.into_iter()
+            .map(|cover| {
+                let mut widget = SpecialImageWidget::default();
+                widget.set_value((None, Some(cover)));
+                widget
+            })
+            .collect();
         self.model_id_widget.set_value(zoo_model.id);
         self.staging_authors = zoo_model.authors.into_inner().into_iter()
             .map(|descr| {
@@ -181,7 +183,7 @@ impl Default for AppState1 {
         Self {
             staging_name: StagingString::new(InputLines::SingleLine),
             staging_description: StagingString::new(InputLines::Multiline),
-            cover_images: StagingVec::default(),
+            cover_images: Vec::default(),
             model_id_widget: Default::default(),
             staging_authors: Default::default(),
             attachments_widget: Default::default(),
@@ -219,9 +221,9 @@ impl AppState1{
         let description = self.staging_description.state()
             .cloned()
             .map_err(|e| GuiError::new_with_rect("Check resource text description for errors", e.failed_widget_rect))?;
-        let covers: Vec<_> = self.cover_images.state().into_iter()
-            .map(|cover_img_res|{
-                cover_img_res
+        let covers: Vec<_> = self.cover_images.iter()
+            .map(|cover_img_widget|{
+                cover_img_widget.state()
                     .map(|val| val.clone())
                     .map_err(|e| GuiError::new_with_rect("Check cover images for errors", e.failed_widget_rect))
             })
@@ -642,8 +644,29 @@ impl eframe::App for AppState1 {
                         "Images to be shown to users on the model zoo, preferrably showing what the input \
                         and output look like."
                     );
-                    self.cover_images.draw_and_parse(ui, egui::Id::from("Cover Images"));
-                    // let cover_img_results = self.cover_images.state();
+                    let covers_base_id = egui::Id::from("cover images");
+                    let vec_widget = VecWidget{
+                        items: &mut self.cover_images,
+                        item_label: "Cover Image",
+                        min_items: 1,
+                        show_reorder_buttons: true,
+                        new_item: Some(SpecialImageWidget::default),
+                        item_renderer: VecItemRender::HeaderAndBody{
+                            render_header: |widget: &mut SpecialImageWidget<_>, idx, ui|{
+                                ui.horizontal(|ui|{
+                                    ui.weak(format!("Cover image #{idx}"));
+                                    ui.add_space(3.0);
+                                    widget.summarize(ui, covers_base_id.with(idx));
+                                });
+                            },
+                            render_body: |widg: &mut SpecialImageWidget<_>, idx, ui|{
+                                widg.draw_and_parse(ui, covers_base_id.with(("body".as_ptr(), idx)));
+                            },
+                            collapsible_id_source: Some(covers_base_id),
+                            marker: Default::default(),
+                        }
+                    };
+                    ui.add(vec_widget);
                 });
 
                 ui.horizontal_top(|ui| {
