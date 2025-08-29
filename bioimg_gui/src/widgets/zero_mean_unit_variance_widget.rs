@@ -4,16 +4,9 @@ use bioimg_spec::rdf::model as modelrdf;
 use crate::result::{GuiError, Result};
 use super::iconify::Iconify;
 use super::staging_float::StagingFloat;
-use super::staging_vec::ItemWidgetConf;
 use super::util::{widget_vec_from_values, OptWidget, SomeRenderer, VecItemRender, VecWidget};
 use super::{Restore, ValueWidget};
 use super::{staging_string::StagingString, StatefulWidget};
-
-pub struct ZeroMeanAxesItemConfig;
-impl ItemWidgetConf for ZeroMeanAxesItemConfig{
-    const ITEM_NAME: &'static str = "Axis";
-    const INLINE_ITEM: bool = true;
-}
 
 #[derive(Restore)]
 pub struct ZeroMeanUnitVarianceWidget{
