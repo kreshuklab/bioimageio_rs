@@ -117,7 +117,7 @@ impl<T> Default for TaskChannel<T>{
 
 
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug, Default)]
 pub struct Generation(pub i64);
 
 impl Generation{
@@ -130,19 +130,20 @@ impl Generation{
 /// with multiple async background tasks that might complete out of order; Each
 /// background task can get its own clone of this structure and once done, it
 /// can check if its generation still matches the expected generation in the
-/// `GenSyncCell`.
-pub struct GenSyncCell<T>{
+/// `GenSync` object.
+#[derive(Default)]
+pub struct GenSync<T>{
     data: Arc<Mutex<(Generation, T)>>
 }
 
-impl<T> Clone for GenSyncCell<T>{
+impl<T> Clone for GenSync<T>{
     fn clone(&self) -> Self {
         let data = Arc::clone(&self.data);
         Self{data}
     }
 }
 
-impl<T> GenSyncCell<T>{
+impl<T> GenSync<T>{
     pub fn new(value: T) -> Self{
         Self{data: Arc::new(Mutex::new((Generation(0), value)))}
     }

@@ -11,7 +11,7 @@ use crate::{project_data::{ImageWidget2LoadingStateRawData, ImageWidget2RawData,
 use super::{Restore, StatefulWidget, ValueWidget};
 use super::error_display::show_error;
 use super::file_source_widget::FileSourceWidget;
-use super::util::{DynamicImageExt, GenSyncCell, Generation};
+use super::util::{DynamicImageExt, GenSync, Generation};
 
 pub type ArcDynImg = Arc<image::DynamicImage>;
 
@@ -81,14 +81,14 @@ impl LoadingState{
 
 pub struct ImageWidget2{
     file_source_widget: FileSourceWidget,
-    loading_state: GenSyncCell<LoadingState>,
+    loading_state: GenSync<LoadingState>,
 }
 
 impl Default for ImageWidget2{
     fn default() -> Self {
         Self{
             file_source_widget: Default::default(),
-            loading_state: GenSyncCell::new(LoadingState::default())
+            loading_state: GenSync::new(LoadingState::default())
         }
     }
 }
@@ -127,7 +127,7 @@ impl Restore for ImageWidget2{
                 LoadingState::Forced { img: Arc::new(image), texture: None }
             }
         };
-        self.loading_state = GenSyncCell::new(loading_state);
+        self.loading_state = GenSync::new(loading_state);
     }
 }
 
@@ -138,15 +138,15 @@ impl ValueWidget for ImageWidget2{
         match value{
             (None, Some(img)) => {
                 self.file_source_widget = Default::default();
-                self.loading_state = GenSyncCell::new(LoadingState::Forced { img, texture: None});
+                self.loading_state = GenSync::new(LoadingState::Forced { img, texture: None});
             },
             (None, None) => {
                 self.file_source_widget = Default::default();
-                self.loading_state = GenSyncCell::new(LoadingState::Empty);
+                self.loading_state = GenSync::new(LoadingState::Empty);
             },
             (Some(file_source), _) => {
                 self.file_source_widget.set_value(file_source);
-                self.loading_state = GenSyncCell::new(LoadingState::Empty);
+                self.loading_state = GenSync::new(LoadingState::Empty);
             }
         }
         // self.update(); //FIXME: call once set_value takes a context
@@ -157,7 +157,7 @@ impl ImageWidget2{
     fn spawn_load_image_task(
         generation: Generation,
         file_source: FileSource,
-        loading_state: GenSyncCell<LoadingState>,
+        loading_state: GenSync<LoadingState>,
         ctx: egui::Context,
     ){
         let fut = async move {
