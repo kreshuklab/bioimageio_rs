@@ -54,7 +54,9 @@ where
     .collect()
 }
 
-pub fn draw_vertical_brackets(ui: &mut egui::Ui, rect: egui::Rect){
+/// Draws lines surrounding `rect` that look like square brackets. Useful, for
+/// example, for dawing widgets that represent vectors.
+pub fn draw_square_brackets(ui: &mut egui::Ui, rect: egui::Rect){
     let stroke = ui.visuals().window_stroke();
     let min_to_max = rect.max - rect.min;
     let left_to_right = egui::Vec2{y: 0.0, ..min_to_max};
