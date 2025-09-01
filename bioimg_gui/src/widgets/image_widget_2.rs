@@ -49,18 +49,21 @@ impl Drop for Texture {
     }
 }
 
+#[derive(Default)]
+/// The internal state of te image widget
 enum LoadingState{
+    /// No image has been selected
+    #[default]
     Empty,
+    /// A file has been selected and is still loading
     Loading{source: rt::FileSource},
+    /// File has loaded successfully. It may or may not have already been
+    /// converted to a texture for display
     Ready{source: rt::FileSource, img: ArcDynImg, texture: Option<Texture>},
+    /// Some image has been inserted into the widget by means other than picking a file
     Forced{img: ArcDynImg, texture: Option<Texture>},
+    /// Loading an image failed
     Failed{source: Option<rt::FileSource>, err: GuiError},
-}
-
-impl Default for LoadingState{
-    fn default() -> Self {
-        Self::Empty
-    }
 }
 
 impl LoadingState{
