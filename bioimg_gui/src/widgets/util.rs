@@ -126,6 +126,11 @@ impl Generation{
     }
 }
 
+/// A container for generational, synchronized data. Useful, e.g., for dealing
+/// with multiple async background tasks that might complete out of order; Each
+/// background task can get its own clone of this structure and once done, it
+/// can check if its generation still matches the expected generation in the
+/// `GenSyncCell`.
 pub struct GenSyncCell<T>{
     data: Arc<Mutex<(Generation, T)>>
 }
