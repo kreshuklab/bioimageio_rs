@@ -1764,7 +1764,8 @@ pub struct AppState1SavedData{
     pub staging_maintainers: Vec<MaintainerWidgetSavedData>,
     pub staging_tags: Vec<String>,
     pub staging_version: Option<VersionWidgetSavedData>,
-
+    #[serde(default)]
+    pub staging_version_comment: Option<String>,
     pub staging_documentation: CodeEditorWidgetSavedData,
     pub staging_license: ::bioimg_spec::rdf::LicenseId,
     //badges
@@ -1809,6 +1810,7 @@ impl AppState1SavedData {
                 .collect(),
             staging_tags: partial.tags,
             staging_version: partial.version.map(|v| VersionWidgetSavedData::from_partial(archive, v)),
+            staging_version_comment: partial.version_comment,
             staging_documentation: 'documentation: {
                 let Some(doc_file_descr) = partial.documentation else {
                     break 'documentation Default::default();
