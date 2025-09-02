@@ -1,15 +1,14 @@
-use crate::rdf::FileDescription;
 use crate::rdf::{
     self,
     version::Version_0_5_x, Author2, CiteEntry2, CoverImageSource, FileReference, HttpUrl, Icon, LicenseId,
     Maintainer, NonEmptyList, ResourceId, ResourceTextDescription, Version
 };
+use crate::rdf::{BoundedString, FileDescription};
 use aspartial::AsPartial;
 use super::{WeightsDescr, _now};
 
 use super::dataset_descr::DatasetDescrEnum;
 use super::{run_mode::RunMode, InputTensorDescr, ModelRdfName, OutputTensorDescr, RdfTypeModel};
-
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
 #[aspartial(name = PartialModelRdfV0_5 )]
@@ -93,6 +92,9 @@ pub struct ModelRdfV0_5 {
     /// The initial version should be '0.1.0'.
     #[serde(default)]
     pub version: Option<Version>,
+
+    #[serde(default)]
+    pub version_comment: Option<BoundedString<0, 512>>,
 
 
 
