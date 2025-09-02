@@ -12,9 +12,9 @@ use indoc::indoc;
 use bioimg_runtime as rt;
 use bioimg_runtime::zoo_model::ZooModel;
 use bioimg_spec::rdf;
-use bioimg_spec::rdf::ResourceId;
 use bioimg_spec::rdf::bounded_string::BoundedString;
 use bioimg_spec::rdf::non_empty_list::NonEmptyList;
+use bioimg_spec::rdf::ResourceId;
 
 use crate::project_data::{AppState1RawData, AppStateRawData, ProjectLoadError};
 use crate::result::{GuiError, Result, VecResultExt};
@@ -37,39 +37,38 @@ use crate::widgets::staging_vec::StagingVec;
 use crate::widgets::util::{widget_vec_from_values, TaskChannel, VecItemRender, VecWidget};
 use crate::widgets::version_widget::VersionWidget;
 use crate::widgets::weights_widget::WeightsWidget;
-#[cfg(not(target_arch="wasm32"))]
+#[cfg(not(target_arch = "wasm32"))]
 use crate::widgets::zoo_widget::{upload_model, ZooLoginWidget};
-use crate::widgets::ValueWidget;
 use crate::widgets::Restore;
+use crate::widgets::ValueWidget;
 use crate::widgets::{
-    author_widget::AuthorWidget, cite_widget::CiteEntryWidget, code_editor_widget::CodeEditorWidget,
-    icon_widget::IconWidget, maintainer_widget::MaintainerWidget, url_widget::StagingUrl,
-    util::group_frame, StatefulWidget,
+    author_widget::AuthorWidget, cite_widget::CiteEntryWidget, code_editor_widget::CodeEditorWidget, icon_widget::IconWidget,
+    maintainer_widget::MaintainerWidget, url_widget::StagingUrl, util::group_frame, StatefulWidget,
 };
 
-pub struct AppStateFromPartial{
+pub struct AppStateFromPartial {
     state: AppState1RawData,
     warnings: String,
 }
 
 #[must_use]
-pub enum TaskResult{
+pub enum TaskResult {
     Notification(Result<String, String>),
     ModelImport(Box<rt::zoo_model::ZooModel>),
     PartialModelLoad(AppStateFromPartial),
 }
 
-impl TaskResult{
-    pub fn ok_message(msg: impl Into<String>) -> Self{
+impl TaskResult {
+    pub fn ok_message(msg: impl Into<String>) -> Self {
         Self::Notification(Ok(msg.into()))
     }
-    pub fn err_message(msg: impl Into<String>) -> Self{
+    pub fn err_message(msg: impl Into<String>) -> Self {
         Self::Notification(Err(msg.into()))
     }
 }
 
 #[derive(Default, Copy, Clone)]
-enum ExitingStatus{
+enum ExitingStatus {
     #[default]
     NotExiting,
     Confirming,
@@ -100,14 +99,10 @@ pub struct AppState1 {
     ////
     pub weights_widget: WeightsWidget,
 
-
-
     #[restore_default]
     pub pipeline_widget: PipelineWidget,
 
-
-
-    #[cfg(not(target_arch="wasm32"))]
+    #[cfg(not(target_arch = "wasm32"))]
     #[restore_default]
     pub zoo_login_widget: ZooLoginWidget,
     #[restore_default]
@@ -121,19 +116,19 @@ pub struct AppState1 {
     exiting_status: ExitingStatus,
 }
 
-impl ValueWidget for AppState1{
+impl ValueWidget for AppState1 {
     type Value<'v> = rt::zoo_model::ZooModel;
 
     fn set_value<'v>(&mut self, zoo_model: Self::Value<'v>) {
         self.staging_name.set_value(zoo_model.name);
         self.staging_description.set_value(zoo_model.description);
-        self.cover_images.set_value(
-            zoo_model.covers.into_iter()
-                .map(|cover| (None, Some(cover)))
-                .collect()
-        );
+        self.cover_images
+            .set_value(zoo_model.covers.into_iter().map(|cover| (None, Some(cover))).collect());
         self.model_id_widget.set_value(zoo_model.id);
-        self.staging_authors = zoo_model.authors.into_inner().into_iter()
+        self.staging_authors = zoo_model
+            .authors
+            .into_inner()
+            .into_iter()
             .map(|descr| {
                 let mut widget = AuthorWidget::default();
                 widget.set_value(descr);
@@ -141,24 +136,27 @@ impl ValueWidget for AppState1{
             })
             .collect();
         self.attachments_widget = widget_vec_from_values(zoo_model.attachments);
-        self.staging_citations = zoo_model.cite.into_inner().into_iter()
-            .map(|descr|{
+        self.staging_citations = zoo_model
+            .cite
+            .into_inner()
+            .into_iter()
+            .map(|descr| {
                 let mut widget = CiteEntryWidget::default();
                 widget.set_value(descr);
                 widget
             })
             .collect();
-        self.custom_config_widget.set_value(
-            if zoo_model.config.is_empty(){
-                None
-            } else {
-                Some(zoo_model.config)
-            }
-        );
+        self.custom_config_widget.set_value(if zoo_model.config.is_empty() {
+            None
+        } else {
+            Some(zoo_model.config)
+        });
         self.staging_git_repo.set_value(zoo_model.git_repo.map(|val| Arc::new(val)));
         self.icon_widget.set_value(zoo_model.icon.map(IconWidgetValue::from));
         self.links_widget.set_value(zoo_model.links);
-        self.staging_maintainers = zoo_model.maintainers.into_iter()
+        self.staging_maintainers = zoo_model
+            .maintainers
+            .into_iter()
             .map(|val| {
                 let mut widget = MaintainerWidget::default();
                 widget.set_value(val);
@@ -201,7 +199,7 @@ impl Default for AppState1 {
             weights_widget: Default::default(),
             notifications_widget: NotificationsWidget::new(),
             notifications_channel: Default::default(),
-            #[cfg(not(target_arch="wasm32"))]
+            #[cfg(not(target_arch = "wasm32"))]
             zoo_login_widget: Default::default(),
             zoo_model_creation_task: Default::default(),
             pipeline_widget: Default::default(),
@@ -211,87 +209,129 @@ impl Default for AppState1 {
     }
 }
 
-impl AppState1{
-    pub fn create_model(&self) -> Result<ZooModel>{
-        let name = self.staging_name.state()
+impl AppState1 {
+    pub fn create_model(&self) -> Result<ZooModel> {
+        let name = self
+            .staging_name
+            .state()
             .cloned()
             .map_err(|e| GuiError::new_with_rect("Check resoure name for errors", e.failed_widget_rect))?;
-        let description = self.staging_description.state()
+        let description = self
+            .staging_description
+            .state()
             .cloned()
             .map_err(|e| GuiError::new_with_rect("Check resource text description for errors", e.failed_widget_rect))?;
-        let covers: Vec<_> = self.cover_images.state().into_iter()
-            .map(|cover_img_res|{
+        let covers: Vec<_> = self
+            .cover_images
+            .state()
+            .into_iter()
+            .map(|cover_img_res| {
                 cover_img_res
                     .map(|val| val.clone())
                     .map_err(|e| GuiError::new_with_rect("Check cover images for errors", e.failed_widget_rect))
             })
             .collect::<Result<Vec<_>, _>>()?;
-        let model_id = self.model_id_widget.state().transpose()
+        let model_id = self
+            .model_id_widget
+            .state()
+            .transpose()
             .map_err(|e| GuiError::new_with_rect("Check model id for errors", e.failed_widget_rect))?
             .cloned();
         let authors = NonEmptyList::try_from(
-                self.staging_authors.iter()
-                    .enumerate()
-                    .map(|(idx, widget)| {
-                        widget.state().map_err(|err| {
-                            GuiError::new_with_rect(format!("Check author #{} for errors", idx + 1), err.failed_widget_rect)
-                        })
+            self.staging_authors
+                .iter()
+                .enumerate()
+                .map(|(idx, widget)| {
+                    widget.state().map_err(|err| {
+                        GuiError::new_with_rect(format!("Check author #{} for errors", idx + 1), err.failed_widget_rect)
                     })
-                    .collect::<Result<Vec<_>>>()?
-            )
-            .map_err(|_| GuiError::new("Empty authors"))?;
-        let attachments = self.attachments_widget.iter()
+                })
+                .collect::<Result<Vec<_>>>()?,
+        )
+        .map_err(|_| GuiError::new("Empty authors"))?;
+        let attachments = self
+            .attachments_widget
+            .iter()
             .enumerate()
             .map(|(idx, widget)| {
-                widget.state().map_err(|_| GuiError::new(format!("Check attachment #{} for errors", idx + 1)))
+                widget
+                    .state()
+                    .map_err(|_| GuiError::new(format!("Check attachment #{} for errors", idx + 1)))
             })
             .collect::<Result<Vec<_>>>()?;
-            // .collect_result()
-            // .map_err(|e| GuiError::new_with_rect("Check model attachments for errors", e.failed_widget_rect))?;
-        let cite = self.staging_citations.iter().enumerate()
+        // .collect_result()
+        // .map_err(|e| GuiError::new_with_rect("Check model attachments for errors", e.failed_widget_rect))?;
+        let cite = self
+            .staging_citations
+            .iter()
+            .enumerate()
             .map(|(idx, widget)| {
-                widget.state().map_err(|_| GuiError::new(format!("Check citation #{} for errors", idx + 1)))
+                widget
+                    .state()
+                    .map_err(|_| GuiError::new(format!("Check citation #{} for errors", idx + 1)))
             })
             .collect::<Result<Vec<_>>>()?;
-        let non_empty_cites = NonEmptyList::try_from(cite)
-            .map_err(|_| GuiError::new("Cites are empty"))?;
-        let config = self.custom_config_widget.state().cloned()
+        let non_empty_cites = NonEmptyList::try_from(cite).map_err(|_| GuiError::new("Cites are empty"))?;
+        let config = self
+            .custom_config_widget
+            .state()
+            .cloned()
             .transpose()
             .map_err(|e| GuiError::new_with_rect("Check custom configs for errors", e.failed_widget_rect))?
             .unwrap_or(serde_json::Map::default());
-        let git_repo = self.staging_git_repo.state()
+        let git_repo = self
+            .staging_git_repo
+            .state()
             .transpose()
             .map_err(|e| GuiError::new_with_rect("Check git repo field for errors", e.failed_widget_rect))?
             .map(|val| val.as_ref().clone());
-        let icon = self.icon_widget.state().transpose().map_err(|_| GuiError::new("Check icons field for errors"))?;
-        let links = self.links_widget.state()
+        let icon = self
+            .icon_widget
+            .state()
+            .transpose()
+            .map_err(|_| GuiError::new("Check icons field for errors"))?;
+        let links = self
+            .links_widget
+            .state()
             .collect_result()
             .map_err(|e| GuiError::new_with_rect("Check links for errors", e.failed_widget_rect))?
             .into_iter()
             .map(|s| s.clone())
             .collect();
-        let maintainers = self.staging_maintainers.iter()
+        let maintainers = self
+            .staging_maintainers
+            .iter()
             .enumerate()
             .map(|(idx, w)| {
-                w.state().map_err(|_| GuiError::new(format!("Check maintainer #{} for errors", idx + 1)))
+                w.state()
+                    .map_err(|_| GuiError::new(format!("Check maintainer #{} for errors", idx + 1)))
             })
             .collect::<Result<Vec<_>>>()?;
-        let tags: Vec<rdf::Tag> = self.staging_tags.state()
+        let tags: Vec<rdf::Tag> = self
+            .staging_tags
+            .state()
             .into_iter()
             .map(|res_ref| res_ref.cloned())
             .collect::<Result<Vec<_>>>()
             .map_err(|e| GuiError::new_with_rect("Check tags for errors", e.failed_widget_rect))?;
-        let version = self.staging_version.state()
+        let version = self
+            .staging_version
+            .state()
             .transpose()
             .map_err(|e| GuiError::new_with_rect("Review resource version field", e.failed_widget_rect))?
             .cloned();
         let documentation = self.staging_documentation.state().to_owned();
         let license = self.staging_license.state();
-        let model_interface = self.model_interface_widget.get_value()
+        let model_interface = self
+            .model_interface_widget
+            .get_value()
             .map_err(|_| GuiError::new("Check model interface for errors"))?;
-        let weights = self.weights_widget.get_value()
+        let weights = self
+            .weights_widget
+            .get_value()
             .map_err(|e| GuiError::new_with_rect("Check model weights for errors", e.failed_widget_rect))?
-            .as_ref().clone();
+            .as_ref()
+            .clone();
 
         Ok(ZooModel {
             name,
@@ -315,31 +355,40 @@ impl AppState1{
         })
     }
 
-    #[cfg(not(target_arch="wasm32"))]
-    fn save_project(&self, project_file: &Path) -> Result<String, String>{
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_project(&self, project_file: &Path) -> Result<String, String> {
         let writer = std::fs::File::options()
             .write(true)
             .create(true)
             .truncate(true)
-            .open(project_file).map_err(|err| format!("Could not open project file for writing: {err}"))?;
-        AppStateRawData::Version1(self.dump()).save(writer)
+            .open(project_file)
+            .map_err(|err| format!("Could not open project file for writing: {err}"))?;
+        AppStateRawData::Version1(self.dump())
+            .save(writer)
             .map_err(|err| format!("Could not serialize project to bytes: {err}"))
             .map(|_| format!("Saved project to {}", project_file.to_string_lossy()))
     }
 
-    #[cfg(not(target_arch="wasm32"))]
-    fn load_project(&mut self, project_file: &Path) -> Result<(), String>{
+    #[cfg(not(target_arch = "wasm32"))]
+    fn load_project(&mut self, project_file: &Path) -> Result<(), String> {
         let reader = std::fs::File::open(&project_file).map_err(|err| format!("Could not open project file: {err}"))?;
-        let proj_data = match AppStateRawData::load(reader){
-            Err(ProjectLoadError::FutureVersion{found_version}) => return Err(format!(
-                "Found project data version {found_version}, but this program only supports project data up to {}\n\
+        let proj_data = match AppStateRawData::load(reader) {
+            Err(ProjectLoadError::FutureVersion { found_version }) => {
+                return Err(format!(
+                    "Found project data version {found_version}, but this program only supports project data up to {}\n\
                 You can try downloading the newest version at https://github.com/kreshuklab/bioimg_rs/releases",
-                AppStateRawData::highest_supported_version(),
-            )),
-            Err(err) => return Err(format!("Could not load project file at {}: {err}", project_file.to_string_lossy())),
+                    AppStateRawData::highest_supported_version(),
+                ))
+            }
+            Err(err) => {
+                return Err(format!(
+                    "Could not load project file at {}: {err}",
+                    project_file.to_string_lossy()
+                ))
+            }
             Ok(proj_data) => proj_data,
         };
-        match proj_data{
+        match proj_data {
             AppStateRawData::Version1(ver1) => self.restore(ver1),
         }
         Ok(())
@@ -352,9 +401,9 @@ impl AppState1{
                 return;
             };
 
-            #[cfg(target_arch="wasm32")]
+            #[cfg(target_arch = "wasm32")]
             let message = 'packing_wasm: {
-                let mut buffer = Vec::<u8>::new(); //FIXME: check FileSystemWritableFileStream: seek() 
+                let mut buffer = Vec::<u8>::new(); //FIXME: check FileSystemWritableFileStream: seek()
                 let cursor = std::io::Cursor::new(&mut buffer);
                 if let Err(err) = zoo_model.pack_into(cursor) {
                     let msg = TaskResult::err_message(format!("Error saving model: {err:?}"));
@@ -366,41 +415,45 @@ impl AppState1{
                 }
             };
 
-            #[cfg(not(target_arch="wasm32"))]
+            #[cfg(not(target_arch = "wasm32"))]
             let message = 'packing: {
                 let file_name = file_handle.file_name();
-                if !file_name.ends_with(".zip"){
+                if !file_name.ends_with(".zip") {
                     let msg = TaskResult::err_message(format!("Model extension must be '.zip'. Provided '{file_name}'"));
                     sender.send(msg).unwrap();
-                    return
+                    return;
                 }
                 let notification_message = format!("Packing into {file_name}...");
                 sender.send(TaskResult::ok_message(notification_message)).unwrap();
 
                 let temp_path = {
-                    let current_extension = file_handle.path().extension().map(|s| s.to_string_lossy()).unwrap_or(Cow::Borrowed(""));
+                    let current_extension = file_handle
+                        .path()
+                        .extension()
+                        .map(|s| s.to_string_lossy())
+                        .unwrap_or(Cow::Borrowed(""));
                     let temp_extension = format!("{current_extension}.partial");
                     let mut temp_path = file_handle.path().to_owned();
                     temp_path.set_extension(temp_extension);
                     temp_path
                 };
 
-                let file = match std::fs::File::create(&temp_path){
+                let file = match std::fs::File::create(&temp_path) {
                     Ok(file) => file,
                     Err(err) => {
                         break 'packing TaskResult::err_message(format!("Could not create zip file: {err}"));
                     }
                 };
 
-                if let Err(err) = zoo_model.pack_into(file){
+                if let Err(err) = zoo_model.pack_into(file) {
                     break 'packing TaskResult::err_message(format!("Error saving model: {err}"));
                 }
                 if let Err(err) = std::fs::rename(&temp_path, file_handle.path()) {
-                    if let Err(rm_err) = std::fs::remove_file(&temp_path){
+                    if let Err(rm_err) = std::fs::remove_file(&temp_path) {
                         let msg = format!("Could not delete temp file {}: {rm_err}", temp_path.to_string_lossy());
                         sender.send(TaskResult::err_message(msg)).unwrap();
                     }
-                    break 'packing TaskResult::err_message(format!("Error saving model: {err}"))
+                    break 'packing TaskResult::err_message(format!("Error saving model: {err}"));
                 }
                 TaskResult::ok_message(format!("Model saved to {file_name}"))
             };
@@ -408,37 +461,37 @@ impl AppState1{
             sender.send(message).unwrap();
         };
 
-        #[cfg(target_arch="wasm32")]
+        #[cfg(target_arch = "wasm32")]
         wasm_bindgen_futures::spawn_local(fut);
-        #[cfg(not(target_arch="wasm32"))]
+        #[cfg(not(target_arch = "wasm32"))]
         std::thread::spawn(move || smol::block_on(fut));
     }
 
-    fn load_partial_model(archive: &SharedZipArchive) -> Result<AppStateFromPartial>{
+    fn load_partial_model(archive: &SharedZipArchive) -> Result<AppStateFromPartial> {
         let model_rdf_bytes: Vec<u8> = 'model_rdf: {
-            for file_name in ["rdf.yaml", "bioimageio.yaml"]{
+            for file_name in ["rdf.yaml", "bioimageio.yaml"] {
                 match archive.read_full_entry(file_name) {
                     Ok(bytes) => break 'model_rdf bytes,
-                    Err(zip_err) => match zip_err{
+                    Err(zip_err) => match zip_err {
                         zip::result::ZipError::FileNotFound => continue,
-                        err => return Err(GuiError::new(format!("Could not read rdf file: {err}")))
-                    }
+                        err => return Err(GuiError::new(format!("Could not read rdf file: {err}"))),
+                    },
                 };
             }
-            return Err(GuiError::new("Could not find rdf file inside archive"))
+            return Err(GuiError::new("Could not find rdf file inside archive"));
         };
         let yaml_deserializer = serde_yaml::Deserializer::from_slice(&model_rdf_bytes);
         let partial: PartialModelRdfV0_5 = ::serde_path_to_error::deserialize(yaml_deserializer)?;
         let mut warnings = String::with_capacity(16 * 1024);
         let state = AppState1RawData::from_partial(&archive, partial, &mut warnings); //FIXME: retrieve errors and notify
-        warnings += indoc!("
+        warnings += indoc!(
+            "
             PLEASE BE AWARE THAT RECOVERING AND THEN RE-EXPORTING A MODEL MIGHT PRODUCE A NEW, VALID MODEL THAT DOES NOT
             BEHAVE LIKE THE ORIGINAL\n"
         );
-        Ok(AppStateFromPartial { state, warnings})
+        Ok(AppStateFromPartial { state, warnings })
     }
 }
-
 
 impl eframe::App for AppState1 {
     fn save(&mut self, _storage: &mut dyn eframe::Storage) {
@@ -601,17 +654,17 @@ impl eframe::App for AppState1 {
             });
         });
         egui::CentralPanel::default().show(ctx, |ui| {
-            while let Ok(msg) = self.notifications_channel.receiver().try_recv(){
-                match msg{
+            while let Ok(msg) = self.notifications_channel.receiver().try_recv() {
+                match msg {
                     TaskResult::Notification(msg) => self.notifications_widget.push(msg.into()),
                     TaskResult::ModelImport(model) => self.set_value(*model),
-                    TaskResult::PartialModelLoad(AppStateFromPartial{state, warnings}) => {
+                    TaskResult::PartialModelLoad(AppStateFromPartial { state, warnings }) => {
                         self.restore(state);
                         self.notifications_widget.push(Notification::warning(warnings, None));
                     }
                 }
             }
-            if let Some(error_rect) = self.notifications_widget.draw(ui, egui::Id::from("messages_widget")){
+            if let Some(error_rect) = self.notifications_widget.draw(ui, egui::Id::from("messages_widget")) {
                 ui.scroll_to_rect(error_rect, None);
             }
 
@@ -623,7 +676,7 @@ impl eframe::App for AppState1 {
                 ui.horizontal_top(|ui| {
                     ui.strong("Name: ").on_hover_text(
                         "A human-friendly name of the resource description. \
-                        May only contains letters, digits, underscore, minus, parentheses and spaces."
+                        May only contains letters, digits, underscore, minus, parentheses and spaces.",
                     );
                     self.staging_name.draw_and_parse(ui, egui::Id::from("Name"));
                     let _name_result = self.staging_name.state();
@@ -638,7 +691,7 @@ impl eframe::App for AppState1 {
                 ui.horizontal_top(|ui| {
                     ui.strong("Cover Images: ").on_hover_text(
                         "Images to be shown to users on the model zoo, preferrably showing what the input \
-                        and output look like."
+                        and output look like.",
                     );
                     self.cover_images.draw_and_parse(ui, egui::Id::from("Cover Images"));
                     // let cover_img_results = self.cover_images.state();
@@ -648,7 +701,7 @@ impl eframe::App for AppState1 {
                     ui.strong("Model Id: ").on_hover_text(
                         "A model zoo id of the form <adjective>-<animal>, like 'affable-shark'.\
                         If you're creating a model from scratch, leave this empty and an id will be generated \
-                        for you when you upload your model to the zoo."
+                        for you when you upload your model to the zoo.",
                     );
                     self.model_id_widget.draw_and_parse(ui, egui::Id::from("Model Id"));
                     // let cover_img_results = self.cover_images.state();
@@ -657,73 +710,73 @@ impl eframe::App for AppState1 {
                 ui.horizontal_top(|ui| {
                     let authors_base_id = egui::Id::from("authors");
                     ui.strong("Authors: ").on_hover_text(
-                        "The authors are the creators of this resource description and the primary points of contact."
+                        "The authors are the creators of this resource description and the primary points of contact.",
                     );
-                    let vec_widget = VecWidget{
+                    let vec_widget = VecWidget {
                         items: &mut self.staging_authors,
                         item_label: "Author",
                         min_items: 1,
                         show_reorder_buttons: true,
                         new_item: Some(AuthorWidget::default),
-                        item_renderer: VecItemRender::HeaderAndBody{
-                            render_header: |widg: &mut AuthorWidget, idx, ui|{
+                        item_renderer: VecItemRender::HeaderAndBody {
+                            render_header: |widg: &mut AuthorWidget, idx, ui| {
                                 widg.summarize(ui, authors_base_id.with(("header".as_ptr(), idx)));
                             },
-                            render_body: |widg: &mut AuthorWidget, idx, ui|{
+                            render_body: |widg: &mut AuthorWidget, idx, ui| {
                                 widg.draw_and_parse(ui, authors_base_id.with(("body".as_ptr(), idx)));
                             },
                             collapsible_id_source: Some(authors_base_id),
                             marker: Default::default(),
-                        }
+                        },
                     };
                     ui.add(vec_widget);
                 });
 
                 ui.horizontal_top(|ui| {
                     let attachments_base_id = egui::Id::from("attachments");
-                    ui.strong("Attachments: ").on_hover_text(
-                        "Any other files that are relevant to your model can be listed as 'attachments'"
-                    );
-                    let vec_widget = VecWidget{
+                    ui.strong("Attachments: ")
+                        .on_hover_text("Any other files that are relevant to your model can be listed as 'attachments'");
+                    let vec_widget = VecWidget {
                         items: &mut self.attachments_widget,
                         min_items: 0,
                         item_label: "Attachment",
                         show_reorder_buttons: true,
                         new_item: Some(AttachmentsWidget::default),
-                        item_renderer: VecItemRender::HeaderAndBody{
-                            render_header: |widg: &mut AttachmentsWidget, idx, ui|{
+                        item_renderer: VecItemRender::HeaderAndBody {
+                            render_header: |widg: &mut AttachmentsWidget, idx, ui| {
                                 widg.summarize(ui, attachments_base_id.with(("header".as_ptr(), idx)));
                             },
-                            render_body: |widg: &mut AttachmentsWidget, idx, ui|{
+                            render_body: |widg: &mut AttachmentsWidget, idx, ui| {
                                 widg.draw_and_parse(ui, attachments_base_id.with(("body".as_ptr(), idx)));
                             },
                             collapsible_id_source: Some(attachments_base_id),
                             marker: Default::default(),
-                        }
+                        },
                     };
                     ui.add(vec_widget);
                 });
 
                 ui.horizontal_top(|ui| {
                     let cite_base_id = egui::Id::from("cite");
-                    ui.strong("Cite: ").on_hover_text("How this model should be cited in other publications.");
+                    ui.strong("Cite: ")
+                        .on_hover_text("How this model should be cited in other publications.");
 
-                    let vec_widget = VecWidget{
+                    let vec_widget = VecWidget {
                         items: &mut self.staging_citations,
                         min_items: 1,
                         item_label: "Citation Entry",
                         show_reorder_buttons: true,
                         new_item: Some(CiteEntryWidget::default),
-                        item_renderer: VecItemRender::HeaderAndBody{
-                            render_header: |widg: &mut CiteEntryWidget, idx, ui|{
+                        item_renderer: VecItemRender::HeaderAndBody {
+                            render_header: |widg: &mut CiteEntryWidget, idx, ui| {
                                 widg.summarize(ui, cite_base_id.with(("header".as_ptr(), idx)));
                             },
-                            render_body: |widg: &mut CiteEntryWidget, idx, ui|{
+                            render_body: |widg: &mut CiteEntryWidget, idx, ui| {
                                 widg.draw_and_parse(ui, cite_base_id.with(("body".as_ptr(), idx)));
                             },
                             collapsible_id_source: Some(cite_base_id),
                             marker: Default::default(),
-                        }
+                        },
                     };
                     ui.add(vec_widget);
                 });
@@ -731,22 +784,22 @@ impl eframe::App for AppState1 {
                 ui.horizontal_top(|ui| {
                     ui.weak("Custom configs: ").on_hover_text(
                         "A JSON value representing any extra, 'proprietary' parameters your model might need during runtime. \
-                        This field is still available for legacy reasons and its use is strongly discouraged"
+                        This field is still available for legacy reasons and its use is strongly discouraged",
                     );
                     self.custom_config_widget.draw_and_parse(ui, egui::Id::from("Custom configs"));
                     // let citation_results = self.staging_citations.state();
                 });
 
                 ui.horizontal_top(|ui| {
-                    ui.strong("Git Repo: ").on_hover_text(
-                        "A URL to the git repository with the source code that produced this model"
-                    );
+                    ui.strong("Git Repo: ")
+                        .on_hover_text("A URL to the git repository with the source code that produced this model");
                     self.staging_git_repo.draw_and_parse(ui, egui::Id::from("Git Repo"));
                     // let git_repo_result = self.staging_git_repo.state();
                 });
 
                 ui.horizontal_top(|ui| {
-                    ui.strong("Icon: ").on_hover_text(indoc!("
+                    ui.strong("Icon: ").on_hover_text(indoc!(
+                        "
                         An icon for quick identification on bioimage.io.
                         This can either be an emoji or a small square image."
                     ));
@@ -754,7 +807,8 @@ impl eframe::App for AppState1 {
                 });
 
                 ui.horizontal_top(|ui| {
-                    ui.strong("Model Zoo Links: ").on_hover_text("IDs of other bioimage.io resources");
+                    ui.strong("Model Zoo Links: ")
+                        .on_hover_text("IDs of other bioimage.io resources");
                     group_frame(ui, |ui| {
                         self.links_widget.draw_and_parse(ui, egui::Id::from("Model Zoo Links"));
                     });
@@ -764,42 +818,44 @@ impl eframe::App for AppState1 {
                     let maintainers_base_id = egui::Id::from("maintainers");
                     ui.strong("Maintainers: ").on_hover_text(
                         "Maintainers of this resource. If not specified, 'authors' are considered maintainers \
-                        and at least one of them must specify their `github_user` name."
+                        and at least one of them must specify their `github_user` name.",
                     );
 
-                    let vec_widget = VecWidget{
+                    let vec_widget = VecWidget {
                         items: &mut self.staging_maintainers,
                         min_items: 0,
                         item_label: "Maintainer",
                         show_reorder_buttons: true,
                         new_item: Some(MaintainerWidget::default),
-                        item_renderer: VecItemRender::HeaderAndBody{
-                            render_header: |widg: &mut MaintainerWidget, idx, ui|{
+                        item_renderer: VecItemRender::HeaderAndBody {
+                            render_header: |widg: &mut MaintainerWidget, idx, ui| {
                                 widg.summarize(ui, maintainers_base_id.with(("header".as_ptr(), idx)));
                             },
-                            render_body: |widg: &mut MaintainerWidget, idx, ui|{
+                            render_body: |widg: &mut MaintainerWidget, idx, ui| {
                                 widg.draw_and_parse(ui, maintainers_base_id.with(("body".as_ptr(), idx)));
                             },
                             collapsible_id_source: Some(maintainers_base_id),
                             marker: Default::default(),
-                        }
+                        },
                     };
                     ui.add(vec_widget);
                 });
 
                 ui.horizontal_top(|ui| {
-                    ui.strong("Tags: ").on_hover_text("Tags to help search and classifying your model in the model zoo");
+                    ui.strong("Tags: ")
+                        .on_hover_text("Tags to help search and classifying your model in the model zoo");
                     self.staging_tags.draw_and_parse(ui, egui::Id::from("Tags"));
                 });
 
                 ui.horizontal_top(|ui| {
-                    ui.strong("Resource Version: ").on_hover_ui(|ui|{
-                        ui.horizontal(|ui|{
+                    ui.strong("Resource Version: ").on_hover_ui(|ui| {
+                        ui.horizontal(|ui| {
                             ui.label("The version of this model, following");
                             ui.hyperlink_to("SermVer 2.0", "https://semver.org/#semantic-versioning-200");
                         });
 
-                        ui.label(indoc!("
+                        ui.label(indoc!(
+                            "
                             If you upload an updated version of this model to the zoo, you should bump this version \
                             to differentiate it from the previous uploads"
                         ));
@@ -808,23 +864,22 @@ impl eframe::App for AppState1 {
                 });
 
                 ui.horizontal(|ui| {
-                    ui.strong("License: ").on_hover_text("A standard software licence, specifying how this model can be used and for what purposes.");
+                    ui.strong("License: ").on_hover_text(
+                        "A standard software licence, specifying how this model can be used and for what purposes.",
+                    );
                     self.staging_license.draw_and_parse(ui, egui::Id::from("License"));
                 });
                 ui.add_space(20.0);
 
-
-                ui.heading("Documentation (markdown): ").on_hover_text(
-                    "All model documentation should be written here. This field accepts Markdown syntax"
-                );
+                ui.heading("Documentation (markdown): ")
+                    .on_hover_text("All model documentation should be written here. This field accepts Markdown syntax");
                 ui.separator();
                 self.staging_documentation.draw_and_parse(ui, egui::Id::from("Documentation"));
                 ui.add_space(20.0);
 
-
                 ui.heading("Model Interface");
                 ui.separator();
-                egui::ScrollArea::horizontal().show(ui, |ui|{
+                egui::ScrollArea::horizontal().show(ui, |ui| {
                     self.pipeline_widget.draw(
                         ui,
                         egui::Id::from("pipeline"),
@@ -836,16 +891,17 @@ impl eframe::App for AppState1 {
 
                 ui.separator();
 
-                let save_button_clicked = ui.button("Export Model ⤵📦")
+                let save_button_clicked = ui
+                    .button("Export Model ⤵📦")
                     .on_hover_text("Exports this model to a .zip file, ready to be used or uploaded to the Model Zoo")
                     .clicked();
 
                 if save_button_clicked {
-                    match self.create_model(){
+                    match self.create_model() {
                         Ok(zoo_model) => self.launch_model_saving(zoo_model),
-                        Err(err) => self.notifications_widget.push(
-                            Notification::error(format!("Could not create zoo model: {err}"), None)
-                        ),
+                        Err(err) => self
+                            .notifications_widget
+                            .push(Notification::error(format!("Could not create zoo model: {err}"), None)),
                     }
                 }
             });
@@ -860,45 +916,46 @@ impl eframe::App for AppState1 {
                 } else {
                     ExitingStatus::NotExiting
                 }
-            },
+            }
             ExitingStatus::Confirming => {
                 if close_requested {
                     ExitingStatus::Exiting
                 } else {
                     ExitingStatus::Confirming
                 }
-            },
+            }
             ExitingStatus::Exiting => {
                 ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                 ExitingStatus::Exiting
-            },
+            }
         };
 
-        #[cfg(not(target_arch="wasm32"))]
+        #[cfg(not(target_arch = "wasm32"))]
         if matches!(self.exiting_status, ExitingStatus::Confirming) {
-            egui::Modal::new(egui::Id::from("confirmation dialog"))
-                .show(ctx, |ui| {
-                    ui.label("Save draft before quitting?");
-                    ui.horizontal(|ui| {
-                        if ui.button("Yes 💾").clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter)){ 'save_draft: {
+            egui::Modal::new(egui::Id::from("confirmation dialog")).show(ctx, |ui| {
+                ui.label("Save draft before quitting?");
+                ui.horizontal(|ui| {
+                    if ui.button("Yes 💾").clicked() || ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+                        'save_draft: {
                             let Some(path) = rfd::FileDialog::new().set_file_name("MyDraft.bmb").save_file() else {
                                 self.exiting_status = ExitingStatus::NotExiting;
                                 break 'save_draft;
                             };
                             let result = self.save_project(&path);
-                            if result.is_ok(){
+                            if result.is_ok() {
                                 self.exiting_status = ExitingStatus::Exiting;
                             }
                             self.notifications_widget.push(result.into());
-                        }}
-                        if ui.button("No 🗑").clicked() {
-                            self.exiting_status = ExitingStatus::Exiting;
                         }
-                        if ui.button("Cancel 🗙").clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-                            self.exiting_status = ExitingStatus::NotExiting;
-                        }
-                    });
+                    }
+                    if ui.button("No 🗑").clicked() {
+                        self.exiting_status = ExitingStatus::Exiting;
+                    }
+                    if ui.button("Cancel 🗙").clicked() || ui.input(|i| i.key_pressed(egui::Key::Escape)) {
+                        self.exiting_status = ExitingStatus::NotExiting;
+                    }
                 });
+            });
         }
     }
 }

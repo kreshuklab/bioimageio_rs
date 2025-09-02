@@ -1,15 +1,13 @@
+use super::{WeightsDescr, _now};
 use crate::rdf::FileDescription;
 use crate::rdf::{
-    self,
-    version::Version_0_5_x, Author2, CiteEntry2, CoverImageSource, FileReference, HttpUrl, Icon, LicenseId,
-    Maintainer, NonEmptyList, ResourceId, ResourceTextDescription, Version
+    self, version::Version_0_5_x, Author2, CiteEntry2, CoverImageSource, FileReference, HttpUrl, Icon, LicenseId, Maintainer,
+    NonEmptyList, ResourceId, ResourceTextDescription, Version,
 };
 use aspartial::AsPartial;
-use super::{WeightsDescr, _now};
 
 use super::dataset_descr::DatasetDescrEnum;
 use super::{run_mode::RunMode, InputTensorDescr, ModelRdfName, OutputTensorDescr, RdfTypeModel};
-
 
 #[derive(serde::Serialize, serde::Deserialize, Debug, Clone, AsPartial)]
 #[aspartial(name = PartialModelRdfV0_5 )]
@@ -94,8 +92,6 @@ pub struct ModelRdfV0_5 {
     #[serde(default)]
     pub version: Option<Version>,
 
-
-
     #[serde(rename = "type")]
     /// Specialized resource type 'model'
     pub rdf_type: RdfTypeModel,
@@ -149,4 +145,3 @@ pub struct ModelRdfV0_5 {
     /// The available weight formats determine which consumers can use this model
     pub weights: WeightsDescr,
 }
-
