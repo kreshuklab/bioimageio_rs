@@ -10,6 +10,7 @@ use bioimg_spec::rdf;
 use bioimg_spec::rdf::version::Version_0_5_x;
 use bioimg_spec::rdf::non_empty_list::NonEmptyList;
 use bioimg_spec::rdf::model::RdfTypeModel;
+use bioimg_spec::rdf::bounded_string::BoundedString;
 use bioimg_spec::rdf::model::unsupported::Version_0_4_X_OrEarlier;
 use bioimg_spec::rdf::model::ModelRdfV0_5;
 use bioimg_spec::rdf::maintainer::Maintainer;
