@@ -12,10 +12,11 @@ use super::{Restore, ValueWidget};
 use super::{staging_opt::StagingOpt, staging_string::StagingString, staging_vec::StagingVec, StatefulWidget};
 
 #[derive(Restore)]
+#[restore(message=crate::project_data::PercentilesWidgetRawData)]
 pub struct PercentilesWidget{
     pub min_widget: StagingFloat<f32>,
     pub max_widget: StagingFloat<f32>,
-    #[restore_on_update]
+    #[restore(on_update)]
     pub parsed: Result<modelrdfpreproc::ScaleRangePercentile>,
 }
 
@@ -74,6 +75,7 @@ impl ItemWidgetConf for AxesItemConfig{
 }
 
 #[derive(Default, Restore)]
+#[restore(message=crate::project_data::ScaleRangeWidgetRawData)]
 pub struct ScaleRangeWidget{
     pub axes_widget: StagingOpt<StagingVec<StagingString<model::AxisId>, AxesItemConfig>>,
     pub percentiles_widget: PercentilesWidget,

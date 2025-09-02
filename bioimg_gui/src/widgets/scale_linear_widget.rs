@@ -35,6 +35,7 @@ impl Restore for ScaleLinearMode{
 }
 
 #[derive(Restore)]
+#[restore(message=crate::project_data::SimpleScaleLinearWidgetRawData)]
 pub struct SimpleScaleLinearWidget{
     pub gain_widget: StagingFloat<f32>,
     pub offset_widget: StagingFloat<f32>,
@@ -93,10 +94,11 @@ impl ItemWidgetConf for GainOffsetItemConfig{
 }
 
 #[derive(Restore)]
+#[restore(message=crate::project_data::ScaleLinearAlongAxisWidgetRawData)]
 pub struct ScaleLinearAlongAxisWidget{
     pub axis_widget: StagingString<modelrdf::axes::NonBatchAxisId>,
     pub gain_offsets_widget: StagingVec<SimpleScaleLinearWidget, GainOffsetItemConfig>,
-    #[restore_on_update]
+    #[restore(on_update)]
     pub parsed: Result<modelrdfpreproc::ScaleLinearAlongAxisDescr>,
 }
 
@@ -182,6 +184,7 @@ impl StatefulWidget for ScaleLinearAlongAxisWidget{
 // //////////////////////////
 
 #[derive(Default, Restore)]
+#[restore(message=crate::project_data::ScaleLinearWidgetRawData)]
 pub struct ScaleLinearWidget{
     pub mode: ScaleLinearMode,
     pub simple_widget: SimpleScaleLinearWidget,

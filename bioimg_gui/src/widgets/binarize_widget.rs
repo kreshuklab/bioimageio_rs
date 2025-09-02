@@ -37,6 +37,7 @@ impl Restore for BinarizeMode{
 }
 
 #[derive(Default, Restore)]
+#[restore(message=crate::project_data::SimpleBinarizeWidgetRawData)]
 pub struct SimpleBinarizeWidget{
     pub threshold_widget: StagingFloat<f32>,
 }
@@ -149,6 +150,7 @@ impl StatefulWidget for BinarizeAlongAxisWidget{
 }
 
 #[derive(Default, Restore)]
+#[restore(message=crate::project_data::BinarizePreprocessingWidgetRawData)]
 pub struct BinarizePreprocessingWidget{
     pub mode: BinarizeMode,
     pub simple_binarize_widget: SimpleBinarizeWidget,

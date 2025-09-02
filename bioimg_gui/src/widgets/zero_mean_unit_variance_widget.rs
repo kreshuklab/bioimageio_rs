@@ -9,6 +9,7 @@ use super::{Restore, ValueWidget};
 use super::{staging_string::StagingString, StatefulWidget};
 
 #[derive(Restore)]
+#[restore(message=crate::project_data::ZeroMeanUnitVarianceWidgetRawData)]
 pub struct ZeroMeanUnitVarianceWidget{
     pub axes_widget: Option<Vec<StagingString<modelrdf::AxisId>>>,
     pub epsilon_widget: StagingFloat<modelrdfpreproc::PreprocessingEpsilon>,

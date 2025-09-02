@@ -67,8 +67,9 @@ impl Restore for PostprocessingWidgetMode{
 }
 
 #[derive(Default, Restore)]
+#[restore(message=crate::project_data::PostprocessingWidgetRawData)]
 pub struct PostprocessingWidget{
-    #[restore_default]
+    #[restore(default)]
     pub mode_search: String,
     pub mode: PostprocessingWidgetMode,
     pub binarize_widget: BinarizePreprocessingWidget,

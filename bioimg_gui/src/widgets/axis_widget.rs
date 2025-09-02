@@ -38,6 +38,7 @@ pub fn axis_description_label(ui: &mut egui::Ui) -> egui::Response{
 }
 
 #[derive(Default, Restore)]
+#[restore(message=crate::project_data::BatchAxisWidgetRawData)]
 pub struct BatchAxisWidget {
     pub description_widget: StagingString<BoundedString<0, 128>>,
     pub staging_allow_auto_size: bool,
@@ -120,6 +121,7 @@ impl Restore for ChannelNamesMode{
 }
 
 #[derive(Default, Restore)]
+#[restore(message=crate::project_data::ChannelAxisWidgetRawData)]
 pub struct ChannelAxisWidget {
     pub description_widget: StagingString<BoundedString<0, 128>>,
 
@@ -245,6 +247,7 @@ impl StatefulWidget for ChannelAxisWidget{
 }
 
 #[derive(Default, Restore)]
+#[restore(message=crate::project_data::IndexAxisWidgetRawData)]
 pub struct IndexAxisWidget {
     pub description_widget: StagingString<BoundedString<0, 128>>,
     pub size_widget: AnyAxisSizeWidget,

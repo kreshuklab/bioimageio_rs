@@ -5,6 +5,7 @@ use crate::result::Result;
 use super::{collapsible_widget::SummarizableWidget, error_display::show_error, staging_num::StagingNum, weights_widget::WeightsDescrBaseWidget, Restore, StatefulWidget, ValueWidget};
 
 #[derive(Default, Restore)]
+#[restore(message=crate::project_data::OnnxWeightsWidgetRawData)]
 pub struct OnnxWeightsWidget{
     pub base_widget: WeightsDescrBaseWidget,
     pub opset_version_widget: StagingNum<u32, modelrdf::weights::OnnxOpsetVersion>,

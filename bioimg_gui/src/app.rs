@@ -76,6 +76,7 @@ enum ExitingStatus{
 }
 
 #[derive(Restore)]
+#[restore(message=crate::project_data::AppState1RawData)]
 pub struct AppState1 {
     pub staging_name: StagingString<ModelRdfName>,
     pub staging_description: StagingString<BoundedString<0, 1024>>,
@@ -101,22 +102,22 @@ pub struct AppState1 {
 
 
 
-    #[restore_default]
+    #[restore(default)]
     pub pipeline_widget: PipelineWidget,
 
 
 
     #[cfg(not(target_arch="wasm32"))]
-    #[restore_default]
+    #[restore(default)]
     pub zoo_login_widget: ZooLoginWidget,
-    #[restore_default]
+    #[restore(default)]
     pub zoo_model_creation_task: Option<JoinHandle<Result<ZooNickname>>>,
 
-    #[restore_default]
+    #[restore(default)]
     pub notifications_widget: NotificationsWidget,
-    #[restore_default]
+    #[restore(default)]
     pub notifications_channel: TaskChannel<TaskResult>,
-    #[restore_default]
+    #[restore(default)]
     exiting_status: ExitingStatus,
 }
 

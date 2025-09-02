@@ -12,6 +12,7 @@ use crate::result::{GuiError, Result};
 pub type ConfString = BoundedString<1, 1024>;
 
 #[derive(Restore)]
+#[restore(message=crate::project_data::AuthorWidgetRawData)]
 pub struct AuthorWidget {
     pub name_widget: StagingString<ConfString>,
     pub affiliation_widget: StagingOpt<StagingString<ConfString>>,

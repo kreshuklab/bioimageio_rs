@@ -43,6 +43,7 @@ impl Restore for PytorchArchMode{
 }
 
 #[derive(Default, Restore)]
+#[restore(message=crate::project_data::PytorchArchWidgetRawData)]
 pub struct PytorchArchWidget{
     pub mode_widget: SearchAndPickWidget<PytorchArchMode>,
     pub callable_widget: StagingString<rdf::Identifier>,
@@ -154,6 +155,7 @@ impl StatefulWidget for PytorchArchWidget{
 }
 
 #[derive(Default, Restore)]
+#[restore(message=crate::project_data::PytorchStateDictWidgetRawData)]
 pub struct PytorchStateDictWidget{
     pub base_widget: WeightsDescrBaseWidget,
     pub architecture_widget: PytorchArchWidget,

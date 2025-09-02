@@ -101,8 +101,9 @@ impl_IAxisNameLabel_for!(OutputAxisWidget);
 
 
 #[derive(Restore, Default)]
+#[restore(message=crate::project_data::InputTensorWidgetRawData)]
 pub struct InputTensorWidget {
-    #[restore_default]
+    #[restore(default)]
     adjust_num_axes_on_file_selected: bool,
 
     pub id_widget: StagingString<modelrdf::TensorId>,
@@ -328,8 +329,9 @@ impl InputTensorWidget{
 }
 
 #[derive(Restore)]
+#[restore(message=crate::project_data::OutputTensorWidgetRawData)]
 pub struct OutputTensorWidget {
-    #[restore_default]
+    #[restore(default)]
     adjust_num_axes_on_file_selected: bool,
 
     pub id_widget: StagingString<modelrdf::TensorId>,

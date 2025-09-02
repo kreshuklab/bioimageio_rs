@@ -16,6 +16,7 @@ use super::error_display::show_error;
 use super::collapsible_widget::{CollapsibleWidget, SummarizableWidget};
 
 #[derive(Restore, Default)]
+#[restore(message=crate::project_data::WeightsWidgetRawData)]
 pub struct WeightsWidget{
     pub keras_weights_widget: StagingOpt<CollapsibleWidget<KerasHdf5WeightsWidget>, false>,
     pub torchscript_weights_widget: StagingOpt<CollapsibleWidget<TorchscriptWeightsWidget>, false>,
@@ -72,6 +73,7 @@ impl  WeightsWidget{
 }
 
 #[derive(Default, Restore)]
+#[restore(message=crate::project_data::WeightsDescrBaseWidgetRawData)]
 pub struct WeightsDescrBaseWidget{
     pub source_widget: FileSourceWidget,
     pub authors_widget: StagingOpt<StagingVec<CollapsibleWidget<AuthorWidget>>>,
@@ -130,6 +132,7 @@ impl StatefulWidget for WeightsDescrBaseWidget{
 //////////////////////////////
 
 #[derive(Default, Restore)]
+#[restore(message=crate::project_data::KerasHdf5WeightsWidgetRawData)]
 pub struct KerasHdf5WeightsWidget{
     pub base_widget: WeightsDescrBaseWidget,
     pub tensorflow_version_widget: VersionWidget,
@@ -186,6 +189,7 @@ impl StatefulWidget for KerasHdf5WeightsWidget{
 ////////////////////////////
 
 #[derive(Default, Restore)]
+#[restore(message=crate::project_data::TorchscriptWeightsWidgetRawData)]
 pub struct TorchscriptWeightsWidget{
     pub base_widget: WeightsDescrBaseWidget,
     pub pytorch_version_widget: VersionWidget,

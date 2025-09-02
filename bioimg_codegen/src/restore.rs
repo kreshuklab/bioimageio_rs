@@ -1,75 +1,152 @@
-use quote::{quote, quote_spanned, format_ident};
+use quote::{quote, quote_spanned};
 use syn::spanned::Spanned;
 use proc_macro::TokenStream;
-use proc_macro2::TokenStream as TokenStream2;
+use proc_macro2::{Span, TokenStream as TokenStream2};
 
-pub const RESTORE_ON_UPDATE: &str = "restore_on_update";
-pub const RESTORE_DEFAULT: &str = "restore_default";
-
-enum FieldRestoreMode{
-    ViaDefault,
-    OnUpdate(syn::Attribute),
-    FromRaw,
+/// The `message=path::to::MessageType` in
+/// `#[restore(message=path::to::MessageType)]` for setting the `Message`
+/// associated type in the generated `impl Restore`
+struct MessageTypeConfig{
+    #[allow(dead_code)]
+    name_key: syn::Ident,
+    #[allow(dead_code)]
+    equals_sign: syn::Token![=],
+    message_type_path: syn::Type,
 }
 
-impl FieldRestoreMode{
-    pub fn try_from_attrs<'a>(attrs: impl IntoIterator<Item=&'a syn::Attribute>) -> syn::Result<Self>{
-        let mut out = Self::FromRaw;
-        for attr in attrs.into_iter(){
-            let old_out = if attr.path().is_ident(RESTORE_DEFAULT){
-                std::mem::replace(&mut out, Self::ViaDefault)
-            } else if attr.path().is_ident(RESTORE_ON_UPDATE){
-                std::mem::replace(&mut out, Self::OnUpdate(attr.clone()))
-            } else {
-                Self::FromRaw
+impl syn::parse::Parse for MessageTypeConfig{
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let ident: syn::Ident = input.parse()?;
+        match ident.to_string().as_str() {
+            "message" =>  Ok(MessageTypeConfig {
+                name_key: ident,
+                equals_sign: input.parse()?,
+                message_type_path: input.parse()?,
+            }.into()),
+            _ => Err(syn::Error::new(
+                ident.span(),
+                format!("Unrecognized Restore config. Expected 'message', found '{ident}'")
+            ))
+        }
+    }
+}
+
+
+/// The attributes applied to the type (not the fields!) that is having
+/// `Restore` derived on
+struct RestoreDeriveConfig {
+    message_type_conf: MessageTypeConfig,
+}
+
+impl RestoreDeriveConfig {
+    fn try_from_attrs(attrs: &[syn::Attribute]) -> syn::Result<Self> {
+        let mut out = Err(syn::Error::new(
+            Span::call_site(),
+            "No message type configuration. Expected #[restore(message=path::to::MessageType)]"
+        ));
+        for attr in attrs{
+            if attr.path().segments.first().unwrap().ident.to_string() != "restore" {
+                continue
+            }
+            let syn::Meta::List(meta_list) = &attr.meta else {
+                return Err(syn::Error::new(attr.meta.span(), "Expected key = value"))
             };
-            if ! matches!(old_out, Self::FromRaw){
-                return Err(syn::Error::new(attr.span(), "Conflicting restore strategy"))
+            let message_type = meta_list.parse_args::<MessageTypeConfig>()?;
+            out = Ok(Self{message_type_conf: message_type});
+        }
+        out
+    }
+}
+
+
+/// Determines how a field is to be restored when deriving the `Restore` trait
+enum FieldRestoreMode {
+    /// The usual behavior of restoring this field form the `Message` value
+    FromMessage,
+    /// Restore this field to `Default::default()`
+    CallDefault,
+    /// Run `self.update` after restoring all fields to restore this field
+    OnUpdate(syn::Ident),
+}
+
+impl syn::parse::Parse for FieldRestoreMode {
+    fn parse(input: syn::parse::ParseStream) -> syn::Result<Self> {
+        let ident: syn::Ident = input.parse()?;
+        match ident.to_string().as_str() {
+            "default" => Ok(FieldRestoreMode::CallDefault),
+            "on_update" => Ok(FieldRestoreMode::OnUpdate(ident)),
+            _ => Err(syn::Error::new(ident.span(), "Unexpected config, expected 'default' or 'on_update'"))
+        }
+    }
+}
+
+impl FieldRestoreMode {
+    /// Parse fields attributes as configurations for the `Restore` derive.
+    /// Looks for the `#[restore(default)` xor `#[restore(on_update)]` to
+    /// determine the strategy for restoring the field. Check `FieldRestoreMode`
+    /// variants for more information.
+    pub fn try_from_attrs(attrs: &[syn::Attribute]) -> syn::Result<Self> {
+        let mut mode: Option<FieldRestoreMode> = None;
+        for attr in attrs {
+            if attr.path().segments.last().unwrap().ident.to_string() != "restore" {
+                continue
+            }
+            let syn::Meta::List(meta_list) = &attr.meta else {
+                return Err(syn::Error::new(attr.span(), "Expected restore(default) or restore(on_update)"))
+            };
+            match meta_list.parse_args::<FieldRestoreMode>()? {
+                new_mode @ FieldRestoreMode::CallDefault | new_mode @ FieldRestoreMode::OnUpdate(_)=> {
+                    if let Some(_) = mode.replace(new_mode){
+                        return Err(syn::Error::new(meta_list.span(), "Setting restore mode again"))
+                    }
+                },
+                FieldRestoreMode::FromMessage => unreachable!("Restoring from msg is not configured from attr"),
             }
         }
-        Ok(out)
+        Ok(mode.unwrap_or(FieldRestoreMode::FromMessage))
     }
-
     pub fn skips_dump(&self) -> bool{
-        !matches!(self, Self::FromRaw)
+        !matches!(self, Self::FromMessage)
     }
 }
 
 pub fn do_derive_restore(input: TokenStream) -> syn::Result<TokenStream>{
-    // Parse the input tokens into a syntax tree.
     let input = syn::parse::<syn::ItemStruct>(input)?;
     let struct_name = &input.ident;
-    let raw_data_struct_name = format_ident!("{}RawData", struct_name);
+    let RestoreDeriveConfig { message_type_conf } = RestoreDeriveConfig::try_from_attrs(&input.attrs)?;
+    let message_type = message_type_conf.message_type_path;
     let (impl_generics, ty_generics, where_clause) = input.generics.split_for_impl();
 
     let mut raw_data_field_initializers = Vec::<TokenStream2>::new();
     for (field_idx, field) in input.fields.iter().enumerate(){
         let ident = field.ident.as_ref().map(|id| quote!(#id)).unwrap_or(quote!(#field_idx));
         let ident_span = ident.span();
-        if FieldRestoreMode::try_from_attrs(field.attrs.iter())?.skips_dump(){
+        if FieldRestoreMode::try_from_attrs(&field.attrs)?.skips_dump(){
             continue;
         }
         raw_data_field_initializers.push(quote_spanned! {ident_span=>
+            // FIXME: could we not use this path into bioimg_gui?
             #ident: crate::widgets::Restore::dump(&self.#ident),
         });
     }
 
     let mut restore_statements = Vec::<TokenStream2>::new();
-    let mut update_trigger: Option<syn::Attribute> = None;
+    let mut update_trigger: Option<syn::Ident> = None;
     for (field_idx, field) in input.fields.iter().enumerate(){
         let ident = field.ident.as_ref().map(|id| quote!(#id)).unwrap_or(quote!(#field_idx));
         let span = ident.span();
         let ty_span = field.ty.span();
 
-        let statement = match FieldRestoreMode::try_from_attrs(field.attrs.iter())?{
-            FieldRestoreMode::ViaDefault => quote_spanned! {ty_span=>
+        let statement = match FieldRestoreMode::try_from_attrs(&field.attrs)?{
+            FieldRestoreMode::CallDefault => quote_spanned! {ty_span=>
                 self.#ident = std::default::Default::default();
             },
-            FieldRestoreMode::OnUpdate(attr) => {
-                update_trigger = Some(attr);
+            FieldRestoreMode::OnUpdate(update_marker) => {
+                update_trigger = Some(update_marker);
                 quote!{}
             },
-            FieldRestoreMode::FromRaw => quote_spanned! {span=>
+            FieldRestoreMode::FromMessage => quote_spanned! {span=>
+                // FIXME: could we not use this path into bioimg_gui?
                 crate::widgets::Restore::restore(&mut self.#ident, raw_data.#ident);
             }
         };
@@ -85,9 +162,9 @@ pub fn do_derive_restore(input: TokenStream) -> syn::Result<TokenStream>{
 
     let expanded = quote! {
         impl #impl_generics crate::widgets::Restore for #struct_name #ty_generics #where_clause {
-            type RawData = crate::project_data::#raw_data_struct_name;
+            type RawData = #message_type;
             fn dump(&self) -> Self::RawData #ty_generics{
-                crate::project_data::#raw_data_struct_name{
+                #message_type {
                     #(#raw_data_field_initializers)*
                 }
             }

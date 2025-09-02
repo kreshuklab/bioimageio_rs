@@ -4,6 +4,7 @@ use super::{collapsible_widget::{CollapsibleWidget, SummarizableWidget}, error_d
 use crate::result::{GuiError, Result};
 
 #[derive(Restore)]
+#[restore(message=crate::project_data::MaintainerWidgetRawData)]
 pub struct MaintainerWidget {
     pub github_user_widget: StagingString<BoundedString<1, 1024>>, //FIXME validate this somehow}
     pub affiliation_widget: StagingOpt<StagingString<BoundedString<1, 1024>>, false>,

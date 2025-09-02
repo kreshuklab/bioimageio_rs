@@ -10,6 +10,7 @@ use bioimg_runtime::npy_array::ArcNpyArray;
 use crate::result::{GuiError, Result};
 
 #[derive(Restore, Default)]
+#[restore(message=crate::project_data::ModelInterfaceWidgetRawData)]
 pub struct ModelInterfaceWidget {
     pub input_widgets: Vec<InputTensorWidget>,
     pub output_widgets: Vec<OutputTensorWidget>,

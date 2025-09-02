@@ -64,9 +64,10 @@ impl Restore for PreprocessingWidgetMode{
 }
 
 #[derive(Default, Restore)]
+#[restore(message=crate::project_data::PreprocessingWidgetRawData)]
 pub struct PreprocessingWidget{
     pub mode: PreprocessingWidgetMode,
-    #[restore_default]
+    #[restore(default)]
     pub mode_search: String,
     pub binarize_widget: BinarizePreprocessingWidget,
     pub clip_widget: ClipWidget,

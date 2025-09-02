@@ -34,6 +34,7 @@ impl Restore for ZmuvWidgetMode{
 }
 
 #[derive(Restore)]
+#[restore(message=crate::project_data::SimpleFixedZmuvWidgetRawData)]
 pub struct SimpleFixedZmuvWidget{
     pub mean_widget: StagingFloat<f32>,
     pub std_widget: StagingFloat<ZmuvStdDeviation>,
@@ -85,10 +86,11 @@ impl ItemWidgetConf for MeanAndStdItemConfig{
 }
 
 #[derive(Restore)]
+#[restore(message=crate::project_data::FixedZmuvAlongAxisWidgetRawData)]
 pub struct FixedZmuvAlongAxisWidget{
     pub axis_widget: StagingString<modelrdf::axes::NonBatchAxisId>,
     pub mean_and_std_widget: StagingVec<SimpleFixedZmuvWidget, MeanAndStdItemConfig>,
-    #[restore_on_update]
+    #[restore(on_update)]
     pub parsed: Result<preproc::FixedZmuvAlongAxis>,
 }
 
@@ -157,6 +159,7 @@ impl StatefulWidget for FixedZmuvAlongAxisWidget{
 // //////////////////////////
 
 #[derive(Default, Restore)]
+#[restore(message=crate::project_data::FixedZmuvWidgetRawData)]
 pub struct FixedZmuvWidget{
     pub mode_widget: SearchAndPickWidget<ZmuvWidgetMode, false>,
     pub simple_widget: SimpleFixedZmuvWidget,

@@ -11,6 +11,7 @@ use super::util::group_frame;
 use super::{Restore, StatefulWidget, ValueWidget};
 
 #[derive(Default, Restore)]
+#[restore(message=crate::project_data::AxisSizeReferenceWidgetRawData)]
 pub struct AxisSizeReferenceWidget {
     pub staging_tensor_id: StagingString<TensorId>,
     pub staging_axis_id: StagingString<AxisId>,
@@ -59,6 +60,7 @@ impl StatefulWidget for AxisSizeReferenceWidget {
 }
 
 #[derive(Default, Restore)]
+#[restore(message=crate::project_data::ParameterizedAxisSizeWidgetRawData)]
 pub struct ParameterizedAxisSizeWidget {
     pub staging_min: StagingNum<usize, NonZeroUsize>,
     pub staging_step: StagingNum<usize, NonZeroUsize>,
@@ -146,6 +148,7 @@ impl Default for AxisSizeMode {
 }
 
 #[derive(Default, Restore)]
+#[restore(message=crate::project_data::AnyAxisSizeWidgetRawData)]
 pub struct AnyAxisSizeWidget {
     pub mode: AxisSizeMode,
 
