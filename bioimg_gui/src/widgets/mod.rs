@@ -58,6 +58,8 @@ pub mod axis_physical_scale_widget;
 pub mod button_ext;
 pub mod iconify;
 
+/// Types that implement StatefulWidget are similar to what people call
+/// "components" in other UI frameworks
 pub trait StatefulWidget {
     type Value<'p>
     where
@@ -71,6 +73,13 @@ pub trait ValueWidget{
     fn set_value<'v>(&mut self, value: Self::Value<'v>);
 }
 
+/// Widgets that implement `Restore` can be saved to and loaded from disk. This
+/// is analogous to implementing `serde::Serialize` and `serde::Deserialize`,
+/// with #[serde(from="&Self::RawData")] and #[serde(into="&Self::RawData")],
+/// except that it's not actually possible to use references in
+/// `serde(from=...)` and `serde(into=...)`. Also, this trait hopefully
+/// communicates the idea that `<Self as Restore>::RawData` should be stable, so
+/// that deserialization of old versions are always possible.
 pub trait Restore{
     type RawData: serde::Serialize + DeserializeOwned;
 

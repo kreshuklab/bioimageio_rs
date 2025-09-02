@@ -1,3 +1,12 @@
+//! Types in this module are meant to serve for saving and loading model drafts.
+//! Ideally, they should never be changed once a version of the model builder
+//! GUI is published, so as not to invalidate models saved by previous versions.
+//! New types can be created to account for newer functionality, with conversions
+//! between the old and the new implemented to keep backwards compatibility.`
+//!
+//! These types are usually the `Self::RawData` associated type in `Restore`
+//! impelementations for widges.
+
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -1685,6 +1694,10 @@ impl ModelInterfaceWidgetRawData {
     }
 }
 
+/// The data that will be persisted to disk when saving the model draft.
+/// It is an enum so that newer, incompatible versions can be added as additional
+/// variants, and older versions can still be recognized and converted to the newer
+/// ones.
 #[derive(serde::Serialize, serde::Deserialize, strum::VariantNames)]
 #[serde(tag = "app_state_raw_data_version")]
 pub enum AppStateRawData{
@@ -1719,6 +1732,8 @@ impl AppStateRawData{
 
     pub fn load(reader: impl std::io::Read) -> Result<Self, ProjectLoadError>{
         let doc: bson::Document = bson::from_reader(reader)?;
+        // FIXME: this app_state_raw_data_version must be manually kep in sync
+        // with #[serde(tag=...)]. Maybe a catch-all variant would work?
         let found_version = match doc.get("app_state_raw_data_version"){
             Some(bson::Bson::String(version)) => version.to_owned(),
             _ => return Err(ProjectLoadError::MissingVersion)
