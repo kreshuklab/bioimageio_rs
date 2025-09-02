@@ -10,6 +10,7 @@ use bioimg_spec::rdf;
 use bioimg_spec::rdf::version::Version_0_5_x;
 use bioimg_spec::rdf::non_empty_list::NonEmptyList;
 use bioimg_spec::rdf::model::RdfTypeModel;
+use bioimg_spec::rdf::bounded_string::BoundedString;
 use bioimg_spec::rdf::model::unsupported::Version_0_4_X_OrEarlier;
 use bioimg_spec::rdf::model::ModelRdfV0_5;
 use bioimg_spec::rdf::maintainer::Maintainer;
@@ -98,6 +99,7 @@ pub struct ZooModel {
     pub maintainers: Vec<Maintainer>,
     pub tags: Vec<rdf::Tag>,
     pub version: Option<Version>,
+    pub version_comment: Option<BoundedString<0, 512>>,
     pub authors: NonEmptyList<Author2>,
     pub documentation: String,
     pub license: LicenseId,
@@ -193,6 +195,7 @@ impl ZooModel{
             maintainers: model_rdf.maintainers,
             tags: model_rdf.tags,
             version: model_rdf.version,
+            version_comment: model_rdf.version_comment,
             authors: model_rdf.authors,
             documentation,
             license: model_rdf.license,
@@ -249,6 +252,7 @@ impl ZooModel {
             maintainers: self.maintainers,
             tags: self.tags,
             version: self.version,
+            version_comment: self.version_comment,
             format_version: Version_0_5_x::new(),
             rdf_type: RdfTypeModel,
             authors: self.authors,

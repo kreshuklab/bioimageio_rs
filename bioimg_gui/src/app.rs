@@ -92,6 +92,7 @@ pub struct AppState1 {
     pub staging_maintainers: Vec<MaintainerWidget>,
     pub staging_tags: StagingVec<StagingString<rdf::Tag>>,
     pub staging_version: StagingOpt<VersionWidget, false>,
+    pub staging_version_comment: StagingOpt<StagingString<BoundedString<0, 512>>, false>,
 
     pub staging_documentation: CodeEditorWidget<MarkdwownLang>,
     pub staging_license: SearchAndPickWidget<rdf::LicenseId>,
@@ -193,6 +194,7 @@ impl Default for AppState1 {
             staging_maintainers: Default::default(),
             staging_tags: StagingVec::default(),
             staging_version: Default::default(),
+            staging_version_comment: Default::default(),
             staging_documentation: Default::default(),
             staging_license: SearchAndPickWidget::from_enum(Default::default()),
 
@@ -285,6 +287,12 @@ impl AppState1{
             .transpose()
             .map_err(|e| GuiError::new_with_rect("Review resource version field", e.failed_widget_rect))?
             .cloned();
+        let version_comment = self
+            .staging_version_comment
+            .state()
+            .transpose()
+            .map_err(|e| GuiError::new_with_rect("Review resource version comment field", e.failed_widget_rect))?
+            .cloned();
         let documentation = self.staging_documentation.state().to_owned();
         let license = self.staging_license.state();
         let model_interface = self.model_interface_widget.get_value()
@@ -306,6 +314,7 @@ impl AppState1{
             maintainers,
             tags,
             version,
+            version_comment,
             authors,
             documentation,
             license,
@@ -805,6 +814,17 @@ impl eframe::App for AppState1 {
                         ));
                     });
                     self.staging_version.draw_and_parse(ui, egui::Id::from("Version"));
+                });
+
+                ui.horizontal_top(|ui| {
+                    ui.strong("Resource Version comment: ").on_hover_text(indoc!(
+                        "
+                        A comment about what changed in this version of this model.
+                        Here you can explain why you bumped the resource version"
+                    ));
+
+                    self.staging_version_comment
+                        .draw_and_parse(ui, egui::Id::from("Version Comment"));
                 });
 
                 ui.horizontal(|ui| {
