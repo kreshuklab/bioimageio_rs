@@ -22,7 +22,6 @@ use crate::widgets::attachments_widget::AttachmentsWidget;
 
 use crate::widgets::code_editor_widget::MarkdwownLang;
 use crate::widgets::collapsible_widget::SummarizableWidget;
-use crate::widgets::cover_image_widget::CoverImageItemConf;
 use crate::widgets::icon_widget::IconWidgetValue;
 use crate::widgets::image_widget_2::SpecialImageWidget;
 use crate::widgets::json_editor_widget::JsonObjectEditorWidget;
