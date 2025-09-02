@@ -33,14 +33,14 @@ impl<LANG: CodeLanguage> Default for CodeEditorWidget<LANG>{
 }
 
 impl<LANG: CodeLanguage> Restore for CodeEditorWidget<LANG>{
-    type RawData = crate::project_data::CodeEditorWidgetRawData;
-    fn dump(&self) -> Self::RawData {
-        crate::project_data::CodeEditorWidgetRawData{
+    type SavedData = crate::project_data::CodeEditorWidgetSavedData;
+    fn dump(&self) -> Self::SavedData {
+        crate::project_data::CodeEditorWidgetSavedData{
             raw: self.raw.clone(),
         }
     }
 
-    fn restore(&mut self, value: Self::RawData) {
+    fn restore(&mut self, value: Self::SavedData) {
         self.raw = value.raw;
     }
 }

@@ -3,7 +3,7 @@ use indoc::indoc;
 use bioimg_spec::rdf::{model as modelrdf, NonEmptyList};
 use bioimg_spec::rdf::model::preprocessing as preproc;
 
-use crate::project_data::{BinarizeAlongAxisWidgetRawData, BinarizeModeRawData};
+use crate::project_data::{BinarizeAlongAxisWidgetSavedData, BinarizeModeSavedData};
 use crate::result::{GuiError, Result, VecResultExt};
 
 use super::error_display::show_if_error;
@@ -21,23 +21,23 @@ pub enum BinarizeMode{
 }
 
 impl Restore for BinarizeMode{
-    type RawData = BinarizeModeRawData;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = BinarizeModeSavedData;
+    fn dump(&self) -> Self::SavedData {
         match self{
-            Self::Simple => Self::RawData::Simple,
-            Self::AlongAxis => Self::RawData::AlongAxis,
+            Self::Simple => Self::SavedData::Simple,
+            Self::AlongAxis => Self::SavedData::AlongAxis,
         }
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        *self = match raw{
-            Self::RawData::Simple => Self::Simple,
-            Self::RawData::AlongAxis => Self::AlongAxis,
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        *self = match saved_data{
+            Self::SavedData::Simple => Self::Simple,
+            Self::SavedData::AlongAxis => Self::AlongAxis,
         }
     }
 }
 
 #[derive(Default, Restore)]
-#[restore(message=crate::project_data::SimpleBinarizeWidgetRawData)]
+#[restore(saved_data=crate::project_data::SimpleBinarizeWidgetSavedData)]
 pub struct SimpleBinarizeWidget{
     pub threshold_widget: StagingFloat<f32>,
 }
@@ -81,16 +81,16 @@ pub struct BinarizeAlongAxisWidget{
 }
 
 impl Restore for BinarizeAlongAxisWidget{
-    type RawData = BinarizeAlongAxisWidgetRawData;
-    fn dump(&self) -> Self::RawData {
-        BinarizeAlongAxisWidgetRawData{
+    type SavedData = BinarizeAlongAxisWidgetSavedData;
+    fn dump(&self) -> Self::SavedData {
+        BinarizeAlongAxisWidgetSavedData{
             thresholds_widget: self.thresholds_widget.dump(),
             axis_id_widget: self.axis_id_widget.dump(),
         }
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        self.thresholds_widget.restore(raw.thresholds_widget);
-        self.axis_id_widget.restore(raw.axis_id_widget);
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        self.thresholds_widget.restore(saved_data.thresholds_widget);
+        self.axis_id_widget.restore(saved_data.axis_id_widget);
         self.update();
     }
 }
@@ -150,7 +150,7 @@ impl StatefulWidget for BinarizeAlongAxisWidget{
 }
 
 #[derive(Default, Restore)]
-#[restore(message=crate::project_data::BinarizePreprocessingWidgetRawData)]
+#[restore(saved_data=crate::project_data::BinarizePreprocessingWidgetSavedData)]
 pub struct BinarizePreprocessingWidget{
     pub mode: BinarizeMode,
     pub simple_binarize_widget: SimpleBinarizeWidget,

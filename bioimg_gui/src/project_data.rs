@@ -4,7 +4,7 @@
 //! New types can be created to account for newer functionality, with conversions
 //! between the old and the new implemented to keep backwards compatibility.`
 //!
-//! These types are usually the `Self::RawData` associated type in `Restore`
+//! These types are usually the `Self::SavedData` associated type in `Restore`
 //! impelementations for widges.
 
 use std::path::PathBuf;
@@ -31,7 +31,7 @@ use crate::widgets::Restore;
 type Partial<T> = <T as AsPartial>::Partial;
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct AuthorWidgetRawData{
+pub struct AuthorWidgetSavedData{
     pub name_widget: String,
     pub affiliation_widget: Option<String>,
     pub email_widget: Option<String>,
@@ -39,7 +39,7 @@ pub struct AuthorWidgetRawData{
     pub orcid_widget: Option<String>,
 }
 
-impl AuthorWidgetRawData {
+impl AuthorWidgetSavedData {
     pub fn from_partial(_archive: &SharedZipArchive, partial_author: Partial<rdf::Author2>) -> Self {
         Self{
             name_widget: partial_author.name.unwrap_or(String::new()),
@@ -52,13 +52,13 @@ impl AuthorWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct CiteEntryWidgetRawData {
+pub struct CiteEntryWidgetSavedData {
     pub citation_text_widget: String,
     pub doi_widget: Option<String>,
     pub url_widget: Option<String>,
 }
 
-impl CiteEntryWidgetRawData {
+impl CiteEntryWidgetSavedData {
     pub fn from_partial(_archive: &SharedZipArchive, partial_cite: PartialCiteEntry2Msg) -> Self {
         Self{
             citation_text_widget: partial_cite.text.unwrap_or(String::new()),
@@ -69,7 +69,7 @@ impl CiteEntryWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct MaintainerWidgetRawData {
+pub struct MaintainerWidgetSavedData {
     pub github_user_widget: String,
     pub affiliation_widget: Option<String>,
     pub email_widget: Option<String>,
@@ -77,7 +77,7 @@ pub struct MaintainerWidgetRawData {
     pub name_widget: Option<String>,
 }
 
-impl MaintainerWidgetRawData {
+impl MaintainerWidgetSavedData {
     pub fn from_partial(_archive: &SharedZipArchive, partial: PartialMaintainer) -> Self{
         Self {
             github_user_widget: partial.github_user.unwrap_or(String::new()),
@@ -90,20 +90,20 @@ impl MaintainerWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub enum FileWidgetRawData{
+pub enum FileWidgetSavedData{
     #[default]
     Empty,
     AboutToLoad{path: PathBuf},
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub enum TestTensorWidgetRawData{
+pub enum TestTensorWidgetSavedData{
     #[default]
     Empty,
     Loaded{path: Option<PathBuf>, data: Vec<u8>},
 }
 
-impl TestTensorWidgetRawData {
+impl TestTensorWidgetSavedData {
     pub fn from_partial<W: std::fmt::Write>(
         archive: &SharedZipArchive,
         partial: Partial<rdf::FileDescription>,
@@ -124,14 +124,14 @@ impl TestTensorWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub enum LocalFileSourceWidgetRawData{
+pub enum LocalFileSourceWidgetSavedData{
     #[default]
     Empty,
     InMemoryData{name: Option<String>, data: Arc<[u8]>},
     AboutToLoad{path: String, inner_path: Option<String>}
 }
 
-impl LocalFileSourceWidgetRawData{
+impl LocalFileSourceWidgetSavedData{
     pub fn from_partial<W: std::fmt::Write>(archive: &SharedZipArchive, raw_path: String, warnings: &mut W) -> Self{
         let zip_entry_path = match archive.identifier(){
             rt::zip_archive_ext::ZipArchiveIdentifier::Path(path) => {
@@ -153,23 +153,23 @@ impl LocalFileSourceWidgetRawData{
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub enum FileSourceWidgetRawData{
-    Local(LocalFileSourceWidgetRawData),
+pub enum FileSourceWidgetSavedData{
+    Local(LocalFileSourceWidgetSavedData),
     Url(String),
 }
 
-impl Default for FileSourceWidgetRawData {
+impl Default for FileSourceWidgetSavedData {
     fn default() -> Self {
-        Self::Local(LocalFileSourceWidgetRawData::Empty)
+        Self::Local(LocalFileSourceWidgetSavedData::Empty)
     }
 }
 
-impl FileSourceWidgetRawData {
+impl FileSourceWidgetSavedData {
     fn from_partial<W: std::fmt::Write>(archive: &SharedZipArchive, partial: String, warnings: &mut W) -> Self{
         if let Ok(url) = rdf::HttpUrl::try_from(partial.clone()) { //FIXME: parse?
             return Self::Url(url.to_string())
         };
-        Self::Local(LocalFileSourceWidgetRawData::from_partial(archive, partial, warnings))
+        Self::Local(LocalFileSourceWidgetSavedData::from_partial(archive, partial, warnings))
     }
     pub fn from_partial_file_descr(
         archive: &SharedZipArchive,
@@ -184,12 +184,12 @@ impl FileSourceWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub enum ImageWidget2LoadingStateRawData{
+pub enum ImageWidget2LoadingStateSavedData{
     Empty,
     Forced{img_bytes: Vec<u8>}
 }
 
-// impl ImageWidget2LoadingStateRawData {
+// impl ImageWidget2LoadingStateSavedData {
 //     pub fn from_partial(archive: &SharedZipArchive, partial: Option<String>) -> Self {
 //         let Some(entry_path) = partial else {
 //             return Self::Empty
@@ -206,54 +206,54 @@ pub enum ImageWidget2LoadingStateRawData{
 
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct ImageWidget2RawData{
-    pub file_source_widget: FileSourceWidgetRawData,
-    pub loading_state: ImageWidget2LoadingStateRawData,
+pub struct ImageWidget2SavedData{
+    pub file_source_widget: FileSourceWidgetSavedData,
+    pub loading_state: ImageWidget2LoadingStateSavedData,
 }
 
-impl ImageWidget2RawData {
+impl ImageWidget2SavedData {
     pub fn from_partial(archive: &SharedZipArchive, partial: String, warnings: &mut impl std::fmt::Write) -> Self {
-        let file_source_state = FileSourceWidgetRawData::from_partial(archive, partial.clone(), warnings);
+        let file_source_state = FileSourceWidgetSavedData::from_partial(archive, partial.clone(), warnings);
         Self{
             file_source_widget: file_source_state,
             // FIXME: double check this. I think it's not forced because that'd be smth like a cpy/paste
             // and this is loading from the archive
-            loading_state: ImageWidget2LoadingStateRawData::Empty,
+            loading_state: ImageWidget2LoadingStateSavedData::Empty,
         }
     }
 }
 
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct SpecialImageWidgetRawData{
-    pub image_widget: ImageWidget2RawData,
+pub struct SpecialImageWidgetSavedData{
+    pub image_widget: ImageWidget2SavedData,
 }
 
-impl SpecialImageWidgetRawData {
+impl SpecialImageWidgetSavedData {
     pub fn from_partial(
         archive: &SharedZipArchive,
         partial: String,
         warnings: &mut impl std::fmt::Write,
     ) -> Self {
-        Self { image_widget: ImageWidget2RawData::from_partial(archive, partial, warnings) }
+        Self { image_widget: ImageWidget2SavedData::from_partial(archive, partial, warnings) }
     }
 }
 
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub enum IconWidgetRawData{
+pub enum IconWidgetSavedData{
     Emoji(String),
-    Image(SpecialImageWidgetRawData),
+    Image(SpecialImageWidgetSavedData),
 }
 
-impl IconWidgetRawData {
+impl IconWidgetSavedData {
     pub fn from_partial(
         archive: &SharedZipArchive,
         partial: <rdf::Icon as AsPartial>::Partial,
         warnings: &mut impl std::fmt::Write,
     ) -> Self {
         if archive.has_entry(&partial) {
-            let img_data = SpecialImageWidgetRawData::from_partial(archive, partial, warnings);
+            let img_data = SpecialImageWidgetSavedData::from_partial(archive, partial, warnings);
             return Self::Image(img_data);
         }
         Self::Emoji(partial)
@@ -261,54 +261,54 @@ impl IconWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct CollapsibleWidgetRawData<Inner: Restore>{
+pub struct CollapsibleWidgetSavedData<Inner: Restore>{
     pub is_closed: bool,
-    pub inner: Inner::RawData,
+    pub inner: Inner::SavedData,
 }
 
-impl<Inner: Restore> CollapsibleWidgetRawData<Inner> {
-    pub fn new(inner: Inner::RawData) -> Self {
+impl<Inner: Restore> CollapsibleWidgetSavedData<Inner> {
+    pub fn new(inner: Inner::SavedData) -> Self {
         Self{inner, is_closed: true}
     }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct VersionWidgetRawData{
+pub struct VersionWidgetSavedData{
     pub raw: String,
 }
 
-impl VersionWidgetRawData {
+impl VersionWidgetSavedData {
     pub fn from_partial(_archive: &SharedZipArchive, partial: <rdf::Version as AsPartial>::Partial) -> Self {
         Self{ raw: partial.to_string() }
     }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct CodeEditorWidgetRawData{
+pub struct CodeEditorWidgetSavedData{
     pub raw: String,
 }
 
 type JsonMap = serde_json::Map<String, serde_json::Value>;
 
-impl CodeEditorWidgetRawData {
+impl CodeEditorWidgetSavedData {
     pub fn from_partial(_archive: &SharedZipArchive, partial: JsonMap) -> Self {
         Self{raw: serde_json::to_string_pretty(&partial).unwrap()}
     }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct PhysicalScaleWidgetRawData<T>{
+pub struct PhysicalScaleWidgetSavedData<T>{
     pub raw_scale: String,
     pub unit_widget: Option<T>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct BatchAxisWidgetRawData{
+pub struct BatchAxisWidgetSavedData{
     pub description_widget: String,
     pub staging_allow_auto_size: bool,
 }
 
-impl BatchAxisWidgetRawData {
+impl BatchAxisWidgetSavedData {
     pub fn from_partial(_archive: &SharedZipArchive, partial: Partial<rdf::model::BatchAxis>) -> Self{
         Self{
             description_widget: partial.description.to_string(),
@@ -318,14 +318,14 @@ impl BatchAxisWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub enum ChannelNamesModeRawData{
+pub enum ChannelNamesModeSavedData{
     #[default]
     Explicit,
     Pattern,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub enum AxisSizeModeRawData{
+pub enum AxisSizeModeSavedData{
     #[default]
     Fixed,
     Reference,
@@ -333,12 +333,12 @@ pub enum AxisSizeModeRawData{
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct ParameterizedAxisSizeWidgetRawData {
+pub struct ParameterizedAxisSizeWidgetSavedData {
     pub staging_min: usize,
     pub staging_step: usize,
 }
 
-impl ParameterizedAxisSizeWidgetRawData {
+impl ParameterizedAxisSizeWidgetSavedData {
     pub fn from_partial(_archive: &SharedZipArchive, partial: Partial<rdf::model::ParameterizedAxisSize>) -> Self {
         Self{
             staging_min: partial.min.map(|min| usize::from(min)).unwrap_or(0),
@@ -348,36 +348,36 @@ impl ParameterizedAxisSizeWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct AnyAxisSizeWidgetRawData {
-    pub mode: AxisSizeModeRawData,
+pub struct AnyAxisSizeWidgetSavedData {
+    pub mode: AxisSizeModeSavedData,
 
     pub staging_fixed_size: usize,
-    pub staging_size_ref: AxisSizeReferenceWidgetRawData,
-    pub staging_parameterized: ParameterizedAxisSizeWidgetRawData,
+    pub staging_size_ref: AxisSizeReferenceWidgetSavedData,
+    pub staging_parameterized: ParameterizedAxisSizeWidgetSavedData,
 }
 
-impl AnyAxisSizeWidgetRawData {
+impl AnyAxisSizeWidgetSavedData {
     pub fn from_partial(archive: &SharedZipArchive, partial: Partial<rdf::model::AnyAxisSize>) -> Self {
-        let mut mode = AxisSizeModeRawData::Fixed;
+        let mut mode = AxisSizeModeSavedData::Fixed;
         let mut staging_fixed_size = 0usize;
-        let mut staging_size_ref = AxisSizeReferenceWidgetRawData::default();
-        let mut staging_parameterized = ParameterizedAxisSizeWidgetRawData::default();
+        let mut staging_size_ref = AxisSizeReferenceWidgetSavedData::default();
+        let mut staging_parameterized = ParameterizedAxisSizeWidgetSavedData::default();
         
         if let Some(fixed) = partial.fixed {
-            mode = AxisSizeModeRawData::Fixed;
+            mode = AxisSizeModeSavedData::Fixed;
             staging_fixed_size = fixed.into();
         }
         if let Some(refer) = partial.reference {
             if refer.qualified_axis_id.is_some(){
-                mode = AxisSizeModeRawData::Reference;
+                mode = AxisSizeModeSavedData::Reference;
             }
-            staging_size_ref = AxisSizeReferenceWidgetRawData::from_partial(archive, refer);
+            staging_size_ref = AxisSizeReferenceWidgetSavedData::from_partial(archive, refer);
         }
         if let Some(params) = partial.parameterized {
             if params.step.is_some() || params.step.is_some(){
-                mode = AxisSizeModeRawData::Parameterized;
+                mode = AxisSizeModeSavedData::Parameterized;
             }
-            staging_parameterized = ParameterizedAxisSizeWidgetRawData::from_partial(archive, params);
+            staging_parameterized = ParameterizedAxisSizeWidgetSavedData::from_partial(archive, params);
         }
         Self{
             mode,
@@ -390,30 +390,30 @@ impl AnyAxisSizeWidgetRawData {
 
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct IndexAxisWidgetRawData {
+pub struct IndexAxisWidgetSavedData {
     pub description_widget: String,
-    pub size_widget: AnyAxisSizeWidgetRawData,
+    pub size_widget: AnyAxisSizeWidgetSavedData,
 }
 
-impl IndexAxisWidgetRawData {
+impl IndexAxisWidgetSavedData {
     pub fn from_partial(archive: &SharedZipArchive, partial: Partial<modelrdf::IndexAxis>) -> Self {
         Self{
             description_widget: partial.description.to_string(),
             size_widget: partial.size
-                .map(|partial| AnyAxisSizeWidgetRawData::from_partial(archive, partial))
+                .map(|partial| AnyAxisSizeWidgetSavedData::from_partial(archive, partial))
                 .unwrap_or_default(),
         }
     }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct AxisSizeReferenceWidgetRawData {
+pub struct AxisSizeReferenceWidgetSavedData {
     pub staging_tensor_id: String,
     pub staging_axis_id: String,
     pub staging_offset: usize,
 }
 
-impl AxisSizeReferenceWidgetRawData {
+impl AxisSizeReferenceWidgetSavedData {
     pub fn from_partial(_archive: &SharedZipArchive, partial: Partial<rdf::model::AxisSizeReference>) -> Self {
         let tensor_id: String;
         let axis_id: String;
@@ -440,10 +440,10 @@ impl AxisSizeReferenceWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct ChannelAxisWidgetRawData {
+pub struct ChannelAxisWidgetSavedData {
     pub description_widget: String,
 
-    pub channel_names_mode_widget: ChannelNamesModeRawData,
+    pub channel_names_mode_widget: ChannelNamesModeSavedData,
     pub channel_extent_widget: usize,
     pub channel_name_prefix_widget: String,
     pub channel_name_suffix_widget: String,
@@ -451,12 +451,12 @@ pub struct ChannelAxisWidgetRawData {
     pub staging_explicit_names: Vec<String>,
 }
 
-impl ChannelAxisWidgetRawData {
+impl ChannelAxisWidgetSavedData {
     pub fn from_partial(_archive: &SharedZipArchive, partial: Partial<rdf::model::ChannelAxis>) -> Self {
         Self{
             description_widget: partial.description.to_string(),
             channel_extent_widget: partial.channel_names.as_ref().map(|names| names.len()).unwrap_or_default(),
-            channel_names_mode_widget: ChannelNamesModeRawData::Explicit,
+            channel_names_mode_widget: ChannelNamesModeSavedData::Explicit,
             staging_explicit_names: match partial.channel_names {
                 Some(names) => names.into_iter().map(|name| name.to_string()).collect(),
                 None => vec![]
@@ -467,23 +467,23 @@ impl ChannelAxisWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct InputSpaceAxisWidgetRawData {
+pub struct InputSpaceAxisWidgetSavedData {
     pub id_widget: String,
     pub description_widget: String,
 
-    pub size_widget: AnyAxisSizeWidgetRawData,
-    pub physical_scale_widget: PhysicalScaleWidgetRawData<modelrdf::SpaceUnit>
+    pub size_widget: AnyAxisSizeWidgetSavedData,
+    pub physical_scale_widget: PhysicalScaleWidgetSavedData<modelrdf::SpaceUnit>
 }
 
-impl InputSpaceAxisWidgetRawData {
+impl InputSpaceAxisWidgetSavedData {
     pub fn from_partial<W: std::fmt::Write>(archive: &SharedZipArchive, partial: Partial<rdf::model::SpaceInputAxis>, warnings: &mut W) -> Self{
         Self{
             id_widget: partial.id.to_string(),
             description_widget: partial.description.to_string(),
             size_widget: partial.size
-                .map(|size| AnyAxisSizeWidgetRawData::from_partial(archive, size))
+                .map(|size| AnyAxisSizeWidgetSavedData::from_partial(archive, size))
                 .unwrap_or_default(),
-            physical_scale_widget: PhysicalScaleWidgetRawData {
+            physical_scale_widget: PhysicalScaleWidgetSavedData {
                 raw_scale: partial.scale.to_string(),
                 unit_widget: 'unit: {
                     let Some(unit) = partial.unit else {
@@ -504,23 +504,23 @@ impl InputSpaceAxisWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct InputTimeAxisWidgetRawData {
+pub struct InputTimeAxisWidgetSavedData {
     pub id_widget: String,
     pub description_widget: String,
 
-    pub size_widget: AnyAxisSizeWidgetRawData,
-    pub physical_scale_widget: PhysicalScaleWidgetRawData<modelrdf::TimeUnit>,
+    pub size_widget: AnyAxisSizeWidgetSavedData,
+    pub physical_scale_widget: PhysicalScaleWidgetSavedData<modelrdf::TimeUnit>,
 }
 
-impl InputTimeAxisWidgetRawData {
+impl InputTimeAxisWidgetSavedData {
     pub fn from_partial(archive: &SharedZipArchive, partial: Partial<rdf::model::TimeInputAxis>) -> Self{
         Self{
             id_widget: partial.id.to_string(),
             description_widget: partial.description.to_string(),
             size_widget: partial.size
-                .map(|size| AnyAxisSizeWidgetRawData::from_partial(archive, size))
+                .map(|size| AnyAxisSizeWidgetSavedData::from_partial(archive, size))
                 .unwrap_or_default(),
-            physical_scale_widget: PhysicalScaleWidgetRawData {
+            physical_scale_widget: PhysicalScaleWidgetSavedData {
                 raw_scale: partial.scale.to_string(),
                 unit_widget: 'unit: {
                     let Some(unit) = partial.unit else {
@@ -541,16 +541,16 @@ impl InputTimeAxisWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct InputAxisWidgetRawData {
+pub struct InputAxisWidgetSavedData {
     pub axis_type_widget: bioimg_spec::rdf::model::axes::AxisType,
-    pub batch_axis_widget: BatchAxisWidgetRawData,
-    pub channel_axis_widget: ChannelAxisWidgetRawData,
-    pub index_axis_widget: IndexAxisWidgetRawData,
-    pub space_axis_widget: InputSpaceAxisWidgetRawData,
-    pub time_axis_widget: InputTimeAxisWidgetRawData,
+    pub batch_axis_widget: BatchAxisWidgetSavedData,
+    pub channel_axis_widget: ChannelAxisWidgetSavedData,
+    pub index_axis_widget: IndexAxisWidgetSavedData,
+    pub space_axis_widget: InputSpaceAxisWidgetSavedData,
+    pub time_axis_widget: InputTimeAxisWidgetSavedData,
 }
 
-impl InputAxisWidgetRawData {
+impl InputAxisWidgetSavedData {
     pub fn from_partial(
         archive: &SharedZipArchive,
         partial: Partial<modelrdf::InputAxis>,
@@ -560,35 +560,35 @@ impl InputAxisWidgetRawData {
         let batch_axis_widget = match partial.batch {
             Some(partial) => {
                 axis_type_widget = modelrdf::axes::AxisType::Batch;
-                BatchAxisWidgetRawData::from_partial(archive, partial)
+                BatchAxisWidgetSavedData::from_partial(archive, partial)
             }
             None => Default::default(),
         };
         let channel_axis_widget = match partial.channel{
             Some(partial) => {
                 axis_type_widget = modelrdf::axes::AxisType::Channel;
-                ChannelAxisWidgetRawData::from_partial(archive, partial)
+                ChannelAxisWidgetSavedData::from_partial(archive, partial)
             }
             None => Default::default(),
         };
         let index_axis_widget = match partial.index {
             Some(partial) => {
                 axis_type_widget = modelrdf::axes::AxisType::Index;
-                IndexAxisWidgetRawData::from_partial(archive, partial)
+                IndexAxisWidgetSavedData::from_partial(archive, partial)
             }
             None => Default::default(),
         };
         let space_axis_widget = match partial.space{
             Some(partial) => {
                 axis_type_widget = modelrdf::axes::AxisType::Space;
-                InputSpaceAxisWidgetRawData::from_partial(archive, partial, warnings)
+                InputSpaceAxisWidgetSavedData::from_partial(archive, partial, warnings)
             }
            None => Default::default(),
         };
         let time_axis_widget = match partial.time {
             Some(partial) => {
                 axis_type_widget = modelrdf::axes::AxisType::Time;
-                InputTimeAxisWidgetRawData::from_partial(archive, partial)
+                InputTimeAxisWidgetSavedData::from_partial(archive, partial)
             }
            None => Default::default(),
         };
@@ -604,25 +604,25 @@ impl InputAxisWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct WeightsDescrBaseWidgetRawData{
-    pub source_widget: FileSourceWidgetRawData,
-    pub authors_widget: Option<Vec<CollapsibleWidgetRawData<AuthorWidget>>>,
+pub struct WeightsDescrBaseWidgetSavedData{
+    pub source_widget: FileSourceWidgetSavedData,
+    pub authors_widget: Option<Vec<CollapsibleWidgetSavedData<AuthorWidget>>>,
 }
 
-impl WeightsDescrBaseWidgetRawData {
+impl WeightsDescrBaseWidgetSavedData {
     pub fn from_partial(
         archive: &SharedZipArchive,
         partial: <rdf::model::WeightsDescrBase as AsPartial>::Partial,
         warnings: &mut impl std::fmt::Write,
     ) -> Self{
         let source = partial.source
-            .map(|src| FileSourceWidgetRawData::from_partial(archive, src, warnings))
+            .map(|src| FileSourceWidgetSavedData::from_partial(archive, src, warnings))
             .unwrap_or_default();
         let authors = partial.authors.map(|authors| {
             authors.into_iter()
                 .map(|author|{
-                    let author_state = AuthorWidgetRawData::from_partial(archive, author);
-                    CollapsibleWidgetRawData{is_closed: true, inner: author_state}
+                    let author_state = AuthorWidgetSavedData::from_partial(archive, author);
+                    CollapsibleWidgetSavedData{is_closed: true, inner: author_state}
                 })
                 .collect::<Vec<_>>()
         });
@@ -631,41 +631,41 @@ impl WeightsDescrBaseWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct TorchscriptWeightsWidgetRawData{
-    pub base_widget: WeightsDescrBaseWidgetRawData,
-    pub pytorch_version_widget: VersionWidgetRawData,
+pub struct TorchscriptWeightsWidgetSavedData{
+    pub base_widget: WeightsDescrBaseWidgetSavedData,
+    pub pytorch_version_widget: VersionWidgetSavedData,
 }
 
-impl TorchscriptWeightsWidgetRawData {
+impl TorchscriptWeightsWidgetSavedData {
     pub fn from_partial(
         archive: &SharedZipArchive,
         partial: Partial<rdf::model::TorchscriptWeightsDescr>,
         warnings: &mut impl std::fmt::Write,
     ) -> Self {
-        let base = partial.base.map(|partial| WeightsDescrBaseWidgetRawData::from_partial(archive, partial, warnings)).unwrap_or_default();
-        let version = partial.pytorch_version.map(|partial| VersionWidgetRawData::from_partial(archive, partial)).unwrap_or_default();
+        let base = partial.base.map(|partial| WeightsDescrBaseWidgetSavedData::from_partial(archive, partial, warnings)).unwrap_or_default();
+        let version = partial.pytorch_version.map(|partial| VersionWidgetSavedData::from_partial(archive, partial)).unwrap_or_default();
         Self{base_widget: base, pytorch_version_widget: version}
     }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct JsonObjectEditorWidgetRawData{
-    pub code_editor_widget: CodeEditorWidgetRawData,
+pub struct JsonObjectEditorWidgetSavedData{
+    pub code_editor_widget: CodeEditorWidgetSavedData,
 }
 
-impl JsonObjectEditorWidgetRawData {
+impl JsonObjectEditorWidgetSavedData {
     pub fn from_partial(archive: &SharedZipArchive, partial: JsonMap) -> Self {
-        let code_editor_widget = CodeEditorWidgetRawData::from_partial(archive, partial);
+        let code_editor_widget = CodeEditorWidgetSavedData::from_partial(archive, partial);
         Self{code_editor_widget}
     }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct CondaEnvEditorWidgetRawData{
-    pub code_editor_widget: CodeEditorWidgetRawData,
+pub struct CondaEnvEditorWidgetSavedData{
+    pub code_editor_widget: CodeEditorWidgetSavedData,
 }
 
-impl CondaEnvEditorWidgetRawData {
+impl CondaEnvEditorWidgetSavedData {
     pub fn from_partial_file_descr(archive: &SharedZipArchive, partial: Partial<rdf::EnvironmentFileDescr>) -> Self{
         let Some(source) = partial.source else {
             return Self::default()
@@ -685,37 +685,37 @@ impl CondaEnvEditorWidgetRawData {
                 return Self::default();
             }
         };
-        Self{ code_editor_widget: CodeEditorWidgetRawData { raw: data_string }}
+        Self{ code_editor_widget: CodeEditorWidgetSavedData { raw: data_string }}
     }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub enum PytorchArchModeRawData{
+pub enum PytorchArchModeSavedData{
     #[default]
     FromFile,
     FromLib
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct PytorchArchWidgetRawData{
-    pub mode_widget: PytorchArchModeRawData,
+pub struct PytorchArchWidgetSavedData{
+    pub mode_widget: PytorchArchModeSavedData,
     pub callable_widget: String,
-    pub kwargs_widget: JsonObjectEditorWidgetRawData,
+    pub kwargs_widget: JsonObjectEditorWidgetSavedData,
     pub import_from_widget: String,
-    pub source_widget: FileSourceWidgetRawData,
+    pub source_widget: FileSourceWidgetSavedData,
 }
 
-impl PytorchArchWidgetRawData {
+impl PytorchArchWidgetSavedData {
     pub fn from_partial(
         archive: &SharedZipArchive,
         partial: Partial<rdf::model::PytorchArchitectureDescr>,
         warnings: &mut impl std::fmt::Write,
     ) -> Self{
-        let mut mode_widget = PytorchArchModeRawData::FromFile;
+        let mut mode_widget = PytorchArchModeSavedData::FromFile;
         let mut callable = String::new();
         let mut import_from = String::new();
         let mut kwargs_state = String::new();
-        let mut source_widget = FileSourceWidgetRawData::default();
+        let mut source_widget = FileSourceWidgetSavedData::default();
 
         if let Some(from_file_descr) = partial.from_file_descr {
             callable = from_file_descr.callable.unwrap_or_default();
@@ -723,14 +723,14 @@ impl PytorchArchWidgetRawData {
                 kwargs_state = serde_json::to_string_pretty(kwargs).unwrap();
             }
             if from_file_descr.file_descr.is_some(){
-                mode_widget = PytorchArchModeRawData::FromFile;
+                mode_widget = PytorchArchModeSavedData::FromFile;
             }
             source_widget = from_file_descr.file_descr
                 .map(|fd| {
                     let Some(src) = fd.source else {
                         return Default::default();
                     };
-                    FileSourceWidgetRawData::from_partial(archive, src, warnings)
+                    FileSourceWidgetSavedData::from_partial(archive, src, warnings)
                 })
                 .unwrap_or_default();
         }
@@ -740,7 +740,7 @@ impl PytorchArchWidgetRawData {
             }
             if let Some(imp_from) = from_lib.import_from {
                 import_from = imp_from;
-                mode_widget = PytorchArchModeRawData::FromLib;
+                mode_widget = PytorchArchModeSavedData::FromLib;
             }
             if let Some(kwargs) = &from_lib.kwargs {
                 if kwargs_state.is_empty() {
@@ -752,8 +752,8 @@ impl PytorchArchWidgetRawData {
         Self{
             mode_widget,
             callable_widget: callable,
-            kwargs_widget: JsonObjectEditorWidgetRawData {
-                code_editor_widget: CodeEditorWidgetRawData { raw: kwargs_state }
+            kwargs_widget: JsonObjectEditorWidgetSavedData {
+                code_editor_widget: CodeEditorWidgetSavedData { raw: kwargs_state }
             },
             import_from_widget: import_from,
             source_widget,
@@ -762,48 +762,48 @@ impl PytorchArchWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct PytorchStateDictWidgetRawData{
-    pub base_widget: WeightsDescrBaseWidgetRawData,
-    pub architecture_widget: PytorchArchWidgetRawData,
-    pub version_widget: VersionWidgetRawData,
-    pub dependencies_widget: Option<CondaEnvEditorWidgetRawData>,
+pub struct PytorchStateDictWidgetSavedData{
+    pub base_widget: WeightsDescrBaseWidgetSavedData,
+    pub architecture_widget: PytorchArchWidgetSavedData,
+    pub version_widget: VersionWidgetSavedData,
+    pub dependencies_widget: Option<CondaEnvEditorWidgetSavedData>,
 }
 
-impl PytorchStateDictWidgetRawData{
+impl PytorchStateDictWidgetSavedData{
     pub fn from_partial(
         archive: &SharedZipArchive,
         partial: <rdf::model::PytorchStateDictWeightsDescr as AsPartial>::Partial,
         warnings: &mut impl std::fmt::Write,
     ) -> Self{
         let base = partial.base
-            .map(|base| WeightsDescrBaseWidgetRawData::from_partial(archive, base, warnings))
+            .map(|base| WeightsDescrBaseWidgetSavedData::from_partial(archive, base, warnings))
             .unwrap_or_default();
         let architecture = partial.architecture
-            .map(|arch| PytorchArchWidgetRawData::from_partial(archive, arch, warnings))
+            .map(|arch| PytorchArchWidgetSavedData::from_partial(archive, arch, warnings))
             .unwrap_or_default();
         let version = partial.pytorch_version
-            .map(|ver| VersionWidgetRawData::from_partial(archive, ver))
+            .map(|ver| VersionWidgetSavedData::from_partial(archive, ver))
             .unwrap_or_default();
         let dependencies = partial.dependencies
-            .map(|file_descr| CondaEnvEditorWidgetRawData::from_partial_file_descr(archive, file_descr));
+            .map(|file_descr| CondaEnvEditorWidgetSavedData::from_partial_file_descr(archive, file_descr));
         Self{base_widget: base, architecture_widget: architecture, version_widget: version, dependencies_widget: dependencies}
     }
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct OnnxWeightsWidgetRawData{
-    pub base_widget: WeightsDescrBaseWidgetRawData,
+pub struct OnnxWeightsWidgetSavedData{
+    pub base_widget: WeightsDescrBaseWidgetSavedData,
     pub opset_version_widget: u32,
 }
 
-impl OnnxWeightsWidgetRawData{
+impl OnnxWeightsWidgetSavedData{
     pub fn from_partial(
         archive: &SharedZipArchive,
         partial: <rdf::model::OnnxWeightsDescr as AsPartial>::Partial,
         warnings: &mut impl std::fmt::Write,
     ) -> Self{
         let base = partial.base
-            .map(|base| WeightsDescrBaseWidgetRawData::from_partial(archive, base, warnings))
+            .map(|base| WeightsDescrBaseWidgetSavedData::from_partial(archive, base, warnings))
             .unwrap_or_default();
         let version = partial.opset_version.unwrap_or_default();
         Self{base_widget: base, opset_version_widget: version}
@@ -811,56 +811,56 @@ impl OnnxWeightsWidgetRawData{
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct KerasHdf5WeightsWidgetRawData{
-    pub base_widget: WeightsDescrBaseWidgetRawData,
-    pub tensorflow_version_widget: VersionWidgetRawData,
+pub struct KerasHdf5WeightsWidgetSavedData{
+    pub base_widget: WeightsDescrBaseWidgetSavedData,
+    pub tensorflow_version_widget: VersionWidgetSavedData,
 }
 
-impl KerasHdf5WeightsWidgetRawData {
+impl KerasHdf5WeightsWidgetSavedData {
     pub fn from_partial(
         archive: &SharedZipArchive,
         partial: <rdf::model::KerasHdf5WeightsDescr as AsPartial>::Partial,
         warnings: &mut impl std::fmt::Write,
     ) -> Self{
         let base = partial.base
-            .map(|base| WeightsDescrBaseWidgetRawData::from_partial(archive, base, warnings))
+            .map(|base| WeightsDescrBaseWidgetSavedData::from_partial(archive, base, warnings))
             .unwrap_or_default();
         let version = partial.tensorflow_version
-            .map(|version| VersionWidgetRawData::from_partial(archive, version))
+            .map(|version| VersionWidgetSavedData::from_partial(archive, version))
             .unwrap_or_default();
         Self{base_widget: base, tensorflow_version_widget: version}
     }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct WeightsWidgetRawData{
-    pub keras_weights_widget: Option<CollapsibleWidgetRawData<KerasHdf5WeightsWidget>>,
-    pub torchscript_weights_widget: Option<CollapsibleWidgetRawData<TorchscriptWeightsWidget>>,
-    pub pytorch_state_dict_weights_widget: Option<CollapsibleWidgetRawData<PytorchStateDictWidget>>,
-    pub onnx_weights_widget: Option<CollapsibleWidgetRawData<OnnxWeightsWidget>>,
+pub struct WeightsWidgetSavedData{
+    pub keras_weights_widget: Option<CollapsibleWidgetSavedData<KerasHdf5WeightsWidget>>,
+    pub torchscript_weights_widget: Option<CollapsibleWidgetSavedData<TorchscriptWeightsWidget>>,
+    pub pytorch_state_dict_weights_widget: Option<CollapsibleWidgetSavedData<PytorchStateDictWidget>>,
+    pub onnx_weights_widget: Option<CollapsibleWidgetSavedData<OnnxWeightsWidget>>,
 }
 
-impl WeightsWidgetRawData {
+impl WeightsWidgetSavedData {
     pub fn from_partial(
         archive: &SharedZipArchive,
         partial: Partial<rdf::model::WeightsDescr>,
         warnings: &mut impl std::fmt::Write,
     ) -> Self{
         let keras = partial.keras_hdf5.map(|partial| {
-            let weights = KerasHdf5WeightsWidgetRawData::from_partial(archive, partial, warnings);
-            CollapsibleWidgetRawData{is_closed: true, inner: weights}
+            let weights = KerasHdf5WeightsWidgetSavedData::from_partial(archive, partial, warnings);
+            CollapsibleWidgetSavedData{is_closed: true, inner: weights}
         });
         let torchscript = partial.torchscript.map(|partial| {
-            let weights = TorchscriptWeightsWidgetRawData::from_partial(archive, partial, warnings);
-            CollapsibleWidgetRawData{is_closed: true, inner: weights}
+            let weights = TorchscriptWeightsWidgetSavedData::from_partial(archive, partial, warnings);
+            CollapsibleWidgetSavedData{is_closed: true, inner: weights}
         });
         let pytorch_state_dict = partial.pytorch_state_dict.map(|partial|{
-            let weights = PytorchStateDictWidgetRawData::from_partial(archive, partial, warnings);
-            CollapsibleWidgetRawData{is_closed: true, inner: weights}
+            let weights = PytorchStateDictWidgetSavedData::from_partial(archive, partial, warnings);
+            CollapsibleWidgetSavedData{is_closed: true, inner: weights}
         });
         let onnx = partial.onnx.map(|partial|{
-            let weights = OnnxWeightsWidgetRawData::from_partial(archive, partial, warnings);
-            CollapsibleWidgetRawData{is_closed: true, inner: weights}
+            let weights = OnnxWeightsWidgetSavedData::from_partial(archive, partial, warnings);
+            CollapsibleWidgetSavedData{is_closed: true, inner: weights}
         });
         Self{
             keras_weights_widget: keras,
@@ -872,16 +872,16 @@ impl WeightsWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct InputTensorWidgetRawData {
+pub struct InputTensorWidgetSavedData {
     pub id_widget: String,
     pub is_optional: bool,
     pub description_widget: String,
-    pub axis_widgets: Vec<InputAxisWidgetRawData>,
-    pub test_tensor_widget: TestTensorWidgetRawData,
-    pub preprocessing_widget: Vec<PreprocessingWidgetRawData>,
+    pub axis_widgets: Vec<InputAxisWidgetSavedData>,
+    pub test_tensor_widget: TestTensorWidgetSavedData,
+    pub preprocessing_widget: Vec<PreprocessingWidgetSavedData>,
 }
 
-impl InputTensorWidgetRawData {
+impl InputTensorWidgetSavedData {
     pub fn from_partial(
         archive: &SharedZipArchive,
         partial: Partial<modelrdf::InputTensorDescr>,
@@ -890,8 +890,8 @@ impl InputTensorWidgetRawData {
         let mut id_widget = String::new();
         let mut is_optional = false;
         let mut description_widget = String::new();
-        let mut axis_widgets = Vec::<InputAxisWidgetRawData>::new();
-        let mut preprocessing_widget = Vec::<PreprocessingWidgetRawData>::new();
+        let mut axis_widgets = Vec::<InputAxisWidgetSavedData>::new();
+        let mut preprocessing_widget = Vec::<PreprocessingWidgetSavedData>::new();
         
         if let Some(meta) = partial.meta {
             if let Some(id) = meta.id {
@@ -903,17 +903,17 @@ impl InputTensorWidgetRawData {
             }
             if let Some(axes) = meta.axes {
                 for partial_axis in axes{
-                    axis_widgets.push(InputAxisWidgetRawData::from_partial(archive, partial_axis, warnings));
+                    axis_widgets.push(InputAxisWidgetSavedData::from_partial(archive, partial_axis, warnings));
                 }
             }
             if let Some(preprocs) = meta.preprocessing {
                 for partial_preproc in preprocs {
-                    preprocessing_widget.push(PreprocessingWidgetRawData::from_partial(archive, partial_preproc));
+                    preprocessing_widget.push(PreprocessingWidgetSavedData::from_partial(archive, partial_preproc));
                 }
             }
         }
         let test_tensor_widget = partial.test_tensor
-            .map(|tt| TestTensorWidgetRawData::from_partial(archive, tt, warnings))
+            .map(|tt| TestTensorWidgetSavedData::from_partial(archive, tt, warnings))
             .unwrap_or_default();
 
         Self{id_widget, is_optional, description_widget, axis_widgets, test_tensor_widget, preprocessing_widget}
@@ -921,7 +921,7 @@ impl InputTensorWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub enum PreprocessingWidgetModeRawData {
+pub enum PreprocessingWidgetModeSavedData {
     #[default]
     Binarize,
     Clip,
@@ -934,30 +934,30 @@ pub enum PreprocessingWidgetModeRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub enum BinarizeModeRawData{
+pub enum BinarizeModeSavedData{
     #[default]
     Simple,
     AlongAxis,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct SimpleBinarizeWidgetRawData{
+pub struct SimpleBinarizeWidgetSavedData{
     pub threshold_widget: String,
 }
 
-impl SimpleBinarizeWidgetRawData {
+impl SimpleBinarizeWidgetSavedData {
     pub fn from_partial(_archive: &SharedZipArchive, partial: Partial<modelrdf::preprocessing::SimpleBinarizeDescr>) -> Self {
         Self{ threshold_widget: partial.threshold.map(|t| t.to_string()).unwrap_or_default() }
     }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct BinarizeAlongAxisWidgetRawData{
+pub struct BinarizeAlongAxisWidgetSavedData{
     pub thresholds_widget: Vec<String>,
     pub axis_id_widget: String,
 }
 
-impl BinarizeAlongAxisWidgetRawData {
+impl BinarizeAlongAxisWidgetSavedData {
     pub fn from_partial(_archive: &SharedZipArchive, partial: Partial<modelrdf::preprocessing::BinarizeAlongAxisDescr>) -> Self {
         Self{
             thresholds_widget: partial.threshold
@@ -969,40 +969,40 @@ impl BinarizeAlongAxisWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct BinarizePreprocessingWidgetRawData{
-    pub mode: BinarizeModeRawData,
-    pub simple_binarize_widget: SimpleBinarizeWidgetRawData,
-    pub binarize_along_axis_wiget: BinarizeAlongAxisWidgetRawData,
+pub struct BinarizePreprocessingWidgetSavedData{
+    pub mode: BinarizeModeSavedData,
+    pub simple_binarize_widget: SimpleBinarizeWidgetSavedData,
+    pub binarize_along_axis_wiget: BinarizeAlongAxisWidgetSavedData,
 }
 
-impl BinarizePreprocessingWidgetRawData {
+impl BinarizePreprocessingWidgetSavedData {
     pub fn from_partial(archive: &SharedZipArchive, partial: Partial<modelrdf::preprocessing::BinarizeDescr>) -> Self {
-        let mut mode = BinarizeModeRawData::Simple;
+        let mut mode = BinarizeModeSavedData::Simple;
         let simple_binarize_widget = match partial.simple {
             Some(simple) => {
-                mode = BinarizeModeRawData::Simple;
-                SimpleBinarizeWidgetRawData::from_partial(archive, simple)
+                mode = BinarizeModeSavedData::Simple;
+                SimpleBinarizeWidgetSavedData::from_partial(archive, simple)
             },
-            None => SimpleBinarizeWidgetRawData::default(),
+            None => SimpleBinarizeWidgetSavedData::default(),
         };
         let binarize_along_axis_wiget = match partial.along_axis {
             Some(along_axis) => {
-                mode = BinarizeModeRawData::AlongAxis;
-                BinarizeAlongAxisWidgetRawData::from_partial(archive, along_axis)
+                mode = BinarizeModeSavedData::AlongAxis;
+                BinarizeAlongAxisWidgetSavedData::from_partial(archive, along_axis)
             },
-            None => BinarizeAlongAxisWidgetRawData::default(),
+            None => BinarizeAlongAxisWidgetSavedData::default(),
         };
         Self{mode, simple_binarize_widget, binarize_along_axis_wiget}
     }
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct ClipWidgetRawData{
+pub struct ClipWidgetSavedData{
     pub min_widget: String,
     pub max_widget: String,
 }
 
-impl ClipWidgetRawData {
+impl ClipWidgetSavedData {
     pub fn from_partial(_archive: &SharedZipArchive, partial: Partial<modelrdf::preprocessing::ClipDescr>) -> Self {
         Self{
             min_widget: partial.min.map(|min| min.to_string()).unwrap_or_default(),
@@ -1012,19 +1012,19 @@ impl ClipWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub enum ScaleLinearModeRawData{
+pub enum ScaleLinearModeSavedData{
     #[default]
     Simple,
     AlongAxis,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct SimpleScaleLinearWidgetRawData{
+pub struct SimpleScaleLinearWidgetSavedData{
     pub gain_widget: String,
     pub offset_widget: String,
 }
 
-impl SimpleScaleLinearWidgetRawData {
+impl SimpleScaleLinearWidgetSavedData {
     pub fn from_partial(_archive: &SharedZipArchive, partial: Partial<modelrdf::preprocessing::SimpleScaleLinearDescr>) -> Self {
         Self{
             gain_widget: partial.gain.to_string(),
@@ -1034,12 +1034,12 @@ impl SimpleScaleLinearWidgetRawData {
 }
 
 #[derive(serde::Deserialize, serde::Serialize, Default)]
-pub struct ScaleLinearAlongAxisWidgetRawData{
+pub struct ScaleLinearAlongAxisWidgetSavedData{
     pub axis_widget: String,
-    pub gain_offsets_widget: Vec<SimpleScaleLinearWidgetRawData>,
+    pub gain_offsets_widget: Vec<SimpleScaleLinearWidgetSavedData>,
 }
 
-impl ScaleLinearAlongAxisWidgetRawData {
+impl ScaleLinearAlongAxisWidgetSavedData {
     pub fn from_partial(_archive: &SharedZipArchive, partial: Partial<modelrdf::preprocessing::ScaleLinearAlongAxisDescr>) -> Self {
         let mut gains = match partial.gain {
             PartialSingleOrMultiple::Single(item) => vec![item],
@@ -1050,7 +1050,7 @@ impl ScaleLinearAlongAxisWidgetRawData {
             PartialSingleOrMultiple::Multiple(items) => items,
         }.into_iter();
 
-        let mut gain_offsets_widget = Vec::<SimpleScaleLinearWidgetRawData>::new();
+        let mut gain_offsets_widget = Vec::<SimpleScaleLinearWidgetSavedData>::new();
         loop {
             let gain = gains.next();
             let offset = offsets.next();
@@ -1058,7 +1058,7 @@ impl ScaleLinearAlongAxisWidgetRawData {
                 break
             }
             gain_offsets_widget.push(
-                SimpleScaleLinearWidgetRawData {
+                SimpleScaleLinearWidgetSavedData {
                     gain_widget: gain.map(|g| g.to_string()).unwrap_or_default(),
                     offset_widget: offset.map(|o| o.to_string()).unwrap_or_default(),
                 }
@@ -1073,12 +1073,12 @@ impl ScaleLinearAlongAxisWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct ZeroMeanUnitVarianceWidgetRawData{
+pub struct ZeroMeanUnitVarianceWidgetSavedData{
     pub axes_widget: Option<Vec<String>>,
     pub epsilon_widget: String,
 }
 
-impl ZeroMeanUnitVarianceWidgetRawData {
+impl ZeroMeanUnitVarianceWidgetSavedData {
     pub fn from_partial(_archive: &SharedZipArchive, partial: Partial<modelrdf::preprocessing::Zmuv>) -> Self {
         let axes = match partial.axes {
             Some(Some(axes)) => match axes.len() {
@@ -1095,12 +1095,12 @@ impl ZeroMeanUnitVarianceWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct PercentilesWidgetRawData{
+pub struct PercentilesWidgetSavedData{
     pub min_widget: String,
     pub max_widget: String,
 }
 
-impl PercentilesWidgetRawData {
+impl PercentilesWidgetSavedData {
     pub fn from_partial(_archive: &SharedZipArchive, partial: Partial<modelrdf::preprocessing::ScaleRangePercentile>) -> Self {
         Self{
             min_widget: partial.min_percentile.map(|v| v.to_string()).unwrap_or_default(),
@@ -1110,14 +1110,14 @@ impl PercentilesWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct ScaleRangeWidgetRawData{
+pub struct ScaleRangeWidgetSavedData{
     pub axes_widget: Option<Vec<String>>,
-    pub percentiles_widget: PercentilesWidgetRawData,
+    pub percentiles_widget: PercentilesWidgetSavedData,
     pub epsilon_widget: String,
     pub reference_tensor: Option<String>,
 }
 
-impl ScaleRangeWidgetRawData {
+impl ScaleRangeWidgetSavedData {
     pub fn from_partial(archive: &SharedZipArchive, partial: Partial<modelrdf::preprocessing::ScaleRangeDescr>) -> Self {
         let axes = match partial.axes {
             Some(Some(axes)) => match axes.len() {
@@ -1127,7 +1127,7 @@ impl ScaleRangeWidgetRawData {
             _ => None,
         };
         let percentiles_widget = partial.percentiles
-            .map(|per| PercentilesWidgetRawData::from_partial(archive, per))
+            .map(|per| PercentilesWidgetSavedData::from_partial(archive, per))
             .unwrap_or_default();
         Self{
             axes_widget: axes,
@@ -1139,19 +1139,19 @@ impl ScaleRangeWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub enum ZmuvWidgetModeRawData{
+pub enum ZmuvWidgetModeSavedData{
     #[default]
     Simple,
     AlongAxis,
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct SimpleFixedZmuvWidgetRawData{
+pub struct SimpleFixedZmuvWidgetSavedData{
     pub mean_widget: String,
     pub std_widget: String,
 }
 
-impl SimpleFixedZmuvWidgetRawData {
+impl SimpleFixedZmuvWidgetSavedData {
     pub fn from_partial(_archive: &SharedZipArchive, partial: Partial<modelrdf::preprocessing::SimpleFixedZmuv>) -> Self {
         Self{
             mean_widget: partial.mean.map(|v| v.to_string()).unwrap_or_default(),
@@ -1161,17 +1161,17 @@ impl SimpleFixedZmuvWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct FixedZmuvAlongAxisWidgetRawData{
+pub struct FixedZmuvAlongAxisWidgetSavedData{
     pub axis_widget: String,
-    pub mean_and_std_widget: Vec<SimpleFixedZmuvWidgetRawData>,
+    pub mean_and_std_widget: Vec<SimpleFixedZmuvWidgetSavedData>,
 }
 
-impl FixedZmuvAlongAxisWidgetRawData {
+impl FixedZmuvAlongAxisWidgetSavedData {
     pub fn from_partial(_archive: &SharedZipArchive, partial: Partial<modelrdf::preprocessing::FixedZmuvAlongAxis>) -> Self {
         let mut means = partial.mean.unwrap_or_default().into_iter();
         let mut stds = partial.std.unwrap_or_default().into_iter();
 
-        let mut mean_and_std_widget = Vec::<SimpleFixedZmuvWidgetRawData >::new();
+        let mut mean_and_std_widget = Vec::<SimpleFixedZmuvWidgetSavedData >::new();
         loop {
             let mean = means.next();
             let std = stds.next();
@@ -1179,7 +1179,7 @@ impl FixedZmuvAlongAxisWidgetRawData {
                 break
             }
             mean_and_std_widget.push(
-                SimpleFixedZmuvWidgetRawData {
+                SimpleFixedZmuvWidgetSavedData {
                     mean_widget: mean.map(|g| g.to_string()).unwrap_or_default(),
                     std_widget: std.map(|o| o.to_string()).unwrap_or_default(),
                 }
@@ -1193,25 +1193,25 @@ impl FixedZmuvAlongAxisWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct FixedZmuvWidgetRawData{
-    pub mode_widget: ZmuvWidgetModeRawData,
-    pub simple_widget: SimpleFixedZmuvWidgetRawData,
-    pub along_axis_widget: FixedZmuvAlongAxisWidgetRawData,
+pub struct FixedZmuvWidgetSavedData{
+    pub mode_widget: ZmuvWidgetModeSavedData,
+    pub simple_widget: SimpleFixedZmuvWidgetSavedData,
+    pub along_axis_widget: FixedZmuvAlongAxisWidgetSavedData,
 }
 
-impl FixedZmuvWidgetRawData {
+impl FixedZmuvWidgetSavedData {
     pub fn from_partial(archive: &SharedZipArchive, partial: Partial<modelrdf::preprocessing::FixedZmuv>) -> Self {
-        let mut mode_widget = ZmuvWidgetModeRawData::Simple;
+        let mut mode_widget = ZmuvWidgetModeSavedData::Simple;
         let simple_widget = partial.simple
             .map(|partial_preproc| {
-                mode_widget = ZmuvWidgetModeRawData::Simple;
-                SimpleFixedZmuvWidgetRawData::from_partial(archive, partial_preproc)
+                mode_widget = ZmuvWidgetModeSavedData::Simple;
+                SimpleFixedZmuvWidgetSavedData::from_partial(archive, partial_preproc)
             })
             .unwrap_or_default();
         let along_axis_widget = partial.along_axis
             .map(|partial_preproc| {
-                mode_widget = ZmuvWidgetModeRawData::AlongAxis;
-                FixedZmuvAlongAxisWidgetRawData::from_partial(archive, partial_preproc)
+                mode_widget = ZmuvWidgetModeSavedData::AlongAxis;
+                FixedZmuvAlongAxisWidgetSavedData::from_partial(archive, partial_preproc)
             })
             .unwrap_or_default();
         Self{mode_widget, simple_widget, along_axis_widget}
@@ -1219,25 +1219,25 @@ impl FixedZmuvWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct ScaleLinearWidgetRawData{
-    pub mode: ScaleLinearModeRawData,
-    pub simple_widget: SimpleScaleLinearWidgetRawData,
-    pub along_axis_widget: ScaleLinearAlongAxisWidgetRawData,
+pub struct ScaleLinearWidgetSavedData{
+    pub mode: ScaleLinearModeSavedData,
+    pub simple_widget: SimpleScaleLinearWidgetSavedData,
+    pub along_axis_widget: ScaleLinearAlongAxisWidgetSavedData,
 }
 
-impl ScaleLinearWidgetRawData {
+impl ScaleLinearWidgetSavedData {
     pub fn from_partial(archive: &SharedZipArchive, partial: Partial<modelrdf::preprocessing::ScaleLinearDescr>) -> Self {
-        let mut mode = ScaleLinearModeRawData::Simple;
+        let mut mode = ScaleLinearModeSavedData::Simple;
         let simple_widget = partial.simple
             .map(|partial_preproc| {
-                mode = ScaleLinearModeRawData::Simple;
-                SimpleScaleLinearWidgetRawData::from_partial(archive, partial_preproc)
+                mode = ScaleLinearModeSavedData::Simple;
+                SimpleScaleLinearWidgetSavedData::from_partial(archive, partial_preproc)
             })
             .unwrap_or_default();
         let along_axis_widget = partial.along_axis
             .map(|partial_preproc| {
-                mode = ScaleLinearModeRawData::AlongAxis;
-                ScaleLinearAlongAxisWidgetRawData::from_partial(archive, partial_preproc)
+                mode = ScaleLinearModeSavedData::AlongAxis;
+                ScaleLinearAlongAxisWidgetSavedData::from_partial(archive, partial_preproc)
             })
             .unwrap_or_default();
         Self{mode, simple_widget, along_axis_widget}
@@ -1246,54 +1246,54 @@ impl ScaleLinearWidgetRawData {
 
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct PreprocessingWidgetRawData{
-    pub mode: PreprocessingWidgetModeRawData,
-    pub binarize_widget: BinarizePreprocessingWidgetRawData,
-    pub clip_widget: ClipWidgetRawData,
-    pub scale_linear_widget: ScaleLinearWidgetRawData,
+pub struct PreprocessingWidgetSavedData{
+    pub mode: PreprocessingWidgetModeSavedData,
+    pub binarize_widget: BinarizePreprocessingWidgetSavedData,
+    pub clip_widget: ClipWidgetSavedData,
+    pub scale_linear_widget: ScaleLinearWidgetSavedData,
     // pub sigmoid sigmoid has no widget since it has no params
-    pub zero_mean_unit_variance_widget: ZeroMeanUnitVarianceWidgetRawData,
-    pub scale_range_widget: ScaleRangeWidgetRawData,
+    pub zero_mean_unit_variance_widget: ZeroMeanUnitVarianceWidgetSavedData,
+    pub scale_range_widget: ScaleRangeWidgetSavedData,
     pub ensure_dtype_widget: modelrdf::DataType,
-    pub fixed_zmuv_widget: FixedZmuvWidgetRawData,
+    pub fixed_zmuv_widget: FixedZmuvWidgetSavedData,
 }
 
-impl PreprocessingWidgetRawData {
+impl PreprocessingWidgetSavedData {
     pub fn from_partial(archive: &SharedZipArchive, partial: Partial<modelrdf::PreprocessingDescr>) -> Self{
-        let mut mode = PreprocessingWidgetModeRawData::default();
+        let mut mode = PreprocessingWidgetModeSavedData::default();
         let binarize_widget = partial.binarize
             .map(|partial_preproc| {
-                mode = PreprocessingWidgetModeRawData::Binarize;
-                BinarizePreprocessingWidgetRawData::from_partial(archive, partial_preproc)
+                mode = PreprocessingWidgetModeSavedData::Binarize;
+                BinarizePreprocessingWidgetSavedData::from_partial(archive, partial_preproc)
             })
             .unwrap_or_default();
         let clip_widget = partial.clip
             .map(|partial_preproc| {
-                mode = PreprocessingWidgetModeRawData::Clip;
-                ClipWidgetRawData::from_partial(archive, partial_preproc)
+                mode = PreprocessingWidgetModeSavedData::Clip;
+                ClipWidgetSavedData::from_partial(archive, partial_preproc)
             })
             .unwrap_or_default();
         let scale_linear_widget = partial.scale_linear
             .map(|partial_preproc| {
-                mode = PreprocessingWidgetModeRawData::ScaleLinear;
-                ScaleLinearWidgetRawData::from_partial(archive, partial_preproc)
+                mode = PreprocessingWidgetModeSavedData::ScaleLinear;
+                ScaleLinearWidgetSavedData::from_partial(archive, partial_preproc)
             })
             .unwrap_or_default();
         let zero_mean_unit_variance_widget = partial.zero_mean_unit_variance
             .map(|partial_preproc| {
-                mode = PreprocessingWidgetModeRawData::ZeroMeanUnitVariance;
-                ZeroMeanUnitVarianceWidgetRawData::from_partial(archive, partial_preproc)
+                mode = PreprocessingWidgetModeSavedData::ZeroMeanUnitVariance;
+                ZeroMeanUnitVarianceWidgetSavedData::from_partial(archive, partial_preproc)
             })
             .unwrap_or_default();
         let scale_range_widget = partial.scale_range
             .map(|partial_preproc| {
-                mode = PreprocessingWidgetModeRawData::ScaleRange;
-                ScaleRangeWidgetRawData::from_partial(archive, partial_preproc)
+                mode = PreprocessingWidgetModeSavedData::ScaleRange;
+                ScaleRangeWidgetSavedData::from_partial(archive, partial_preproc)
             })
             .unwrap_or_default();
         let ensure_dtype_widget = partial.ensure_dtype
             .map(|partial_preproc| { 'dtype: {
-                mode = PreprocessingWidgetModeRawData::EnsureDtype;
+                mode = PreprocessingWidgetModeSavedData::EnsureDtype;
                 let Some(raw_type) = partial_preproc.dtype else{
                     break 'dtype modelrdf::DataType::Float32
                 };
@@ -1309,8 +1309,8 @@ impl PreprocessingWidgetRawData {
 
         let fixed_zmuv_widget = partial.fixed_zero_mean_unit_variance
             .map(|partial_preproc| {
-                mode = PreprocessingWidgetModeRawData::FixedZmuv;
-                FixedZmuvWidgetRawData::from_partial(archive, partial_preproc)
+                mode = PreprocessingWidgetModeSavedData::FixedZmuv;
+                FixedZmuvWidgetSavedData::from_partial(archive, partial_preproc)
             })
             .unwrap_or_default();
         Self{
@@ -1327,17 +1327,17 @@ impl PreprocessingWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct OutputSpacetimeSizeWidgetRawData{
+pub struct OutputSpacetimeSizeWidgetSavedData{
     pub has_halo: bool,
     pub halo_widget: u64,
-    pub size_widget: AnyAxisSizeWidgetRawData,
+    pub size_widget: AnyAxisSizeWidgetSavedData,
 }
 
-impl OutputSpacetimeSizeWidgetRawData {
+impl OutputSpacetimeSizeWidgetSavedData {
     fn from_partial(archive: &SharedZipArchive, partial: Partial<modelrdf::axes::output_axes::OutputSpacetimeSize>) -> Self {
         let mut has_halo = false;
         let mut halo_widget = 0u64;
-        let mut size_widget = AnyAxisSizeWidgetRawData::default();
+        let mut size_widget = AnyAxisSizeWidgetSavedData::default();
 
         if let Some(haloed) = partial.haloed {
             has_halo = true;
@@ -1349,14 +1349,14 @@ impl OutputSpacetimeSizeWidgetRawData {
                     size_widget.staging_fixed_size = fixed.into();
                 }
                 if let Some(refer) = size.reference {
-                    size_widget.staging_size_ref = AxisSizeReferenceWidgetRawData::from_partial(archive, refer);
+                    size_widget.staging_size_ref = AxisSizeReferenceWidgetSavedData::from_partial(archive, refer);
                 }
             }
         }
         if let Some(standard) = partial.standard {
             if let Some(size) = standard.size{
                 //FIXME: detect setting size multiple times?
-                size_widget = AnyAxisSizeWidgetRawData::from_partial(archive, size);
+                size_widget = AnyAxisSizeWidgetSavedData::from_partial(archive, size);
             }
         }
 
@@ -1365,23 +1365,23 @@ impl OutputSpacetimeSizeWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct OutputTimeAxisWidgetRawData {
+pub struct OutputTimeAxisWidgetSavedData {
     pub id_widget: String,
     pub description_widget: String,
 
-    pub size_widget: OutputSpacetimeSizeWidgetRawData,
-    pub physical_scale_widget: PhysicalScaleWidgetRawData<modelrdf::TimeUnit>,
+    pub size_widget: OutputSpacetimeSizeWidgetSavedData,
+    pub physical_scale_widget: PhysicalScaleWidgetSavedData<modelrdf::TimeUnit>,
 }
 
-impl OutputTimeAxisWidgetRawData {
+impl OutputTimeAxisWidgetSavedData {
     pub fn from_partial(archive: &SharedZipArchive, partial: Partial<modelrdf::TimeOutputAxis>) -> Self{
         let id_widget = partial.id;
         let description_widget = partial.description;
 
         let size_widget = partial.size
-            .map(|size| OutputSpacetimeSizeWidgetRawData::from_partial(archive, size))
+            .map(|size| OutputSpacetimeSizeWidgetSavedData::from_partial(archive, size))
             .unwrap_or_default();
-        let physical_scale_widget = PhysicalScaleWidgetRawData{
+        let physical_scale_widget = PhysicalScaleWidgetSavedData{
             raw_scale: partial.scale.to_string(),
             unit_widget: 'unit: {
                 let Some(raw_unit) = partial.unit else {
@@ -1401,23 +1401,23 @@ impl OutputTimeAxisWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct OutputSpaceAxisWidgetRawData {
+pub struct OutputSpaceAxisWidgetSavedData {
     pub id_widget: String,
     pub description_widget: String,
 
-    pub size_widget: OutputSpacetimeSizeWidgetRawData,
-    pub physical_scale_widget: PhysicalScaleWidgetRawData<modelrdf::SpaceUnit>
+    pub size_widget: OutputSpacetimeSizeWidgetSavedData,
+    pub physical_scale_widget: PhysicalScaleWidgetSavedData<modelrdf::SpaceUnit>
 }
 
-impl OutputSpaceAxisWidgetRawData {
+impl OutputSpaceAxisWidgetSavedData {
     pub fn from_partial(archive: &SharedZipArchive, partial: Partial<rdf::model::SpaceOutputAxis>) -> Self{
         Self{
             id_widget: partial.id.to_string(),
             description_widget: partial.description.to_string(),
             size_widget: partial.size
-                .map(|size| OutputSpacetimeSizeWidgetRawData::from_partial(archive, size))
+                .map(|size| OutputSpacetimeSizeWidgetSavedData::from_partial(archive, size))
                 .unwrap_or_default(),
-            physical_scale_widget: PhysicalScaleWidgetRawData {
+            physical_scale_widget: PhysicalScaleWidgetSavedData {
                 raw_scale: partial.scale.to_string(),
                 unit_widget: 'unit: {
                     let Some(unit) = partial.unit else {
@@ -1437,51 +1437,51 @@ impl OutputSpaceAxisWidgetRawData {
     }
 }
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct OutputAxisWidgetRawData {
+pub struct OutputAxisWidgetSavedData {
     pub axis_type_widget: AxisType,
 
-    pub batch_axis_widget: BatchAxisWidgetRawData,
-    pub channel_axis_widget: ChannelAxisWidgetRawData,
-    pub index_axis_widget: IndexAxisWidgetRawData,
-    pub space_axis_widget: OutputSpaceAxisWidgetRawData,
-    pub time_axis_widget: OutputTimeAxisWidgetRawData,
+    pub batch_axis_widget: BatchAxisWidgetSavedData,
+    pub channel_axis_widget: ChannelAxisWidgetSavedData,
+    pub index_axis_widget: IndexAxisWidgetSavedData,
+    pub space_axis_widget: OutputSpaceAxisWidgetSavedData,
+    pub time_axis_widget: OutputTimeAxisWidgetSavedData,
 }
 
-impl OutputAxisWidgetRawData {
+impl OutputAxisWidgetSavedData {
     pub fn from_partial(archive: &SharedZipArchive, partial: Partial<modelrdf::OutputAxis>) -> Self {
         let mut axis_type_widget = modelrdf::axes::AxisType::Space;
         let batch_axis_widget = match partial.batch {
             Some(partial) => {
                 axis_type_widget = modelrdf::axes::AxisType::Batch;
-                BatchAxisWidgetRawData::from_partial(archive, partial)
+                BatchAxisWidgetSavedData::from_partial(archive, partial)
             }
             None => Default::default(),
         };
         let channel_axis_widget = match partial.channel{
             Some(partial) => {
                 axis_type_widget = modelrdf::axes::AxisType::Channel;
-                ChannelAxisWidgetRawData::from_partial(archive, partial)
+                ChannelAxisWidgetSavedData::from_partial(archive, partial)
             }
             None => Default::default(),
         };
         let index_axis_widget = match partial.index {
             Some(partial) => {
                 axis_type_widget = modelrdf::axes::AxisType::Index;
-                IndexAxisWidgetRawData::from_partial(archive, partial)
+                IndexAxisWidgetSavedData::from_partial(archive, partial)
             }
             None => Default::default(),
         };
         let space_axis_widget = match partial.space{
             Some(partial) => {
                 axis_type_widget = modelrdf::axes::AxisType::Space;
-                OutputSpaceAxisWidgetRawData::from_partial(archive, partial)
+                OutputSpaceAxisWidgetSavedData::from_partial(archive, partial)
             }
            None => Default::default(),
         };
         let time_axis_widget = match partial.time {
             Some(partial) => {
                 axis_type_widget = modelrdf::axes::AxisType::Time;
-                OutputTimeAxisWidgetRawData::from_partial(archive, partial)
+                OutputTimeAxisWidgetSavedData::from_partial(archive, partial)
             }
            None => Default::default(),
         };
@@ -1498,7 +1498,7 @@ impl OutputAxisWidgetRawData {
 
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub enum PostprocessingWidgetModeRawData {
+pub enum PostprocessingWidgetModeSavedData {
     #[default]
     Binarize,
     Clip,
@@ -1512,13 +1512,13 @@ pub enum PostprocessingWidgetModeRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize, Default)]
-pub struct ScaleMeanVarianceWidgetRawData{
+pub struct ScaleMeanVarianceWidgetSavedData{
     pub reference_tensor_widget: String,
     pub axes_widget: Option<Vec<String>>,
     pub eps_widget: String,
 }
 
-impl ScaleMeanVarianceWidgetRawData {
+impl ScaleMeanVarianceWidgetSavedData {
     pub fn from_partial(_archive: &SharedZipArchive, partial: Partial<modelrdf::postprocessing::ScaleMeanVarianceDescr>) -> Self{
         let reference_tensor_widget = partial.reference_tensor.map(|r| r.to_string()).unwrap_or_default();
         let axes_widget = partial.axes.unwrap_or_default();
@@ -1528,55 +1528,55 @@ impl ScaleMeanVarianceWidgetRawData {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct PostprocessingWidgetRawData{
-    pub mode: PostprocessingWidgetModeRawData,
-    pub binarize_widget: BinarizePreprocessingWidgetRawData,
-    pub clip_widget: ClipWidgetRawData,
-    pub scale_linear_widget: ScaleLinearWidgetRawData,
+pub struct PostprocessingWidgetSavedData{
+    pub mode: PostprocessingWidgetModeSavedData,
+    pub binarize_widget: BinarizePreprocessingWidgetSavedData,
+    pub clip_widget: ClipWidgetSavedData,
+    pub scale_linear_widget: ScaleLinearWidgetSavedData,
     // pub sigmoid sigmoid has no widget since it has no params
-    pub zero_mean_unit_variance_widget: ZeroMeanUnitVarianceWidgetRawData,
-    pub scale_range_widget: ScaleRangeWidgetRawData,
+    pub zero_mean_unit_variance_widget: ZeroMeanUnitVarianceWidgetSavedData,
+    pub scale_range_widget: ScaleRangeWidgetSavedData,
     pub ensure_dtype_widget: modelrdf::DataType,
-    pub fixed_zmuv_widget: FixedZmuvWidgetRawData,
-    pub scale_mean_var_widget: ScaleMeanVarianceWidgetRawData,
+    pub fixed_zmuv_widget: FixedZmuvWidgetSavedData,
+    pub scale_mean_var_widget: ScaleMeanVarianceWidgetSavedData,
 }
 
-impl PostprocessingWidgetRawData {
+impl PostprocessingWidgetSavedData {
     pub fn from_partial(archive: &SharedZipArchive, partial: Partial<modelrdf::postprocessing::PostprocessingDescr>) -> Self{
-        let mut mode = PostprocessingWidgetModeRawData::default();
+        let mut mode = PostprocessingWidgetModeSavedData::default();
         let binarize_widget = partial.binarize
             .map(|partial_preproc| {
-                mode = PostprocessingWidgetModeRawData::Binarize;
-                BinarizePreprocessingWidgetRawData::from_partial(archive, partial_preproc)
+                mode = PostprocessingWidgetModeSavedData::Binarize;
+                BinarizePreprocessingWidgetSavedData::from_partial(archive, partial_preproc)
             })
             .unwrap_or_default();
         let clip_widget = partial.clip
             .map(|partial_preproc| {
-                mode = PostprocessingWidgetModeRawData::Clip;
-                ClipWidgetRawData::from_partial(archive, partial_preproc)
+                mode = PostprocessingWidgetModeSavedData::Clip;
+                ClipWidgetSavedData::from_partial(archive, partial_preproc)
             })
             .unwrap_or_default();
         let scale_linear_widget = partial.scale_linear
             .map(|partial_preproc| {
-                mode = PostprocessingWidgetModeRawData::ScaleLinear;
-                ScaleLinearWidgetRawData::from_partial(archive, partial_preproc)
+                mode = PostprocessingWidgetModeSavedData::ScaleLinear;
+                ScaleLinearWidgetSavedData::from_partial(archive, partial_preproc)
             })
             .unwrap_or_default();
         let zero_mean_unit_variance_widget = partial.zero_mean_unit_variance
             .map(|partial_preproc| {
-                mode = PostprocessingWidgetModeRawData::ZeroMeanUnitVariance;
-                ZeroMeanUnitVarianceWidgetRawData::from_partial(archive, partial_preproc)
+                mode = PostprocessingWidgetModeSavedData::ZeroMeanUnitVariance;
+                ZeroMeanUnitVarianceWidgetSavedData::from_partial(archive, partial_preproc)
             })
             .unwrap_or_default();
         let scale_range_widget = partial.scale_range
             .map(|partial_preproc| {
-                mode = PostprocessingWidgetModeRawData::ScaleRange;
-                ScaleRangeWidgetRawData::from_partial(archive, partial_preproc)
+                mode = PostprocessingWidgetModeSavedData::ScaleRange;
+                ScaleRangeWidgetSavedData::from_partial(archive, partial_preproc)
             })
             .unwrap_or_default();
         let ensure_dtype_widget = partial.ensure_dtype
             .map(|partial_preproc| { 'dtype: {
-                mode = PostprocessingWidgetModeRawData::EnsureDtype;
+                mode = PostprocessingWidgetModeSavedData::EnsureDtype;
                 let Some(raw_type) = partial_preproc.dtype else{
                     break 'dtype modelrdf::DataType::Float32
                 };
@@ -1591,14 +1591,14 @@ impl PostprocessingWidgetRawData {
             .unwrap_or(modelrdf::DataType::Float32);
         let fixed_zmuv_widget = partial.fixed_zero_mean_unit_variance
             .map(|partial_preproc| {
-                mode = PostprocessingWidgetModeRawData::FixedZmuv;
-                FixedZmuvWidgetRawData::from_partial(archive, partial_preproc)
+                mode = PostprocessingWidgetModeSavedData::FixedZmuv;
+                FixedZmuvWidgetSavedData::from_partial(archive, partial_preproc)
             })
             .unwrap_or_default();
         let scale_mean_var_widget = partial.scale_mean_variance_descr
             .map(|partial_preproc| {
-                mode = PostprocessingWidgetModeRawData::ScaleMeanVariance;
-                ScaleMeanVarianceWidgetRawData::from_partial(archive, partial_preproc)
+                mode = PostprocessingWidgetModeSavedData::ScaleMeanVariance;
+                ScaleMeanVarianceWidgetSavedData::from_partial(archive, partial_preproc)
             })
             .unwrap_or_default();
         Self{
@@ -1617,15 +1617,15 @@ impl PostprocessingWidgetRawData {
 
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct OutputTensorWidgetRawData {
+pub struct OutputTensorWidgetSavedData {
     pub id_widget: String,
     pub description_widget: String,
-    pub axis_widgets: Vec<OutputAxisWidgetRawData>,
-    pub test_tensor_widget: TestTensorWidgetRawData,
-    pub postprocessing_widgets: Vec<CollapsibleWidgetRawData<PostprocessingWidget>>,
+    pub axis_widgets: Vec<OutputAxisWidgetSavedData>,
+    pub test_tensor_widget: TestTensorWidgetSavedData,
+    pub postprocessing_widgets: Vec<CollapsibleWidgetSavedData<PostprocessingWidget>>,
 }
 
-impl OutputTensorWidgetRawData {
+impl OutputTensorWidgetSavedData {
     pub fn from_partial<W: std::fmt::Write>(
         archive: &SharedZipArchive,
         partial: Partial<modelrdf::OutputTensorDescr>,
@@ -1633,8 +1633,8 @@ impl OutputTensorWidgetRawData {
     ) -> Self {
         let mut id_widget = String::new();
         let mut description_widget = String::new();
-        let mut axis_widgets = Vec::<OutputAxisWidgetRawData>::new();
-        let mut postprocessing_widgets = Vec::<CollapsibleWidgetRawData<PostprocessingWidget>>::new();
+        let mut axis_widgets = Vec::<OutputAxisWidgetSavedData>::new();
+        let mut postprocessing_widgets = Vec::<CollapsibleWidgetSavedData<PostprocessingWidget>>::new();
         
         if let Some(meta) = partial.metadata {
             if let Some(id) = meta.id {
@@ -1645,38 +1645,38 @@ impl OutputTensorWidgetRawData {
             }
             if let Some(axes) = meta.axes {
                 for partial_axis in axes{
-                    axis_widgets.push(OutputAxisWidgetRawData::from_partial(archive, partial_axis));
+                    axis_widgets.push(OutputAxisWidgetSavedData::from_partial(archive, partial_axis));
                 }
             }
             if let Some(preprocs) = meta.postprocessing {
                 for partial_preproc in preprocs {
-                    let widget = CollapsibleWidgetRawData::new(
-                        PostprocessingWidgetRawData::from_partial(archive, partial_preproc)
+                    let widget = CollapsibleWidgetSavedData::new(
+                        PostprocessingWidgetSavedData::from_partial(archive, partial_preproc)
                     );
                     postprocessing_widgets.push(widget);
                 }
             }
         }
         let test_tensor_widget = partial.test_tensor
-            .map(|tt| TestTensorWidgetRawData::from_partial(archive, tt, warnings))
+            .map(|tt| TestTensorWidgetSavedData::from_partial(archive, tt, warnings))
             .unwrap_or_default();
 
         Self{id_widget, description_widget, axis_widgets, test_tensor_widget, postprocessing_widgets}
     }
 }
 
-impl OutputTensorWidgetRawData {
+impl OutputTensorWidgetSavedData {
     // pub fn from_partial(archive: &SharedZipArchive, partial: Partial<>) -> Self {
     // }
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct ModelInterfaceWidgetRawData {
-    pub input_widgets: Vec<InputTensorWidgetRawData>,
-    pub output_widgets: Vec<OutputTensorWidgetRawData>,
+pub struct ModelInterfaceWidgetSavedData {
+    pub input_widgets: Vec<InputTensorWidgetSavedData>,
+    pub output_widgets: Vec<OutputTensorWidgetSavedData>,
 }
 
-impl ModelInterfaceWidgetRawData {
+impl ModelInterfaceWidgetSavedData {
     pub fn from_partial<W: std::fmt::Write>(
         archive: &SharedZipArchive,
         inputs: Vec<Partial<modelrdf::InputTensorDescr>>,
@@ -1685,10 +1685,10 @@ impl ModelInterfaceWidgetRawData {
     ) -> Self {
         Self{
             input_widgets: inputs.into_iter()
-                .map(|i| InputTensorWidgetRawData::from_partial(archive, i, warnings))
+                .map(|i| InputTensorWidgetSavedData::from_partial(archive, i, warnings))
                 .collect(),
             output_widgets: outputs.into_iter()
-                .map(|o| OutputTensorWidgetRawData::from_partial(archive, o, warnings))
+                .map(|o| OutputTensorWidgetSavedData::from_partial(archive, o, warnings))
                 .collect(),
         }
     }
@@ -1700,8 +1700,8 @@ impl ModelInterfaceWidgetRawData {
 /// ones.
 #[derive(serde::Serialize, serde::Deserialize, strum::VariantNames)]
 #[serde(tag = "app_state_raw_data_version")]
-pub enum AppStateRawData{
-    Version1(AppState1RawData),
+pub enum AppStateSavedData{
+    Version1(AppState1SavedData),
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -1716,7 +1716,7 @@ pub enum ProjectLoadError{
     FutureVersion{ found_version: String },
 }
 
-impl AppStateRawData{
+impl AppStateSavedData{
     pub fn supported_versions() -> &'static [&'static str]{
         <Self as strum::VariantNames>::VARIANTS        
     }
@@ -1746,34 +1746,34 @@ impl AppStateRawData{
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
-pub struct AppState1RawData{
+pub struct AppState1SavedData{
     pub staging_name: String,
     pub staging_description: String,
-    pub cover_images: Vec<SpecialImageWidgetRawData>,
-    #[serde(default)] // added after AppState1RawData
+    pub cover_images: Vec<SpecialImageWidgetSavedData>,
+    #[serde(default)] // added after AppState1SavedData
     pub model_id_widget: Option<String>,
-    pub staging_authors: Vec<AuthorWidgetRawData>,
-    pub attachments_widget: Vec<FileSourceWidgetRawData>,
-    pub staging_citations: Vec<CiteEntryWidgetRawData>,
-    #[serde(default)] // added after AppState1RawData
-    pub custom_config_widget: Option<JsonObjectEditorWidgetRawData>,
+    pub staging_authors: Vec<AuthorWidgetSavedData>,
+    pub attachments_widget: Vec<FileSourceWidgetSavedData>,
+    pub staging_citations: Vec<CiteEntryWidgetSavedData>,
+    #[serde(default)] // added after AppState1SavedData
+    pub custom_config_widget: Option<JsonObjectEditorWidgetSavedData>,
     pub staging_git_repo: Option<String>,
-    pub icon_widget: Option<IconWidgetRawData>,
-    #[serde(default)] // added after AppState1RawData
+    pub icon_widget: Option<IconWidgetSavedData>,
+    #[serde(default)] // added after AppState1SavedData
     pub links_widget: Vec<String>,
-    pub staging_maintainers: Vec<MaintainerWidgetRawData>,
+    pub staging_maintainers: Vec<MaintainerWidgetSavedData>,
     pub staging_tags: Vec<String>,
-    pub staging_version: Option<VersionWidgetRawData>,
+    pub staging_version: Option<VersionWidgetSavedData>,
 
-    pub staging_documentation: CodeEditorWidgetRawData,
+    pub staging_documentation: CodeEditorWidgetSavedData,
     pub staging_license: ::bioimg_spec::rdf::LicenseId,
     //badges
-    pub model_interface_widget: ModelInterfaceWidgetRawData,
+    pub model_interface_widget: ModelInterfaceWidgetSavedData,
     ////
-    pub weights_widget: WeightsWidgetRawData,
+    pub weights_widget: WeightsWidgetSavedData,
 }
 
-impl AppState1RawData {
+impl AppState1SavedData {
     pub fn from_partial(
         archive: &SharedZipArchive,
         partial: Partial<modelrdf::ModelRdfV0_5>,
@@ -1783,32 +1783,32 @@ impl AppState1RawData {
             staging_name: partial.name.unwrap_or_default(),
             staging_description: partial.description.unwrap_or_default(),
             cover_images: partial.covers.into_iter()
-                .map(|ci| SpecialImageWidgetRawData::from_partial(archive, ci, warnings))
+                .map(|ci| SpecialImageWidgetSavedData::from_partial(archive, ci, warnings))
                 .collect(),
             model_id_widget: partial.id,
             staging_authors: partial.authors
                 .unwrap_or_default()
                 .into_iter()
-                .map(|partial| AuthorWidgetRawData::from_partial(archive, partial))
+                .map(|partial| AuthorWidgetSavedData::from_partial(archive, partial))
                 .collect(),
             attachments_widget: partial.attachments
                 .into_iter()
-                .map(|partial_fd| FileSourceWidgetRawData::from_partial_file_descr(archive, partial_fd, warnings))
+                .map(|partial_fd| FileSourceWidgetSavedData::from_partial_file_descr(archive, partial_fd, warnings))
                 .collect(),
             staging_citations: partial.cite
                 .unwrap_or_default()
                 .into_iter()
-                .map(|partial| CiteEntryWidgetRawData::from_partial(archive, partial))
+                .map(|partial| CiteEntryWidgetSavedData::from_partial(archive, partial))
                 .collect(),
-            custom_config_widget: Some(JsonObjectEditorWidgetRawData::from_partial(archive, partial.config)),
+            custom_config_widget: Some(JsonObjectEditorWidgetSavedData::from_partial(archive, partial.config)),
             staging_git_repo: partial.git_repo,
-            icon_widget: partial.icon.map(|partial| IconWidgetRawData::from_partial(archive, partial, warnings)),
+            icon_widget: partial.icon.map(|partial| IconWidgetSavedData::from_partial(archive, partial, warnings)),
             links_widget: partial.links,
             staging_maintainers: partial.maintainers.into_iter()
-                .map(|partial| MaintainerWidgetRawData::from_partial(archive, partial))
+                .map(|partial| MaintainerWidgetSavedData::from_partial(archive, partial))
                 .collect(),
             staging_tags: partial.tags,
-            staging_version: partial.version.map(|v| VersionWidgetRawData::from_partial(archive, v)),
+            staging_version: partial.version.map(|v| VersionWidgetSavedData::from_partial(archive, v)),
             staging_documentation: 'documentation: {
                 let Some(doc_file_descr) = partial.documentation else {
                     break 'documentation Default::default();
@@ -1838,7 +1838,7 @@ impl AppState1RawData {
                         break 'documentation Default::default()
                     }
                 };
-                CodeEditorWidgetRawData { raw: doc_text }
+                CodeEditorWidgetSavedData { raw: doc_text }
             },
             staging_license: partial.license
                 .map(|raw_license|{
@@ -1851,12 +1851,12 @@ impl AppState1RawData {
                     }
                 })
                 .unwrap_or(rdf::LicenseId::MIT),
-            model_interface_widget: ModelInterfaceWidgetRawData::from_partial(
+            model_interface_widget: ModelInterfaceWidgetSavedData::from_partial(
                 archive, partial.inputs.unwrap_or_default(), partial.outputs.unwrap_or_default(), warnings
             ),
             // //badges
             weights_widget: partial.weights
-                .map(|w| WeightsWidgetRawData::from_partial(archive, w, warnings))
+                .map(|w| WeightsWidgetSavedData::from_partial(archive, w, warnings))
                 .unwrap_or_default(),
         }
     }

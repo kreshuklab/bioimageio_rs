@@ -3,7 +3,7 @@ use bioimg_spec::rdf::model::postprocessing as postproc;
 use bioimg_spec::rdf::model as modelrdf;
 use strum::VariantArray;
 
-use crate::project_data::PostprocessingWidgetModeRawData;
+use crate::project_data::PostprocessingWidgetModeSavedData;
 use crate::result::Result;
 use super::collapsible_widget::CollapsibleWidget;
 use super::collapsible_widget::SummarizableWidget;
@@ -37,37 +37,37 @@ pub enum PostprocessingWidgetMode {
 }
 
 impl Restore for PostprocessingWidgetMode{
-    type RawData = PostprocessingWidgetModeRawData;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = PostprocessingWidgetModeSavedData;
+    fn dump(&self) -> Self::SavedData {
         match self{
-            Self::Binarize => Self::RawData::Binarize,
-            Self::Clip => Self::RawData::Clip,
-            Self::ScaleLinear => Self::RawData::ScaleLinear,
-            Self::Sigmoid => Self::RawData::Sigmoid,
-            Self::ZeroMeanUnitVariance => Self::RawData::ZeroMeanUnitVariance,
-            Self::ScaleRange => Self::RawData::ScaleRange,
-            Self::EnsureDtype => Self::RawData::EnsureDtype,
-            Self::FixedZmuv => Self::RawData::FixedZmuv,
-            Self::ScaleMeanVariance => Self::RawData::ScaleMeanVariance,
+            Self::Binarize => Self::SavedData::Binarize,
+            Self::Clip => Self::SavedData::Clip,
+            Self::ScaleLinear => Self::SavedData::ScaleLinear,
+            Self::Sigmoid => Self::SavedData::Sigmoid,
+            Self::ZeroMeanUnitVariance => Self::SavedData::ZeroMeanUnitVariance,
+            Self::ScaleRange => Self::SavedData::ScaleRange,
+            Self::EnsureDtype => Self::SavedData::EnsureDtype,
+            Self::FixedZmuv => Self::SavedData::FixedZmuv,
+            Self::ScaleMeanVariance => Self::SavedData::ScaleMeanVariance,
         }
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        *self = match raw{
-            Self::RawData::Binarize => Self::Binarize,
-            Self::RawData::Clip => Self::Clip,
-            Self::RawData::ScaleLinear => Self::ScaleLinear,
-            Self::RawData::Sigmoid => Self::Sigmoid,
-            Self::RawData::ZeroMeanUnitVariance => Self::ZeroMeanUnitVariance,
-            Self::RawData::ScaleRange => Self::ScaleRange,
-            Self::RawData::EnsureDtype => Self::EnsureDtype,
-            Self::RawData::FixedZmuv => Self::FixedZmuv,
-            Self::RawData::ScaleMeanVariance => Self::ScaleMeanVariance,
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        *self = match saved_data{
+            Self::SavedData::Binarize => Self::Binarize,
+            Self::SavedData::Clip => Self::Clip,
+            Self::SavedData::ScaleLinear => Self::ScaleLinear,
+            Self::SavedData::Sigmoid => Self::Sigmoid,
+            Self::SavedData::ZeroMeanUnitVariance => Self::ZeroMeanUnitVariance,
+            Self::SavedData::ScaleRange => Self::ScaleRange,
+            Self::SavedData::EnsureDtype => Self::EnsureDtype,
+            Self::SavedData::FixedZmuv => Self::FixedZmuv,
+            Self::SavedData::ScaleMeanVariance => Self::ScaleMeanVariance,
         }
     }
 }
 
 #[derive(Default, Restore)]
-#[restore(message=crate::project_data::PostprocessingWidgetRawData)]
+#[restore(saved_data=crate::project_data::PostprocessingWidgetSavedData)]
 pub struct PostprocessingWidget{
     #[restore(default)]
     pub mode_search: String,

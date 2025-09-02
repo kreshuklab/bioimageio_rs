@@ -9,7 +9,7 @@ use super::{collapsible_widget::{CollapsibleWidget, SummarizableWidget}, error_d
 pub type ConfString = BoundedString<1, 1024>;
 
 #[derive(Restore)]
-#[restore(message=crate::project_data::CiteEntryWidgetRawData)]
+#[restore(saved_data=crate::project_data::CiteEntryWidgetSavedData)]
 pub struct CiteEntryWidget {
     pub citation_text_widget: StagingString<ConfString>,
     pub doi_widget: StagingOpt<StagingString<ConfString>>,

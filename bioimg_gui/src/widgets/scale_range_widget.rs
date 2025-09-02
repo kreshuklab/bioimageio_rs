@@ -12,7 +12,7 @@ use super::{Restore, ValueWidget};
 use super::{staging_opt::StagingOpt, staging_string::StagingString, staging_vec::StagingVec, StatefulWidget};
 
 #[derive(Restore)]
-#[restore(message=crate::project_data::PercentilesWidgetRawData)]
+#[restore(saved_data=crate::project_data::PercentilesWidgetSavedData)]
 pub struct PercentilesWidget{
     pub min_widget: StagingFloat<f32>,
     pub max_widget: StagingFloat<f32>,
@@ -75,7 +75,7 @@ impl ItemWidgetConf for AxesItemConfig{
 }
 
 #[derive(Default, Restore)]
-#[restore(message=crate::project_data::ScaleRangeWidgetRawData)]
+#[restore(saved_data=crate::project_data::ScaleRangeWidgetSavedData)]
 pub struct ScaleRangeWidget{
     pub axes_widget: StagingOpt<StagingVec<StagingString<model::AxisId>, AxesItemConfig>>,
     pub percentiles_widget: PercentilesWidget,

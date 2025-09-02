@@ -7,7 +7,7 @@ use image::GenericImageView;
 use bioimg_runtime::{self as rt, FileSource};
 
 use crate::widgets::collapsible_widget::SummarizableWidget;
-use crate::{project_data::{ImageWidget2LoadingStateRawData, ImageWidget2RawData, SpecialImageWidgetRawData}, result::{GuiError, Result}};
+use crate::{project_data::{ImageWidget2LoadingStateSavedData, ImageWidget2SavedData, SpecialImageWidgetSavedData}, result::{GuiError, Result}};
 use super::{Restore, StatefulWidget, ValueWidget};
 use super::error_display::show_error;
 use super::file_source_widget::FileSourceWidget;
@@ -94,10 +94,10 @@ impl Default for ImageWidget2{
 }
 
 impl Restore for ImageWidget2{
-    type RawData = ImageWidget2RawData;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = ImageWidget2SavedData;
+    fn dump(&self) -> Self::SavedData {
         let state_guard = self.loading_state.lock();
-        ImageWidget2RawData{
+        ImageWidget2SavedData{
             file_source_widget: self.file_source_widget.dump(),
             loading_state: match &state_guard.1{
                 LoadingState::Forced{img, ..} => {
@@ -105,17 +105,17 @@ impl Restore for ImageWidget2{
                     if let Err(err) = img.write_to(&mut Cursor::new(&mut raw_out), image::ImageFormat::Png){
                         eprintln!("[WARNING] Could not save pathless image: {err}");
                     }
-                    ImageWidget2LoadingStateRawData::Forced { img_bytes: raw_out }
+                    ImageWidget2LoadingStateSavedData::Forced { img_bytes: raw_out }
                 },
-                _ => ImageWidget2LoadingStateRawData::Empty,
+                _ => ImageWidget2LoadingStateSavedData::Empty,
             }
         }
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        self.file_source_widget.restore(raw.file_source_widget);
-        let loading_state = match raw.loading_state{
-            ImageWidget2LoadingStateRawData::Empty => LoadingState::Empty,
-            ImageWidget2LoadingStateRawData::Forced { img_bytes } => 'forced: {
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        self.file_source_widget.restore(saved_data.file_source_widget);
+        let loading_state = match saved_data.loading_state{
+            ImageWidget2LoadingStateSavedData::Empty => LoadingState::Empty,
+            ImageWidget2LoadingStateSavedData::Forced { img_bytes } => 'forced: {
                 let Ok(reader) = image::io::Reader::new(Cursor::new(img_bytes)).with_guessed_format() else {
                     eprintln!("[WARNING] Could not guess format of saved image");
                     break 'forced LoadingState::Empty;
@@ -322,12 +322,12 @@ where
 }
 
 impl<I> Restore for SpecialImageWidget<I>{
-    type RawData = SpecialImageWidgetRawData;
-    fn restore(&mut self, value: Self::RawData){
+    type SavedData = SpecialImageWidgetSavedData;
+    fn restore(&mut self, value: Self::SavedData){
         self.image_widget.restore(value.image_widget);
     }
-    fn dump(&self) -> Self::RawData {
-        SpecialImageWidgetRawData{image_widget: self.image_widget.dump()}
+    fn dump(&self) -> Self::SavedData {
+        SpecialImageWidgetSavedData{image_widget: self.image_widget.dump()}
     }
 }
 

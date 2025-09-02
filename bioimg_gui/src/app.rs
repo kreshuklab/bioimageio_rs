@@ -14,9 +14,9 @@ use bioimg_spec::rdf::ResourceId;
 use bioimg_spec::rdf::bounded_string::BoundedString;
 use bioimg_spec::rdf::non_empty_list::NonEmptyList;
 
-use crate::project_data::{AppState1RawData};
+use crate::project_data::{AppState1SavedData};
 #[cfg(not(target_arch="wasm32"))]
-use crate::project_data::{AppStateRawData, ProjectLoadError};
+use crate::project_data::{AppStateSavedData, ProjectLoadError};
 use crate::result::{GuiError, Result, VecResultExt};
 use crate::widgets::attachments_widget::AttachmentsWidget;
 
@@ -47,7 +47,7 @@ use crate::widgets::{
 };
 
 pub struct AppStateFromPartial{
-    state: AppState1RawData,
+    state: AppState1SavedData,
     warnings: String,
 }
 
@@ -76,7 +76,7 @@ enum ExitingStatus{
 }
 
 #[derive(Restore)]
-#[restore(message=crate::project_data::AppState1RawData)]
+#[restore(saved_data=crate::project_data::AppState1SavedData)]
 pub struct AppState1 {
     pub staging_name: StagingString<ModelRdfName>,
     pub staging_description: StagingString<BoundedString<0, 1024>>,
@@ -324,7 +324,7 @@ impl AppState1{
             .create(true)
             .truncate(true)
             .open(project_file).map_err(|err| format!("Could not open project file for writing: {err}"))?;
-        AppStateRawData::Version1(self.dump()).save(writer)
+        AppStateSavedData::Version1(self.dump()).save(writer)
             .map_err(|err| format!("Could not serialize project to bytes: {err}"))
             .map(|_| format!("Saved project to {}", project_file.to_string_lossy()))
     }
@@ -332,17 +332,17 @@ impl AppState1{
     #[cfg(not(target_arch="wasm32"))]
     fn load_project(&mut self, project_file: &std::path::Path) -> Result<(), String>{
         let reader = std::fs::File::open(&project_file).map_err(|err| format!("Could not open project file: {err}"))?;
-        let proj_data = match AppStateRawData::load(reader){
+        let proj_data = match AppStateSavedData::load(reader){
             Err(ProjectLoadError::FutureVersion{found_version}) => return Err(format!(
                 "Found project data version {found_version}, but this program only supports project data up to {}\n\
                 You can try downloading the newest version at https://github.com/kreshuklab/bioimg_rs/releases",
-                AppStateRawData::highest_supported_version(),
+                AppStateSavedData::highest_supported_version(),
             )),
             Err(err) => return Err(format!("Could not load project file at {}: {err}", project_file.to_string_lossy())),
             Ok(proj_data) => proj_data,
         };
         match proj_data{
-            AppStateRawData::Version1(ver1) => self.restore(ver1),
+            AppStateSavedData::Version1(ver1) => self.restore(ver1),
         }
         Ok(())
     }
@@ -434,7 +434,7 @@ impl AppState1{
         let yaml_deserializer = serde_yaml::Deserializer::from_slice(&model_rdf_bytes);
         let partial: PartialModelRdfV0_5 = ::serde_path_to_error::deserialize(yaml_deserializer)?;
         let mut warnings = String::with_capacity(16 * 1024);
-        let state = AppState1RawData::from_partial(&archive, partial, &mut warnings); //FIXME: retrieve errors and notify
+        let state = AppState1SavedData::from_partial(&archive, partial, &mut warnings); //FIXME: retrieve errors and notify
         warnings += indoc!("
             PLEASE BE AWARE THAT RECOVERING AND THEN RE-EXPORTING A MODEL MIGHT PRODUCE A NEW, VALID MODEL THAT DOES NOT
             BEHAVE LIKE THE ORIGINAL\n"

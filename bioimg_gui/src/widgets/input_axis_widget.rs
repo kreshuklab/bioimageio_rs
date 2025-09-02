@@ -17,7 +17,7 @@ use crate::result::Result;
 
 
 #[derive(Default, Restore)]
-#[restore(message=crate::project_data::InputSpaceAxisWidgetRawData)]
+#[restore(saved_data=crate::project_data::InputSpaceAxisWidgetSavedData)]
 pub struct InputSpaceAxisWidget {
     pub id_widget: StagingString<modelrdf::axes::AxisId>,
     pub description_widget: StagingString<BoundedString<0, 128>>,
@@ -78,7 +78,7 @@ impl StatefulWidget for InputSpaceAxisWidget{
 }
 
 #[derive(Default, Restore)]
-#[restore(message=crate::project_data::InputTimeAxisWidgetRawData)]
+#[restore(saved_data=crate::project_data::InputTimeAxisWidgetSavedData)]
 pub struct InputTimeAxisWidget {
     pub id_widget: StagingString<modelrdf::axes::AxisId>,
     pub description_widget: StagingString<BoundedString<0, 128>>,
@@ -132,7 +132,7 @@ impl StatefulWidget for InputTimeAxisWidget{
 }
 
 #[derive(Default, Restore)]
-#[restore(message=crate::project_data::InputAxisWidgetRawData)]
+#[restore(saved_data=crate::project_data::InputAxisWidgetSavedData)]
 pub struct InputAxisWidget {
     pub axis_type_widget: SearchAndPickWidget<AxisType>,
     pub batch_axis_widget: BatchAxisWidget,

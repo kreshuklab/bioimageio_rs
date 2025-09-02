@@ -1,4 +1,4 @@
-use crate::{project_data::JsonObjectEditorWidgetRawData, result::Result};
+use crate::{project_data::JsonObjectEditorWidgetSavedData, result::Result};
 use super::{code_editor_widget::{CodeEditorWidget, JsonLanguage}, error_display::show_if_error, Restore, StatefulWidget, ValueWidget};
 
 pub struct JsonObjectEditorWidget{
@@ -14,14 +14,14 @@ impl JsonObjectEditorWidget{
 }
 
 impl Restore for JsonObjectEditorWidget{
-    type RawData = JsonObjectEditorWidgetRawData;
-    fn dump(&self) -> Self::RawData {
-        JsonObjectEditorWidgetRawData{
+    type SavedData = JsonObjectEditorWidgetSavedData;
+    fn dump(&self) -> Self::SavedData {
+        JsonObjectEditorWidgetSavedData{
             code_editor_widget: self.code_editor_widget.dump()
         }
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        self.code_editor_widget.restore(raw.code_editor_widget);
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        self.code_editor_widget.restore(saved_data.code_editor_widget);
         self.update()
     }
 }

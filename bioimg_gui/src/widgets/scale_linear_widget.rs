@@ -3,7 +3,7 @@ use bioimg_spec::rdf::model::preprocessing as modelrdfpreproc;
 use indoc::indoc;
 
 use crate::result::{GuiError, Result, VecResultExt};
-use crate::project_data::ScaleLinearModeRawData;
+use crate::project_data::ScaleLinearModeSavedData;
 use super::iconify::Iconify;
 use super::{Restore, StatefulWidget, ValueWidget};
 use super::staging_vec::{ItemWidgetConf, StagingVec};
@@ -19,23 +19,23 @@ pub enum ScaleLinearMode{
 }
 
 impl Restore for ScaleLinearMode{
-    type RawData = ScaleLinearModeRawData;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = ScaleLinearModeSavedData;
+    fn dump(&self) -> Self::SavedData {
         match self{
-            Self::Simple => Self::RawData::Simple,
-            Self::AlongAxis => Self::RawData::AlongAxis,
+            Self::Simple => Self::SavedData::Simple,
+            Self::AlongAxis => Self::SavedData::AlongAxis,
         }
     }
-    fn restore(&mut self, raw: Self::RawData){
-        *self = match raw{
-            Self::RawData::Simple => Self::Simple,
-            Self::RawData::AlongAxis => Self::AlongAxis,
+    fn restore(&mut self, saved_data: Self::SavedData){
+        *self = match saved_data{
+            Self::SavedData::Simple => Self::Simple,
+            Self::SavedData::AlongAxis => Self::AlongAxis,
         }
     }
 }
 
 #[derive(Restore)]
-#[restore(message=crate::project_data::SimpleScaleLinearWidgetRawData)]
+#[restore(saved_data=crate::project_data::SimpleScaleLinearWidgetSavedData)]
 pub struct SimpleScaleLinearWidget{
     pub gain_widget: StagingFloat<f32>,
     pub offset_widget: StagingFloat<f32>,
@@ -94,7 +94,7 @@ impl ItemWidgetConf for GainOffsetItemConfig{
 }
 
 #[derive(Restore)]
-#[restore(message=crate::project_data::ScaleLinearAlongAxisWidgetRawData)]
+#[restore(saved_data=crate::project_data::ScaleLinearAlongAxisWidgetSavedData)]
 pub struct ScaleLinearAlongAxisWidget{
     pub axis_widget: StagingString<modelrdf::axes::NonBatchAxisId>,
     pub gain_offsets_widget: StagingVec<SimpleScaleLinearWidget, GainOffsetItemConfig>,
@@ -184,7 +184,7 @@ impl StatefulWidget for ScaleLinearAlongAxisWidget{
 // //////////////////////////
 
 #[derive(Default, Restore)]
-#[restore(message=crate::project_data::ScaleLinearWidgetRawData)]
+#[restore(saved_data=crate::project_data::ScaleLinearWidgetSavedData)]
 pub struct ScaleLinearWidget{
     pub mode: ScaleLinearMode,
     pub simple_widget: SimpleScaleLinearWidget,

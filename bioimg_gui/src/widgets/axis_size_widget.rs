@@ -1,6 +1,6 @@
 use std::num::NonZeroUsize;
 
-use crate::project_data::AxisSizeModeRawData;
+use crate::project_data::AxisSizeModeSavedData;
 use crate::result::Result;
 use bioimg_spec::rdf::model as modelrdf;
 use bioimg_spec::rdf::model::{axes::AxisId, tensor_id::TensorId};
@@ -11,7 +11,7 @@ use super::util::group_frame;
 use super::{Restore, StatefulWidget, ValueWidget};
 
 #[derive(Default, Restore)]
-#[restore(message=crate::project_data::AxisSizeReferenceWidgetRawData)]
+#[restore(saved_data=crate::project_data::AxisSizeReferenceWidgetSavedData)]
 pub struct AxisSizeReferenceWidget {
     pub staging_tensor_id: StagingString<TensorId>,
     pub staging_axis_id: StagingString<AxisId>,
@@ -60,7 +60,7 @@ impl StatefulWidget for AxisSizeReferenceWidget {
 }
 
 #[derive(Default, Restore)]
-#[restore(message=crate::project_data::ParameterizedAxisSizeWidgetRawData)]
+#[restore(saved_data=crate::project_data::ParameterizedAxisSizeWidgetSavedData)]
 pub struct ParameterizedAxisSizeWidget {
     pub staging_min: StagingNum<usize, NonZeroUsize>,
     pub staging_step: StagingNum<usize, NonZeroUsize>,
@@ -124,19 +124,19 @@ pub enum AxisSizeMode {
 }
 
 impl Restore for AxisSizeMode{
-    type RawData = AxisSizeModeRawData;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = AxisSizeModeSavedData;
+    fn dump(&self) -> Self::SavedData {
         match self{
-            Self::Fixed => Self::RawData::Fixed,
-            Self::Reference => Self::RawData::Reference,
-            Self::Parameterized => Self::RawData::Parameterized,
+            Self::Fixed => Self::SavedData::Fixed,
+            Self::Reference => Self::SavedData::Reference,
+            Self::Parameterized => Self::SavedData::Parameterized,
         }
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        *self = match raw{
-            Self::RawData::Fixed => Self::Fixed,
-            Self::RawData::Reference => Self::Reference,
-            Self::RawData::Parameterized => Self::Parameterized,
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        *self = match saved_data{
+            Self::SavedData::Fixed => Self::Fixed,
+            Self::SavedData::Reference => Self::Reference,
+            Self::SavedData::Parameterized => Self::Parameterized,
         }
     }
 }
@@ -148,7 +148,7 @@ impl Default for AxisSizeMode {
 }
 
 #[derive(Default, Restore)]
-#[restore(message=crate::project_data::AnyAxisSizeWidgetRawData)]
+#[restore(saved_data=crate::project_data::AnyAxisSizeWidgetSavedData)]
 pub struct AnyAxisSizeWidget {
     pub mode: AxisSizeMode,
 

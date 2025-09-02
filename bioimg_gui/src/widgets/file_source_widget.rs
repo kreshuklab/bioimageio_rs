@@ -8,7 +8,7 @@ use bioimg_runtime as rt;
 use bioimg_runtime::zip_archive_ext::ZipArchiveIdentifier;
 use bioimg_runtime::zip_archive_ext::SharedZipArchive;
 
-use crate::project_data::{FileSourceWidgetRawData, LocalFileSourceWidgetRawData};
+use crate::project_data::{FileSourceWidgetSavedData, LocalFileSourceWidgetSavedData};
 use crate::result::{GuiError, Result};
 
 use super::collapsible_widget::SummarizableWidget;
@@ -124,44 +124,44 @@ impl Default for LocalFileSourceWidget{
 }
 
 impl Restore for LocalFileSourceWidget{
-    type RawData = LocalFileSourceWidgetRawData;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = LocalFileSourceWidgetSavedData;
+    fn dump(&self) -> Self::SavedData {
         let guard = self.state.lock().unwrap();
         let gen_state: &(i64, LocalFileState) = &*guard;
         match &gen_state.1{
-            LocalFileState::Empty | LocalFileState::Failed(_) => Self::RawData::Empty,
+            LocalFileState::Empty | LocalFileState::Failed(_) => Self::SavedData::Empty,
             LocalFileState::InMemoryFile{name, data} => {
                 let data = Arc::clone(data);
-                Self::RawData::InMemoryData{name: name.clone(), data }
+                Self::SavedData::InMemoryData{name: name.clone(), data }
             },
             #[cfg(not(target_arch="wasm32"))]
             LocalFileState::PickedNormalFile {path} => {
-                Self::RawData::AboutToLoad{path: path.to_string_lossy().into(), inner_path: None}
+                Self::SavedData::AboutToLoad{path: path.to_string_lossy().into(), inner_path: None}
             },
             LocalFileState::PickingInner { archive, inner_options_widget, .. } => {
                 match archive.identifier(){
-                    ZipArchiveIdentifier::Path(path) => Self::RawData::AboutToLoad{
+                    ZipArchiveIdentifier::Path(path) => Self::SavedData::AboutToLoad{
                         path: path.to_string_lossy().into(),
                         inner_path: Some(inner_options_widget.value.clone())
                     },
-                    _ => Self::RawData::Empty,
+                    _ => Self::SavedData::Empty,
                 }
             }
         }
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        match raw{
-            Self::RawData::Empty => {
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        match saved_data{
+            Self::SavedData::Empty => {
                 self.state = Arc::new(std::sync::Mutex::new((0, LocalFileState::Empty)));
                 return
             },
-            Self::RawData::InMemoryData{name, data} => {
+            Self::SavedData::InMemoryData{name, data} => {
                 self.state = Arc::new(std::sync::Mutex::new(
                     (0, LocalFileState::InMemoryFile { name, data })
                 ));
                 return
             },
-            Self::RawData::AboutToLoad{path, inner_path} => {
+            Self::SavedData::AboutToLoad{path, inner_path} => {
                 #[cfg(target_arch="wasm32")]
                 eprintln!("Warning: can't load local path {path}/{inner_path:?} in wasm32"); //FIXME
                 #[cfg(not(target_arch="wasm32"))]
@@ -358,21 +358,21 @@ impl SummarizableWidget for FileSourceWidget{
 }
 
 impl Restore for FileSourceWidget{
-    type RawData = FileSourceWidgetRawData;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = FileSourceWidgetSavedData;
+    fn dump(&self) -> Self::SavedData {
         match self.mode {
             FileSourceWidgetMode::Local => {
-                Self::RawData::Local(self.local_file_source_widget.dump())
+                Self::SavedData::Local(self.local_file_source_widget.dump())
             },
             FileSourceWidgetMode::Url => {
-                Self::RawData::Url(self.http_url_widget.dump())
+                Self::SavedData::Url(self.http_url_widget.dump())
             }
         }
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        match raw{
-            Self::RawData::Local(local) => self.local_file_source_widget.restore(local),
-            Self::RawData::Url(url) => self.http_url_widget.restore(url)
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        match saved_data{
+            Self::SavedData::Local(local) => self.local_file_source_widget.restore(local),
+            Self::SavedData::Url(url) => self.http_url_widget.restore(url)
         }
     }
 }

@@ -73,12 +73,12 @@ where
 }
 
 impl<W: Restore + Default, const RAW_FRAME: bool> Restore for StagingOpt<W, RAW_FRAME>{
-    type RawData = Option<W::RawData>;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = Option<W::SavedData>;
+    fn dump(&self) -> Self::SavedData {
         self.0.as_ref().map(|val| val.dump())
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        match raw{
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        match saved_data{
             None => {
                 self.0 = None
             },

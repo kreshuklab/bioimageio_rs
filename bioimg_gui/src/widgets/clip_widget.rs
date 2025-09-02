@@ -9,7 +9,7 @@ use super::{error_display::show_if_error, StatefulWidget, ValueWidget};
 use crate::result::{GuiError, Result};
 
 #[derive(Restore)]
-#[restore(message=crate::project_data::ClipWidgetRawData)]
+#[restore(saved_data=crate::project_data::ClipWidgetSavedData)]
 pub struct ClipWidget{
     pub min_widget: StagingFloat<f32>,
     pub max_widget: StagingFloat<f32>,

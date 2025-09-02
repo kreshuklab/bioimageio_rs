@@ -2,8 +2,8 @@ use std::fmt::Display;
 
 use bioimg_spec::rdf::model as modelrdf;
 
-use crate::project_data::PhysicalScaleWidgetRawData;
-// use crate::project_data::PhysicalSizeWidgetRawData;
+use crate::project_data::PhysicalScaleWidgetSavedData;
+// use crate::project_data::PhysicalSizeWidgetSavedData;
 use crate::result::{Result, GuiError};
 
 use super::error_display::{show_error, show_warning};
@@ -32,18 +32,18 @@ impl<T> Restore for PhysicalScaleWidget<T>
 where
     T: Default + Clone + Restore + strum::VariantArray + Display,
 {
-    type RawData = PhysicalScaleWidgetRawData<T::RawData>;
+    type SavedData = PhysicalScaleWidgetSavedData<T::SavedData>;
 
-    fn dump(&self) -> Self::RawData {
+    fn dump(&self) -> Self::SavedData {
         let a = self.unit_widget.dump();
-        PhysicalScaleWidgetRawData{
+        PhysicalScaleWidgetSavedData{
             raw_scale: self.raw_scale.clone(),
             unit_widget: a,
         }
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        self.raw_scale = raw.raw_scale;
-        self.unit_widget.restore(raw.unit_widget);
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        self.raw_scale = saved_data.raw_scale;
+        self.unit_widget.restore(saved_data.unit_widget);
     }
 }
 

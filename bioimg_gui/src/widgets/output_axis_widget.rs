@@ -18,7 +18,7 @@ use super::{axis_size_widget::AnyAxisSizeWidget, staging_num::StagingNum};
 use crate::result::{GuiError, Result};
 
 #[derive(Default, Restore)]
-#[restore(message=crate::project_data::OutputSpacetimeSizeWidgetRawData)]
+#[restore(saved_data=crate::project_data::OutputSpacetimeSizeWidgetSavedData)]
 pub struct OutputSpacetimeSizeWidget{
     pub has_halo: bool,
     pub halo_widget: StagingNum<u64, modelrdf::Halo>,
@@ -100,7 +100,7 @@ impl StatefulWidget for OutputSpacetimeSizeWidget{
 }
 
 #[derive(Default, Restore)]
-#[restore(message=crate::project_data::OutputSpaceAxisWidgetRawData)]
+#[restore(saved_data=crate::project_data::OutputSpaceAxisWidgetSavedData)]
 pub struct OutputSpaceAxisWidget {
     pub id_widget: StagingString<modelrdf::axes::AxisId>,
     pub description_widget: StagingString<BoundedString<0, 128>>,
@@ -164,7 +164,7 @@ impl StatefulWidget for OutputSpaceAxisWidget{
 }
 
 #[derive(Default, Restore)]
-#[restore(message=crate::project_data::OutputTimeAxisWidgetRawData)]
+#[restore(saved_data=crate::project_data::OutputTimeAxisWidgetSavedData)]
 pub struct OutputTimeAxisWidget {
     pub id_widget: StagingString<modelrdf::axes::AxisId>,
     pub description_widget: StagingString<BoundedString<0, 128>>,
@@ -245,7 +245,7 @@ impl StatefulWidget for OutputTimeAxisWidget{
 }
 
 #[derive(Default, Restore)]
-#[restore(message=crate::project_data::OutputAxisWidgetRawData)]
+#[restore(saved_data=crate::project_data::OutputAxisWidgetSavedData)]
 pub struct OutputAxisWidget {
     pub axis_type_widget: SearchAndPickWidget<AxisType>,
 
