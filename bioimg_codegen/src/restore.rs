@@ -61,11 +61,17 @@ impl RestoreDeriveConfig {
 
 /// Determines how a field is to be restored when deriving the `Restore` trait
 enum FieldRestoreMode {
-    /// The usual behavior of restoring this field form the `SavedData` value
+    /// The usual behavior of restoring this field from the `SavedData` value.
+    /// It's the strategy used when no `#[restore(...)]` attribute is applied to
+    /// a field.
     FromSavedData,
-    /// Restore this field to `Default::default()`
+    /// Restore this field to `Default::default()` instead of getting a value
+    /// out of `Restore::SavedData`. Activated by annotating a field with
+    /// `#[restore(default)]`
     CallDefault,
     /// Run `self.update` after restoring all fields to restore this field
+    /// instead of getting a value out of `Restore::SavedData`. Activated by
+    /// annotating a field with `#[restore(on_default)]`
     OnUpdate(syn::Ident),
 }
 
@@ -82,9 +88,9 @@ impl syn::parse::Parse for FieldRestoreMode {
 
 impl FieldRestoreMode {
     /// Parse fields attributes as configurations for the `Restore` derive.
-    /// Looks for the `#[restore(default)` xor `#[restore(on_update)]` to
-    /// determine the strategy for restoring the field. Check `FieldRestoreMode`
-    /// variants for more information.
+    /// Looks for either `#[restore(default)` or `#[restore(on_update)]` (or
+    /// neither) to determine the strategy for restoring the field. Check
+    /// `FieldRestoreMode` variants for more information.
     pub fn try_from_attrs(attrs: &[syn::Attribute]) -> syn::Result<Self> {
         let mut mode: Option<FieldRestoreMode> = None;
         for attr in attrs {
