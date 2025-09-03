@@ -1,5 +1,5 @@
 [workspace]
-members = ["bioimg_codegen", "bioimg_gui", "bioimg_spec", "bioimg_runtime", "bioimg_zoo", "task__build_webapp"]
+members = ["bioimg_codegen", "bioimg_gui", "bioimg_spec", "bioimg_runtime", "bioimg_zoo", "task__build_webapp", "hooks_executable"]
 default-members = ["bioimg_gui"]
 resolver = "2"
 

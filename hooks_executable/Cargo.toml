@@ -1,0 +1,15 @@
+[package]
+name = "hooks_executable"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+
+[dependencies]
+anyhow = "1.0.99"
+camino = "1.1.12"
+strum = { workspace = true, features = ["strum_macros", "derive"] }
+thiserror.workspace = true
+versions = "7.0.0"
