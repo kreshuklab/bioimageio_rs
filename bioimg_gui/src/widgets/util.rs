@@ -54,7 +54,9 @@ where
     .collect()
 }
 
-pub fn draw_vertical_brackets(ui: &mut egui::Ui, rect: egui::Rect){
+/// Draws lines surrounding `rect` that look like square brackets. Useful, for
+/// example, for dawing widgets that represent vectors.
+pub fn draw_square_brackets(ui: &mut egui::Ui, rect: egui::Rect){
     let stroke = ui.visuals().window_stroke();
     let min_to_max = rect.max - rect.min;
     let left_to_right = egui::Vec2{y: 0.0, ..min_to_max};
@@ -115,7 +117,7 @@ impl<T> Default for TaskChannel<T>{
 
 
 
-#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug)]
+#[derive(PartialEq, Eq, PartialOrd, Ord, Copy, Clone, Debug, Default)]
 pub struct Generation(pub i64);
 
 impl Generation{
@@ -124,18 +126,24 @@ impl Generation{
     }
 }
 
-pub struct GenSyncCell<T>{
+/// A container for generational, synchronized data. Useful, e.g., for dealing
+/// with multiple async background tasks that might complete out of order; Each
+/// background task can get its own clone of this structure and once done, it
+/// can check if its generation still matches the expected generation in the
+/// `GenSync` object.
+#[derive(Default)]
+pub struct GenSync<T>{
     data: Arc<Mutex<(Generation, T)>>
 }
 
-impl<T> Clone for GenSyncCell<T>{
+impl<T> Clone for GenSync<T>{
     fn clone(&self) -> Self {
         let data = Arc::clone(&self.data);
         Self{data}
     }
 }
 
-impl<T> GenSyncCell<T>{
+impl<T> GenSync<T>{
     pub fn new(value: T) -> Self{
         Self{data: Arc::new(Mutex::new((Generation(0), value)))}
     }

@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-use std::path::Path;
 use std::sync::Arc;
 use std::thread::JoinHandle;
 
@@ -16,13 +14,14 @@ use bioimg_spec::rdf::ResourceId;
 use bioimg_spec::rdf::bounded_string::BoundedString;
 use bioimg_spec::rdf::non_empty_list::NonEmptyList;
 
-use crate::project_data::{AppState1RawData, AppStateRawData, ProjectLoadError};
+use crate::project_data::{AppState1SavedData};
+#[cfg(not(target_arch="wasm32"))]
+use crate::project_data::{AppStateSavedData, ProjectLoadError};
 use crate::result::{GuiError, Result, VecResultExt};
 use crate::widgets::attachments_widget::AttachmentsWidget;
 
 use crate::widgets::code_editor_widget::MarkdwownLang;
 use crate::widgets::collapsible_widget::SummarizableWidget;
-use crate::widgets::cover_image_widget::CoverImageItemConf;
 use crate::widgets::icon_widget::IconWidgetValue;
 use crate::widgets::image_widget_2::SpecialImageWidget;
 use crate::widgets::json_editor_widget::JsonObjectEditorWidget;
@@ -48,7 +47,7 @@ use crate::widgets::{
 };
 
 pub struct AppStateFromPartial{
-    state: AppState1RawData,
+    state: AppState1SavedData,
     warnings: String,
 }
 
@@ -77,10 +76,11 @@ enum ExitingStatus{
 }
 
 #[derive(Restore)]
+#[restore(saved_data=crate::project_data::AppState1SavedData)]
 pub struct AppState1 {
     pub staging_name: StagingString<ModelRdfName>,
     pub staging_description: StagingString<BoundedString<0, 1024>>,
-    pub cover_images: StagingVec<SpecialImageWidget<rt::CoverImage>, CoverImageItemConf>,
+    pub cover_images: Vec<SpecialImageWidget<rt::CoverImage>>,
     pub model_id_widget: StagingOpt<StagingString<ResourceId>, false>,
     pub staging_authors: Vec<AuthorWidget>,
     pub attachments_widget: Vec<AttachmentsWidget>,
@@ -103,22 +103,22 @@ pub struct AppState1 {
 
 
 
-    #[restore_default]
+    #[restore(default)]
     pub pipeline_widget: PipelineWidget,
 
 
 
     #[cfg(not(target_arch="wasm32"))]
-    #[restore_default]
+    #[restore(default)]
     pub zoo_login_widget: ZooLoginWidget,
-    #[restore_default]
+    #[restore(default)]
     pub zoo_model_creation_task: Option<JoinHandle<Result<ZooNickname>>>,
 
-    #[restore_default]
+    #[restore(default)]
     pub notifications_widget: NotificationsWidget,
-    #[restore_default]
+    #[restore(default)]
     pub notifications_channel: TaskChannel<TaskResult>,
-    #[restore_default]
+    #[restore(default)]
     exiting_status: ExitingStatus,
 }
 
@@ -128,11 +128,13 @@ impl ValueWidget for AppState1{
     fn set_value<'v>(&mut self, zoo_model: Self::Value<'v>) {
         self.staging_name.set_value(zoo_model.name);
         self.staging_description.set_value(zoo_model.description);
-        self.cover_images.set_value(
-            zoo_model.covers.into_iter()
-                .map(|cover| (None, Some(cover)))
-                .collect()
-        );
+        self.cover_images = zoo_model.covers.into_iter()
+            .map(|cover| {
+                let mut widget = SpecialImageWidget::default();
+                widget.set_value((None, Some(cover)));
+                widget
+            })
+            .collect();
         self.model_id_widget.set_value(zoo_model.id);
         self.staging_authors = zoo_model.authors.into_inner().into_iter()
             .map(|descr| {
@@ -182,7 +184,7 @@ impl Default for AppState1 {
         Self {
             staging_name: StagingString::new(InputLines::SingleLine),
             staging_description: StagingString::new(InputLines::Multiline),
-            cover_images: StagingVec::default(),
+            cover_images: Vec::default(),
             model_id_widget: Default::default(),
             staging_authors: Default::default(),
             attachments_widget: Default::default(),
@@ -221,9 +223,9 @@ impl AppState1{
         let description = self.staging_description.state()
             .cloned()
             .map_err(|e| GuiError::new_with_rect("Check resource text description for errors", e.failed_widget_rect))?;
-        let covers: Vec<_> = self.cover_images.state().into_iter()
-            .map(|cover_img_res|{
-                cover_img_res
+        let covers: Vec<_> = self.cover_images.iter()
+            .map(|cover_img_widget|{
+                cover_img_widget.state()
                     .map(|val| val.clone())
                     .map_err(|e| GuiError::new_with_rect("Check cover images for errors", e.failed_widget_rect))
             })
@@ -325,31 +327,31 @@ impl AppState1{
     }
 
     #[cfg(not(target_arch="wasm32"))]
-    fn save_project(&self, project_file: &Path) -> Result<String, String>{
+    fn save_project(&self, project_file: &std::path::Path) -> Result<String, String>{
         let writer = std::fs::File::options()
             .write(true)
             .create(true)
             .truncate(true)
             .open(project_file).map_err(|err| format!("Could not open project file for writing: {err}"))?;
-        AppStateRawData::Version1(self.dump()).save(writer)
+        AppStateSavedData::Version1(self.dump()).save(writer)
             .map_err(|err| format!("Could not serialize project to bytes: {err}"))
             .map(|_| format!("Saved project to {}", project_file.to_string_lossy()))
     }
 
     #[cfg(not(target_arch="wasm32"))]
-    fn load_project(&mut self, project_file: &Path) -> Result<(), String>{
+    fn load_project(&mut self, project_file: &std::path::Path) -> Result<(), String>{
         let reader = std::fs::File::open(&project_file).map_err(|err| format!("Could not open project file: {err}"))?;
-        let proj_data = match AppStateRawData::load(reader){
+        let proj_data = match AppStateSavedData::load(reader){
             Err(ProjectLoadError::FutureVersion{found_version}) => return Err(format!(
                 "Found project data version {found_version}, but this program only supports project data up to {}\n\
                 You can try downloading the newest version at https://github.com/kreshuklab/bioimg_rs/releases",
-                AppStateRawData::highest_supported_version(),
+                AppStateSavedData::highest_supported_version(),
             )),
             Err(err) => return Err(format!("Could not load project file at {}: {err}", project_file.to_string_lossy())),
             Ok(proj_data) => proj_data,
         };
         match proj_data{
-            AppStateRawData::Version1(ver1) => self.restore(ver1),
+            AppStateSavedData::Version1(ver1) => self.restore(ver1),
         }
         Ok(())
     }
@@ -377,6 +379,8 @@ impl AppState1{
 
             #[cfg(not(target_arch="wasm32"))]
             let message = 'packing: {
+                use std::borrow::Cow;
+
                 let file_name = file_handle.file_name();
                 if !file_name.ends_with(".zip"){
                     let msg = TaskResult::err_message(format!("Model extension must be '.zip'. Provided '{file_name}'"));
@@ -439,7 +443,7 @@ impl AppState1{
         let yaml_deserializer = serde_yaml::Deserializer::from_slice(&model_rdf_bytes);
         let partial: PartialModelRdfV0_5 = ::serde_path_to_error::deserialize(yaml_deserializer)?;
         let mut warnings = String::with_capacity(16 * 1024);
-        let state = AppState1RawData::from_partial(&archive, partial, &mut warnings); //FIXME: retrieve errors and notify
+        let state = AppState1SavedData::from_partial(&archive, partial, &mut warnings); //FIXME: retrieve errors and notify
         warnings += indoc!("
             PLEASE BE AWARE THAT RECOVERING AND THEN RE-EXPORTING A MODEL MIGHT PRODUCE A NEW, VALID MODEL THAT DOES NOT
             BEHAVE LIKE THE ORIGINAL\n"
@@ -649,8 +653,29 @@ impl eframe::App for AppState1 {
                         "Images to be shown to users on the model zoo, preferrably showing what the input \
                         and output look like."
                     );
-                    self.cover_images.draw_and_parse(ui, egui::Id::from("Cover Images"));
-                    // let cover_img_results = self.cover_images.state();
+                    let covers_base_id = egui::Id::from("cover images");
+                    let vec_widget = VecWidget{
+                        items: &mut self.cover_images,
+                        item_label: "Cover Image",
+                        min_items: 1,
+                        show_reorder_buttons: true,
+                        new_item: Some(SpecialImageWidget::default),
+                        item_renderer: VecItemRender::HeaderAndBody{
+                            render_header: |widget: &mut SpecialImageWidget<_>, idx, ui|{
+                                ui.horizontal(|ui|{
+                                    ui.weak(format!("Cover image #{idx}"));
+                                    ui.add_space(3.0);
+                                    widget.summarize(ui, covers_base_id.with(idx));
+                                });
+                            },
+                            render_body: |widg: &mut SpecialImageWidget<_>, idx, ui|{
+                                widg.draw_and_parse(ui, covers_base_id.with(("body".as_ptr(), idx)));
+                            },
+                            collapsible_id_source: Some(covers_base_id),
+                            marker: Default::default(),
+                        }
+                    };
+                    ui.add(vec_widget);
                 });
 
                 ui.horizontal_top(|ui| {

@@ -43,13 +43,13 @@ where
     Parsed: TryFrom<Raw>,
     <Parsed as TryFrom<Raw>>::Error: Error,
 {
-    type RawData = Raw;
+    type SavedData = Raw;
     fn dump(&self) -> Raw{
         self.raw.clone()
     }
-    fn restore(&mut self, raw: Raw) {
-        self.raw = raw.clone().into();
-        self.parsed = Parsed::try_from(raw).map_err(GuiError::from);
+    fn restore(&mut self, saved_data: Raw) {
+        self.raw = saved_data.clone().into();
+        self.parsed = Parsed::try_from(saved_data).map_err(GuiError::from);
     }
 }
 

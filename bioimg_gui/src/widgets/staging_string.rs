@@ -21,12 +21,12 @@ impl<T> Restore for StagingString<T>
 where
     T: FromStr<Err: Display> + Borrow<str>,
 {
-    type RawData = String;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = String;
+    fn dump(&self) -> Self::SavedData {
         self.raw.clone()
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        self.raw = raw;
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        self.raw = saved_data;
         self.update()
     }
 }

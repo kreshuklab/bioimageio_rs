@@ -9,7 +9,7 @@ use crate::widgets::inout_tensor_widget::OutputTensorWidget;
 use crate::widgets::model_interface_widget::{MODEL_INPUTS_TIP, MODEL_OUTPUTS_TIP};
 use crate::widgets::onnx_weights_widget::OnnxWeightsWidget;
 use crate::widgets::pytorch_statedict_weights_widget::PytorchStateDictWidget;
-use crate::widgets::util::{draw_vertical_brackets, VecItemRender, VecWidget};
+use crate::widgets::util::{draw_square_brackets, VecItemRender, VecWidget};
 
 use super::button_ext::ButtonExt;
 use super::collapsible_widget::CollapsibleWidget;
@@ -375,7 +375,7 @@ impl PipelineWidget{
                                             }
                                         }
                                     });
-                                    draw_vertical_brackets(ui, axes_resp.response.rect);
+                                    draw_square_brackets(ui, axes_resp.response.rect);
                                 });
                             }
 
@@ -454,7 +454,7 @@ impl PipelineWidget{
                                             }
                                         }
                                     });
-                                    draw_vertical_brackets(ui, axes_resp.response.rect);
+                                    draw_square_brackets(ui, axes_resp.response.rect);
                                 });
                             }
 

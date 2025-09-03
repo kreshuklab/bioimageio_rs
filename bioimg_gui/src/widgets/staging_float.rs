@@ -12,12 +12,12 @@ pub struct StagingFloat<T>{
 }
 
 impl<T> Restore for StagingFloat<T>{
-    type RawData = String;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = String;
+    fn dump(&self) -> Self::SavedData {
         self.raw.dump()
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        self.raw.restore(raw)
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        self.raw.restore(saved_data)
     }
 }
 

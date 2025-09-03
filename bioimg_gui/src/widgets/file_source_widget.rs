@@ -1,5 +1,4 @@
 use std::fmt::Write;
-use std::marker::PhantomData;
 use std::path::PathBuf;
 use std::sync::Arc;
 #[cfg(not(target_arch="wasm32"))]
@@ -9,19 +8,15 @@ use bioimg_runtime as rt;
 use bioimg_runtime::zip_archive_ext::ZipArchiveIdentifier;
 use bioimg_runtime::zip_archive_ext::SharedZipArchive;
 
-use crate::project_data::{FileSourceWidgetRawData, LocalFileSourceWidgetRawData};
+use crate::project_data::{FileSourceWidgetSavedData, LocalFileSourceWidgetSavedData};
 use crate::result::{GuiError, Result};
-use crate::widgets::popup_widget::draw_fullscreen_popup;
 
 use super::collapsible_widget::SummarizableWidget;
 
-use super::{
-    error_display::show_error,
-    popup_widget::PopupResult,
-    search_and_pick_widget::SearchAndPickWidget,
-    url_widget::StagingUrl,
-    Restore, StatefulWidget, ValueWidget,
-};
+use super::{Restore, StatefulWidget, ValueWidget};
+use super::error_display::show_error;
+use super::url_widget::StagingUrl;
+use super::search_and_pick_widget::SearchAndPickWidget;
 
 #[derive(Default)]
 pub enum LocalFileState{
@@ -129,44 +124,44 @@ impl Default for LocalFileSourceWidget{
 }
 
 impl Restore for LocalFileSourceWidget{
-    type RawData = LocalFileSourceWidgetRawData;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = LocalFileSourceWidgetSavedData;
+    fn dump(&self) -> Self::SavedData {
         let guard = self.state.lock().unwrap();
         let gen_state: &(i64, LocalFileState) = &*guard;
         match &gen_state.1{
-            LocalFileState::Empty | LocalFileState::Failed(_) => Self::RawData::Empty,
+            LocalFileState::Empty | LocalFileState::Failed(_) => Self::SavedData::Empty,
             LocalFileState::InMemoryFile{name, data} => {
                 let data = Arc::clone(data);
-                Self::RawData::InMemoryData{name: name.clone(), data }
+                Self::SavedData::InMemoryData{name: name.clone(), data }
             },
             #[cfg(not(target_arch="wasm32"))]
             LocalFileState::PickedNormalFile {path} => {
-                Self::RawData::AboutToLoad{path: path.to_string_lossy().into(), inner_path: None}
+                Self::SavedData::AboutToLoad{path: path.to_string_lossy().into(), inner_path: None}
             },
             LocalFileState::PickingInner { archive, inner_options_widget, .. } => {
                 match archive.identifier(){
-                    ZipArchiveIdentifier::Path(path) => Self::RawData::AboutToLoad{
+                    ZipArchiveIdentifier::Path(path) => Self::SavedData::AboutToLoad{
                         path: path.to_string_lossy().into(),
                         inner_path: Some(inner_options_widget.value.clone())
                     },
-                    _ => Self::RawData::Empty,
+                    _ => Self::SavedData::Empty,
                 }
             }
         }
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        match raw{
-            Self::RawData::Empty => {
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        match saved_data{
+            Self::SavedData::Empty => {
                 self.state = Arc::new(std::sync::Mutex::new((0, LocalFileState::Empty)));
                 return
             },
-            Self::RawData::InMemoryData{name, data} => {
+            Self::SavedData::InMemoryData{name, data} => {
                 self.state = Arc::new(std::sync::Mutex::new(
                     (0, LocalFileState::InMemoryFile { name, data })
                 ));
                 return
             },
-            Self::RawData::AboutToLoad{path, inner_path} => {
+            Self::SavedData::AboutToLoad{path, inner_path} => {
                 #[cfg(target_arch="wasm32")]
                 eprintln!("Warning: can't load local path {path}/{inner_path:?} in wasm32"); //FIXME
                 #[cfg(not(target_arch="wasm32"))]
@@ -363,21 +358,21 @@ impl SummarizableWidget for FileSourceWidget{
 }
 
 impl Restore for FileSourceWidget{
-    type RawData = FileSourceWidgetRawData;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = FileSourceWidgetSavedData;
+    fn dump(&self) -> Self::SavedData {
         match self.mode {
             FileSourceWidgetMode::Local => {
-                Self::RawData::Local(self.local_file_source_widget.dump())
+                Self::SavedData::Local(self.local_file_source_widget.dump())
             },
             FileSourceWidgetMode::Url => {
-                Self::RawData::Url(self.http_url_widget.dump())
+                Self::SavedData::Url(self.http_url_widget.dump())
             }
         }
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        match raw{
-            Self::RawData::Local(local) => self.local_file_source_widget.restore(local),
-            Self::RawData::Url(url) => self.http_url_widget.restore(url)
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        match saved_data{
+            Self::SavedData::Local(local) => self.local_file_source_widget.restore(local),
+            Self::SavedData::Url(url) => self.http_url_widget.restore(url)
         }
     }
 }
@@ -457,93 +452,6 @@ impl StatefulWidget for FileSourceWidget{
                     self.http_url_widget.state().map_err(|_| GuiError::new("Invalid HTTP URL"))?
                 )
             ),
-        }
-    }
-}
-
-pub trait FileSourcePopupConfig{
-    const BUTTON_TEXT: &'static str = "Open...";
-    const TITLE: &'static str = "Choose a file";
-}
-
-pub struct DefaultFileSourcePopupConfig;
-impl FileSourcePopupConfig for DefaultFileSourcePopupConfig{}
-
-#[derive(Default)]
-pub enum FileSourceWidgetPopupButton<C: FileSourcePopupConfig = DefaultFileSourcePopupConfig>{
-    #[default]
-    Empty,
-    Picking{file_source_widget: FileSourceWidget},
-    Ready{file_source: rt::FileSource, marker: PhantomData<C>},
-}
-
-impl<C: FileSourcePopupConfig> ValueWidget for FileSourceWidgetPopupButton<C>{
-    type Value<'v> = rt::FileSource;
-
-    fn set_value<'v>(&mut self, value: Self::Value<'v>) {
-        *self = Self::Ready { file_source: value, marker: PhantomData }
-    }
-}
-
-impl<C: FileSourcePopupConfig> StatefulWidget for FileSourceWidgetPopupButton<C>{
-    type Value<'p> = Result<rt::FileSource> where C: 'p;
-    
-    fn draw_and_parse(&mut self, ui: &mut egui::Ui, id: egui::Id){
-        ui.horizontal(|ui|{
-            let open_button_clicked = ui.button(C::BUTTON_TEXT).clicked();
-            *self = match (std::mem::take(self), open_button_clicked) {
-                (Self::Empty, false) => Self::Empty,
-                (Self::Ready { file_source, marker }, false) => {
-                    ui.weak(&file_source.to_string());
-                    Self::Ready { file_source, marker }
-                },
-                (Self::Picking { mut file_source_widget }, _) => {
-                    let file_source_result: PopupResult<rt::FileSource> = draw_fullscreen_popup(ui, id.with("pop".as_ptr()), C::TITLE, |ui, id|{
-                        let mut out = PopupResult::Continued;
-                        ui.vertical(|ui|{
-                            file_source_widget.draw_and_parse(ui, id);
-                            let state = file_source_widget.state();
-                            ui.add_space(10.0);
-                            ui.horizontal(|ui|{
-                                match state {
-                                    Ok(file_source) => if ui.button("Ok").clicked(){
-                                        out = PopupResult::Finished(file_source);
-                                    },
-                                    Err(_) => {
-                                        ui.add_enabled_ui(false, |ui| ui.button("Ok"));
-                                    }
-                                };
-                                if ui.button("Cancel").clicked(){
-                                     out = PopupResult::Closed
-                                }
-                            });
-                        });
-                        out
-                    });
-                    match file_source_result{
-                        PopupResult::Continued => Self::Picking { file_source_widget },
-                        PopupResult::Closed => Self::Empty,
-                        PopupResult::Finished(file_source) => Self::Ready { file_source, marker: PhantomData },
-                    }
-                },
-                (Self::Empty, true) => Self::Picking{ file_source_widget: Default::default() },
-                (Self::Ready{ file_source, .. }, true) => Self::Picking{
-                    file_source_widget: {
-                        let mut widget = FileSourceWidget::default();
-                        widget.set_value(file_source);
-                        widget
-                    }
-                },
-            };
-        });
-    }
-
-    fn state<'p>(&'p self) -> Self::Value<'p> {
-        match self {
-            Self::Ready { file_source, .. } => {
-                Ok(file_source.clone())
-            },
-            _ => Err(GuiError::new("not ready".to_owned()))
         }
     }
 }

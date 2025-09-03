@@ -20,12 +20,12 @@ impl ValueWidget for StagingUrl{
 }
 
 impl Restore for StagingUrl{
-    type RawData = String;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = String;
+    fn dump(&self) -> Self::SavedData {
         self.raw.clone()
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        let _ = std::mem::replace(self, Self::new_with_raw(raw));
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        let _ = std::mem::replace(self, Self::new_with_raw(saved_data));
     }
 }
 

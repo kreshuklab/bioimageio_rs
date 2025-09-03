@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use bioimg_spec::rdf;
 
-use crate::{project_data::VersionWidgetRawData, result::{GuiError, Result}};
+use crate::{project_data::VersionWidgetSavedData, result::{GuiError, Result}};
 
 use super::{error_display::show_if_error, Restore, StatefulWidget, ValueWidget};
 
@@ -52,12 +52,12 @@ impl ValueWidget for VersionWidget{
 } 
 
 impl Restore for VersionWidget{
-    type RawData = VersionWidgetRawData;
-    fn restore(&mut self, value: Self::RawData) {
+    type SavedData = VersionWidgetSavedData;
+    fn restore(&mut self, value: Self::SavedData) {
         self.parsed = rdf::Version::from_str(&value.raw).map_err(GuiError::from);
         self.raw = value.raw;
     }
-    fn dump(&self) -> Self::RawData {
-        VersionWidgetRawData{raw: self.raw.clone()}
+    fn dump(&self) -> Self::SavedData {
+        VersionWidgetSavedData{raw: self.raw.clone()}
     }
 } 

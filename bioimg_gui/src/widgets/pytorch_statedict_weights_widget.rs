@@ -2,7 +2,7 @@ use bioimg_spec::rdf;
 use bioimg_spec::rdf::model as modelrdf;
 use bioimg_runtime as rt;
 
-use crate::project_data::PytorchArchModeRawData;
+use crate::project_data::PytorchArchModeSavedData;
 use crate::result::{GuiError, Result};
 use super::{Restore, StatefulWidget, ValueWidget};
 use super::collapsible_widget::SummarizableWidget;
@@ -27,22 +27,23 @@ pub enum PytorchArchMode{
 }
 
 impl Restore for PytorchArchMode{
-    type RawData = PytorchArchModeRawData;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = PytorchArchModeSavedData;
+    fn dump(&self) -> Self::SavedData {
         match self{
-            Self::FromFile => Self::RawData::FromFile,
-            Self::FromLib => Self::RawData::FromLib,
+            Self::FromFile => Self::SavedData::FromFile,
+            Self::FromLib => Self::SavedData::FromLib,
         }
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        *self = match raw{
-            Self::RawData::FromFile => Self::FromFile,
-            Self::RawData::FromLib => Self::FromLib,
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        *self = match saved_data{
+            Self::SavedData::FromFile => Self::FromFile,
+            Self::SavedData::FromLib => Self::FromLib,
         }
     }
 }
 
 #[derive(Default, Restore)]
+#[restore(saved_data=crate::project_data::PytorchArchWidgetSavedData)]
 pub struct PytorchArchWidget{
     pub mode_widget: SearchAndPickWidget<PytorchArchMode>,
     pub callable_widget: StagingString<rdf::Identifier>,
@@ -154,6 +155,7 @@ impl StatefulWidget for PytorchArchWidget{
 }
 
 #[derive(Default, Restore)]
+#[restore(saved_data=crate::project_data::PytorchStateDictWidgetSavedData)]
 pub struct PytorchStateDictWidget{
     pub base_widget: WeightsDescrBaseWidget,
     pub architecture_widget: PytorchArchWidget,

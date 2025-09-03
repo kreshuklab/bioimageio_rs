@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use bioimg_runtime::CondaEnv;
 
-use crate::{project_data::CondaEnvEditorWidgetRawData, result::{GuiError, Result}};
+use crate::{project_data::CondaEnvEditorWidgetSavedData, result::{GuiError, Result}};
 use super::{code_editor_widget::{CodeEditorWidget, YamlLang}, error_display::show_if_error, Restore, StatefulWidget, ValueWidget};
 
 pub struct CondaEnvEditorWidget{
@@ -18,14 +18,14 @@ impl CondaEnvEditorWidget{
 }
 
 impl Restore for CondaEnvEditorWidget{
-    type RawData = CondaEnvEditorWidgetRawData;
-    fn dump(&self) -> Self::RawData {
-        CondaEnvEditorWidgetRawData{
+    type SavedData = CondaEnvEditorWidgetSavedData;
+    fn dump(&self) -> Self::SavedData {
+        CondaEnvEditorWidgetSavedData{
             code_editor_widget: self.code_editor_widget.dump()
         }
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        self.code_editor_widget.restore(raw.code_editor_widget);
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        self.code_editor_widget.restore(saved_data.code_editor_widget);
         self.update()
     }
 }

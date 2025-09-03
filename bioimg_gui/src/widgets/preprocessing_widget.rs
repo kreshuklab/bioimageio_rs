@@ -2,7 +2,7 @@ use bioimg_spec::rdf::model::preprocessing as modelrdfpreproc;
 use bioimg_spec::rdf::model as modelrdf;
 use strum::VariantArray;
 
-use crate::{project_data::PreprocessingWidgetModeRawData, result::Result};
+use crate::{project_data::PreprocessingWidgetModeSavedData, result::Result};
 use super::error_display::show_error;
 use super::iconify::Iconify;
 use super::util::{search_and_pick, SearchVisibility};
@@ -36,37 +36,38 @@ pub enum PreprocessingWidgetMode {
 }
 
 impl Restore for PreprocessingWidgetMode{
-    type RawData = PreprocessingWidgetModeRawData;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = PreprocessingWidgetModeSavedData;
+    fn dump(&self) -> Self::SavedData {
         match self{
-            Self::Binarize => Self::RawData::Binarize ,
-            Self::Clip => Self::RawData::Clip ,
-            Self::ScaleLinear => Self::RawData::ScaleLinear ,
-            Self::Sigmoid => Self::RawData::Sigmoid ,
-            Self::ZeroMeanUnitVariance => Self::RawData::ZeroMeanUnitVariance ,
-            Self::ScaleRange => Self::RawData::ScaleRange ,
-            Self::EnsureDtype => Self::RawData::EnsureDtype ,
-            Self::FixedZmuv => Self::RawData::FixedZmuv ,
+            Self::Binarize => Self::SavedData::Binarize ,
+            Self::Clip => Self::SavedData::Clip ,
+            Self::ScaleLinear => Self::SavedData::ScaleLinear ,
+            Self::Sigmoid => Self::SavedData::Sigmoid ,
+            Self::ZeroMeanUnitVariance => Self::SavedData::ZeroMeanUnitVariance ,
+            Self::ScaleRange => Self::SavedData::ScaleRange ,
+            Self::EnsureDtype => Self::SavedData::EnsureDtype ,
+            Self::FixedZmuv => Self::SavedData::FixedZmuv ,
         }
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        *self = match raw{
-            Self::RawData::Binarize => Self::Binarize ,
-            Self::RawData::Clip => Self::Clip ,
-            Self::RawData::ScaleLinear => Self::ScaleLinear ,
-            Self::RawData::Sigmoid => Self::Sigmoid ,
-            Self::RawData::ZeroMeanUnitVariance => Self::ZeroMeanUnitVariance ,
-            Self::RawData::ScaleRange => Self::ScaleRange ,
-            Self::RawData::EnsureDtype => Self::EnsureDtype ,
-            Self::RawData::FixedZmuv => Self::FixedZmuv ,
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        *self = match saved_data{
+            Self::SavedData::Binarize => Self::Binarize ,
+            Self::SavedData::Clip => Self::Clip ,
+            Self::SavedData::ScaleLinear => Self::ScaleLinear ,
+            Self::SavedData::Sigmoid => Self::Sigmoid ,
+            Self::SavedData::ZeroMeanUnitVariance => Self::ZeroMeanUnitVariance ,
+            Self::SavedData::ScaleRange => Self::ScaleRange ,
+            Self::SavedData::EnsureDtype => Self::EnsureDtype ,
+            Self::SavedData::FixedZmuv => Self::FixedZmuv ,
         }
     }
 }
 
 #[derive(Default, Restore)]
+#[restore(saved_data=crate::project_data::PreprocessingWidgetSavedData)]
 pub struct PreprocessingWidget{
     pub mode: PreprocessingWidgetMode,
-    #[restore_default]
+    #[restore(default)]
     pub mode_search: String,
     pub binarize_widget: BinarizePreprocessingWidget,
     pub clip_widget: ClipWidget,

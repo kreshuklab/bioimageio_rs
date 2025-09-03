@@ -6,11 +6,12 @@ use std::error::Error;
 use image::GenericImageView;
 use bioimg_runtime::{self as rt, FileSource};
 
-use crate::{project_data::{ImageWidget2LoadingStateRawData, ImageWidget2RawData, SpecialImageWidgetRawData}, result::{GuiError, Result}};
+use crate::widgets::collapsible_widget::SummarizableWidget;
+use crate::{project_data::{ImageWidget2LoadingStateSavedData, ImageWidget2SavedData, SpecialImageWidgetSavedData}, result::{GuiError, Result}};
 use super::{Restore, StatefulWidget, ValueWidget};
 use super::error_display::show_error;
 use super::file_source_widget::FileSourceWidget;
-use super::util::{DynamicImageExt, GenSyncCell, Generation};
+use super::util::{DynamicImageExt, GenSync, Generation};
 
 pub type ArcDynImg = Arc<image::DynamicImage>;
 
@@ -48,18 +49,21 @@ impl Drop for Texture {
     }
 }
 
+#[derive(Default)]
+/// The internal state of te image widget
 enum LoadingState{
+    /// No image has been selected
+    #[default]
     Empty,
+    /// A file has been selected and is still loading
     Loading{source: rt::FileSource},
+    /// File has loaded successfully. It may or may not have already been
+    /// converted to a texture for display
     Ready{source: rt::FileSource, img: ArcDynImg, texture: Option<Texture>},
+    /// Some image has been inserted into the widget by means other than picking a file
     Forced{img: ArcDynImg, texture: Option<Texture>},
+    /// Loading an image failed
     Failed{source: Option<rt::FileSource>, err: GuiError},
-}
-
-impl Default for LoadingState{
-    fn default() -> Self {
-        Self::Empty
-    }
 }
 
 impl LoadingState{
@@ -77,23 +81,23 @@ impl LoadingState{
 
 pub struct ImageWidget2{
     file_source_widget: FileSourceWidget,
-    loading_state: GenSyncCell<LoadingState>,
+    loading_state: GenSync<LoadingState>,
 }
 
 impl Default for ImageWidget2{
     fn default() -> Self {
         Self{
             file_source_widget: Default::default(),
-            loading_state: GenSyncCell::new(LoadingState::default())
+            loading_state: GenSync::new(LoadingState::default())
         }
     }
 }
 
 impl Restore for ImageWidget2{
-    type RawData = ImageWidget2RawData;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = ImageWidget2SavedData;
+    fn dump(&self) -> Self::SavedData {
         let state_guard = self.loading_state.lock();
-        ImageWidget2RawData{
+        ImageWidget2SavedData{
             file_source_widget: self.file_source_widget.dump(),
             loading_state: match &state_guard.1{
                 LoadingState::Forced{img, ..} => {
@@ -101,17 +105,17 @@ impl Restore for ImageWidget2{
                     if let Err(err) = img.write_to(&mut Cursor::new(&mut raw_out), image::ImageFormat::Png){
                         eprintln!("[WARNING] Could not save pathless image: {err}");
                     }
-                    ImageWidget2LoadingStateRawData::Forced { img_bytes: raw_out }
+                    ImageWidget2LoadingStateSavedData::Forced { img_bytes: raw_out }
                 },
-                _ => ImageWidget2LoadingStateRawData::Empty,
+                _ => ImageWidget2LoadingStateSavedData::Empty,
             }
         }
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        self.file_source_widget.restore(raw.file_source_widget);
-        let loading_state = match raw.loading_state{
-            ImageWidget2LoadingStateRawData::Empty => LoadingState::Empty,
-            ImageWidget2LoadingStateRawData::Forced { img_bytes } => 'forced: {
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        self.file_source_widget.restore(saved_data.file_source_widget);
+        let loading_state = match saved_data.loading_state{
+            ImageWidget2LoadingStateSavedData::Empty => LoadingState::Empty,
+            ImageWidget2LoadingStateSavedData::Forced { img_bytes } => 'forced: {
                 let Ok(reader) = image::io::Reader::new(Cursor::new(img_bytes)).with_guessed_format() else {
                     eprintln!("[WARNING] Could not guess format of saved image");
                     break 'forced LoadingState::Empty;
@@ -123,7 +127,7 @@ impl Restore for ImageWidget2{
                 LoadingState::Forced { img: Arc::new(image), texture: None }
             }
         };
-        self.loading_state = GenSyncCell::new(loading_state);
+        self.loading_state = GenSync::new(loading_state);
     }
 }
 
@@ -134,15 +138,15 @@ impl ValueWidget for ImageWidget2{
         match value{
             (None, Some(img)) => {
                 self.file_source_widget = Default::default();
-                self.loading_state = GenSyncCell::new(LoadingState::Forced { img, texture: None});
+                self.loading_state = GenSync::new(LoadingState::Forced { img, texture: None});
             },
             (None, None) => {
                 self.file_source_widget = Default::default();
-                self.loading_state = GenSyncCell::new(LoadingState::Empty);
+                self.loading_state = GenSync::new(LoadingState::Empty);
             },
             (Some(file_source), _) => {
                 self.file_source_widget.set_value(file_source);
-                self.loading_state = GenSyncCell::new(LoadingState::Empty);
+                self.loading_state = GenSync::new(LoadingState::Empty);
             }
         }
         // self.update(); //FIXME: call once set_value takes a context
@@ -153,7 +157,7 @@ impl ImageWidget2{
     fn spawn_load_image_task(
         generation: Generation,
         file_source: FileSource,
-        loading_state: GenSyncCell<LoadingState>,
+        loading_state: GenSync<LoadingState>,
         ctx: egui::Context,
     ){
         let fut = async move {
@@ -271,6 +275,40 @@ pub struct SpecialImageWidget<I>{
     marker: PhantomData<I>
 }
 
+impl<I> SummarizableWidget for SpecialImageWidget<I>
+where
+    I : TryFrom<Arc<image::DynamicImage>>,
+    <I as TryFrom<Arc<image::DynamicImage>>>::Error: Error,
+{
+    fn summarize(&mut self, ui: &mut egui::Ui, _id: egui::Id) {
+        let loading_state_guard = self.image_widget.loading_state.lock();
+        match &loading_state_guard.1{
+            LoadingState::Empty => {
+                show_error(ui, "Empty");
+                return
+            },
+            LoadingState::Loading { .. } => {
+                ui.label("Loading...");
+                return;
+            },
+            LoadingState::Ready { img, texture, .. } | LoadingState::Forced { img, texture } => {
+                let Some(texture) = texture else {
+                    ui.label("Loading..");
+                    return;
+                };
+                let (width, height) = img.dimensions();
+                let ratio =  width as f64 / height as f64;
+                texture.show(ui, egui::Vec2 { y: 15.0, x: 15.0 * ratio as f32 }); //FIXME: can we not hardcode this?
+                return
+            },
+            LoadingState::Failed { err, .. } => {
+                show_error(ui, err);
+                return;
+            }
+        }
+    }
+}
+
 impl<I> ValueWidget for SpecialImageWidget<I>
 where
     I: Borrow<ArcDynImg>
@@ -284,12 +322,12 @@ where
 }
 
 impl<I> Restore for SpecialImageWidget<I>{
-    type RawData = SpecialImageWidgetRawData;
-    fn restore(&mut self, value: Self::RawData){
+    type SavedData = SpecialImageWidgetSavedData;
+    fn restore(&mut self, value: Self::SavedData){
         self.image_widget.restore(value.image_widget);
     }
-    fn dump(&self) -> Self::RawData {
-        SpecialImageWidgetRawData{image_widget: self.image_widget.dump()}
+    fn dump(&self) -> Self::SavedData {
+        SpecialImageWidgetSavedData{image_widget: self.image_widget.dump()}
     }
 }
 

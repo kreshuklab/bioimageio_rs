@@ -1,28 +1,15 @@
 use std::sync::Arc;
 
 use crate::result::{GuiError, Result};
-use bioimg_spec::rdf::{
-    bounded_string::{BoundedString, BoundedStringParsingError},
-    cite_entry::{CiteEntry2, CiteEntry2Msg},
-};
+use bioimg_spec::rdf::cite_entry::{CiteEntry2, CiteEntry2Msg};
+use bioimg_spec::rdf::bounded_string::BoundedString;
 
 use super::{collapsible_widget::{CollapsibleWidget, SummarizableWidget}, error_display::show_error, staging_opt::StagingOpt, staging_string::StagingString, staging_vec::ItemWidgetConf, url_widget::StagingUrl, Restore, StatefulWidget, ValueWidget};
 
 pub type ConfString = BoundedString<1, 1024>;
 
-#[derive(thiserror::Error, Debug, Clone)]
-pub enum CiteEntry2ParsingError {
-    #[error("{0}")]
-    FieldError(
-        #[from]
-        #[source]
-        BoundedStringParsingError,
-    ),
-    #[error("{0}")]
-    BadUrl(#[from] url::ParseError),
-}
-
 #[derive(Restore)]
+#[restore(saved_data=crate::project_data::CiteEntryWidgetSavedData)]
 pub struct CiteEntryWidget {
     pub citation_text_widget: StagingString<ConfString>,
     pub doi_widget: StagingOpt<StagingString<ConfString>>,

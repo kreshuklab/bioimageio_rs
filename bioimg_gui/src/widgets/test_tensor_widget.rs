@@ -4,9 +4,9 @@ use std::sync::Arc;
 
 use bioimg_runtime::{npy_array::ArcNpyArray, NpyArray};
 
-use crate::{project_data::TestTensorWidgetRawData, result::GuiError};
+use crate::{project_data::TestTensorWidgetSavedData, result::GuiError};
 
-use super::util::{GenSyncCell, Generation};
+use super::util::{GenSync, Generation};
 use super::{error_display::show_error, Restore, StatefulWidget, ValueWidget};
 
 
@@ -18,37 +18,30 @@ pub enum TestTensorWidgetState{
     Error{message: String}
 }
 
+/// A widget for selecting a "test tensor" for a Model input
+#[derive(Default)]
 pub struct TestTensorWidget{
-    state: GenSyncCell<TestTensorWidgetState>,
+    state: GenSync<TestTensorWidgetState>,
 }
-
-impl Default for TestTensorWidget{
-    fn default() -> Self {
-        Self{
-            state: GenSyncCell::new(TestTensorWidgetState::default()),
-        }
-    }
-}
-
 
 impl ValueWidget for TestTensorWidget{
     type Value<'v> = ArcNpyArray;
 
     fn set_value<'v>(&mut self, data: Self::Value<'v>) {
-        self.state = GenSyncCell::new(
+        self.state = GenSync::new(
             TestTensorWidgetState::Loaded { path: None, data}
         );
     }
 }
 
 impl Restore for TestTensorWidget{
-    type RawData = TestTensorWidgetRawData;
+    type SavedData = TestTensorWidgetSavedData;
 
-    fn dump(&self) -> Self::RawData {
+    fn dump(&self) -> Self::SavedData {
         let guard = self.state.lock();
         match &guard.1 {
-            TestTensorWidgetState::Empty  | &TestTensorWidgetState::Error { .. }=> TestTensorWidgetRawData::Empty,
-            TestTensorWidgetState::Loaded { path, data } => TestTensorWidgetRawData::Loaded {
+            TestTensorWidgetState::Empty  | &TestTensorWidgetState::Error { .. }=> TestTensorWidgetSavedData::Empty,
+            TestTensorWidgetState::Loaded { path, data } => TestTensorWidgetSavedData::Loaded {
                 path: path.clone(),
                 data: {
                     let mut v = vec![];
@@ -59,10 +52,10 @@ impl Restore for TestTensorWidget{
         }
     }
 
-    fn restore(&mut self, raw: Self::RawData) {
-        self.state = GenSyncCell::new(match raw{
-            TestTensorWidgetRawData::Empty => TestTensorWidgetState::Empty,
-            TestTensorWidgetRawData::Loaded { path, data } => {
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        self.state = GenSync::new(match saved_data{
+            TestTensorWidgetSavedData::Empty => TestTensorWidgetState::Empty,
+            TestTensorWidgetSavedData::Loaded { path, data } => {
                 let state = match NpyArray::try_load(Cursor::new(data)){
                     Ok(data) => TestTensorWidgetState::Loaded { path, data: Arc::new(data) },
                     Err(_e) => TestTensorWidgetState::Error { message: "Could not deserialize npy data".to_owned() }
@@ -89,7 +82,7 @@ impl TestTensorWidget{
     }
     pub fn launch_test_tensor_picker(
         request_generation: Generation,
-        state: GenSyncCell<TestTensorWidgetState>,
+        state: GenSync<TestTensorWidgetState>,
     ){
         let fut  = async move {
             let Some(file_handle) = rfd::AsyncFileDialog::new().add_filter("numpy array", &["npy"],).pick_file().await else {

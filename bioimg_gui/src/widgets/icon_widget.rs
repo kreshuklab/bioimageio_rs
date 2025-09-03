@@ -2,7 +2,7 @@ use bioimg_spec::rdf;
 use bioimg_runtime as rt;
 
 use super::{image_widget_2::SpecialImageWidget, staging_string::StagingString, Restore, StatefulWidget, ValueWidget};
-use crate::{project_data::IconWidgetRawData, result::Result};
+use crate::{project_data::IconWidgetSavedData, result::Result};
 
 
 
@@ -58,23 +58,23 @@ impl ValueWidget for IconWidget{
 }
 
 impl Restore for IconWidget{
-    type RawData = IconWidgetRawData;
-    fn restore(&mut self, raw: Self::RawData) {
-        match raw{
-            IconWidgetRawData::Image(special_img_raw_data) => {
+    type SavedData = IconWidgetSavedData;
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        match saved_data{
+            IconWidgetSavedData::Image(special_img_saved_data) => {
                 self.input_mode = InputMode::File;
-                self.image_icon_widget.restore(special_img_raw_data);
+                self.image_icon_widget.restore(special_img_saved_data);
             },
-            IconWidgetRawData::Emoji(icon_text) => {
+            IconWidgetSavedData::Emoji(icon_text) => {
                 self.input_mode = InputMode::Emoji;
                 self.emoji_icon_widget.restore(icon_text);
             }
         }
     }
-    fn dump(&self) -> Self::RawData {
+    fn dump(&self) -> Self::SavedData {
         match self.input_mode{
-            InputMode::File => IconWidgetRawData::Image(self.image_icon_widget.dump()),
-            InputMode::Emoji => IconWidgetRawData::Emoji(self.emoji_icon_widget.dump()),
+            InputMode::File => IconWidgetSavedData::Image(self.image_icon_widget.dump()),
+            InputMode::Emoji => IconWidgetSavedData::Emoji(self.emoji_icon_widget.dump()),
         }
     }
 }

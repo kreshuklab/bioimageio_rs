@@ -7,7 +7,6 @@ pub mod author_widget;
 pub mod axis_size_widget;
 pub mod cite_widget;
 pub mod code_editor_widget;
-pub mod cover_image_widget;
 pub mod error_display;
 pub mod functional;
 pub mod icon_widget;
@@ -58,6 +57,8 @@ pub mod axis_physical_scale_widget;
 pub mod button_ext;
 pub mod iconify;
 
+/// Types that implement StatefulWidget are similar to what people call
+/// "components" in other UI frameworks
 pub trait StatefulWidget {
     type Value<'p>
     where
@@ -71,21 +72,28 @@ pub trait ValueWidget{
     fn set_value<'v>(&mut self, value: Self::Value<'v>);
 }
 
+/// Widgets that implement `Restore` can be saved to and loaded from disk. This
+/// is analogous to implementing `serde::Serialize` and `serde::Deserialize`,
+/// with #[serde(from="&Self::SavedData")] and #[serde(into="&Self::SavedData")],
+/// except that it's not actually possible to use references in
+/// `serde(from=...)` and `serde(into=...)`. Also, this trait hopefully
+/// communicates the idea that `<Self as Restore>::SavedData` should be stable, so
+/// that deserialization of old versions are always possible.
 pub trait Restore{
-    type RawData: serde::Serialize + DeserializeOwned;
+    type SavedData: serde::Serialize + DeserializeOwned;
 
-    fn dump(&self) -> Self::RawData;
-    fn restore(&mut self, raw: Self::RawData);
+    fn dump(&self) -> Self::SavedData;
+    fn restore(&mut self, saved_data: Self::SavedData);
 }
 
 impl<T: Restore + Default> Restore for Vec<T>{
-    type RawData = Vec<T::RawData>;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = Vec<T::SavedData>;
+    fn dump(&self) -> Self::SavedData {
         self.iter().map(|item| item.dump()).collect()
     }
-    fn restore(&mut self, raw: Self::RawData) {
+    fn restore(&mut self, saved_data: Self::SavedData) {
         self.clear();
-        raw.into_iter().for_each(|raw_item| {
+        saved_data.into_iter().for_each(|raw_item| {
             let mut t = T::default();
             t.restore(raw_item);
             self.push(t)
@@ -97,14 +105,14 @@ impl<T> Restore for Option<T>
 where
     T: Restore + Default
 {
-    type RawData = Option<T::RawData>;
+    type SavedData = Option<T::SavedData>;
 
-    fn dump(&self) -> Self::RawData {
+    fn dump(&self) -> Self::SavedData {
         self.as_ref().map(|v| v.dump())
     }
-    fn restore(&mut self, raw: Self::RawData) {
+    fn restore(&mut self, saved_data: Self::SavedData) {
         let mut val = T::default();
-        match raw{
+        match saved_data{
             Some(raw) => {
                 val.restore(raw);
                 self.replace(val);
@@ -118,12 +126,12 @@ where
 
 macro_rules! impl_Restore_for {($type:ty) => {
     impl Restore for $type{
-        type RawData = $type;
-        fn dump(&self) -> Self::RawData {
+        type SavedData = $type;
+        fn dump(&self) -> Self::SavedData {
             self.clone()
         }
-        fn restore(&mut self, raw: Self::RawData) {
-            *self = raw
+        fn restore(&mut self, saved_data: Self::SavedData) {
+            *self = saved_data
         }
     }
 };}

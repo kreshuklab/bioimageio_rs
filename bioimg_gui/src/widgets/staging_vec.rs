@@ -49,11 +49,11 @@ impl<Stg, Conf> Restore for StagingVec<Stg, Conf>
 where
     Stg: Restore + Default
 {
-    type RawData = Vec<Stg::RawData>;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = Vec<Stg::SavedData>;
+    fn dump(&self) -> Self::SavedData {
         self.staging.iter().map(|item| item.dump()).collect()
     }
-    fn restore(&mut self, value: Self::RawData){
+    fn restore(&mut self, value: Self::SavedData){
         self.staging = value.into_iter().map(|item_value|{
             let mut widget = Stg::default();
             widget.restore(item_value);

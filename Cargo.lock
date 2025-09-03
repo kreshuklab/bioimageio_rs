@@ -617,7 +617,7 @@ dependencies = [
 
 [[package]]
 name = "bioimg_codegen"
-version = "0.2.1"
+version = "0.2.7"
 dependencies = [
  "heck",
  "proc-macro2",
@@ -627,7 +627,7 @@ dependencies = [
 
 [[package]]
 name = "bioimg_gui"
-version = "0.2.1"
+version = "0.2.7"
 dependencies = [
  "aspartial",
  "bioimg_codegen",
@@ -668,7 +668,7 @@ dependencies = [
 
 [[package]]
 name = "bioimg_runtime"
-version = "0.2.1"
+version = "0.2.7"
 dependencies = [
  "bioimg_spec",
  "image 0.24.9",
@@ -693,7 +693,7 @@ dependencies = [
 
 [[package]]
 name = "bioimg_spec"
-version = "0.2.1"
+version = "0.2.7"
 dependencies = [
  "aspartial",
  "bioimg_codegen",
@@ -716,7 +716,7 @@ dependencies = [
 
 [[package]]
 name = "bioimg_zoo"
-version = "0.2.1"
+version = "0.2.7"
 dependencies = [
  "base64 0.22.1",
  "bioimg_spec",
@@ -5071,7 +5071,7 @@ checksum = "55937e1799185b12863d447f42597ed69d9928686b8d88a1df17376a097d8369"
 
 [[package]]
 name = "task__build_webapp"
-version = "0.2.1"
+version = "0.2.7"
 
 [[package]]
 name = "tempfile"

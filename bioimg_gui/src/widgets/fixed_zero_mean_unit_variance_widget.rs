@@ -1,7 +1,7 @@
 use bioimg_spec::rdf::model::{self as modelrdf, preprocessing::zero_mean_unit_variance::ZmuvStdDeviation};
 use bioimg_spec::rdf::model::preprocessing as preproc;
 
-use crate::project_data::ZmuvWidgetModeRawData;
+use crate::project_data::ZmuvWidgetModeSavedData;
 use crate::result::{GuiError, Result, VecResultExt};
 use super::iconify::Iconify;
 use super::search_and_pick_widget::SearchAndPickWidget;
@@ -18,22 +18,23 @@ pub enum ZmuvWidgetMode{
 }
 
 impl Restore for ZmuvWidgetMode{
-    type RawData = ZmuvWidgetModeRawData;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = ZmuvWidgetModeSavedData;
+    fn dump(&self) -> Self::SavedData {
         match self{
-            Self::Simple => Self::RawData::Simple,
-            Self::AlongAxis => Self::RawData::AlongAxis,
+            Self::Simple => Self::SavedData::Simple,
+            Self::AlongAxis => Self::SavedData::AlongAxis,
         }
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        *self = match raw{
-            Self::RawData::Simple => Self::Simple,
-            Self::RawData::AlongAxis => Self::AlongAxis,
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        *self = match saved_data{
+            Self::SavedData::Simple => Self::Simple,
+            Self::SavedData::AlongAxis => Self::AlongAxis,
         }
     }
 }
 
 #[derive(Restore)]
+#[restore(saved_data=crate::project_data::SimpleFixedZmuvWidgetSavedData)]
 pub struct SimpleFixedZmuvWidget{
     pub mean_widget: StagingFloat<f32>,
     pub std_widget: StagingFloat<ZmuvStdDeviation>,
@@ -85,10 +86,11 @@ impl ItemWidgetConf for MeanAndStdItemConfig{
 }
 
 #[derive(Restore)]
+#[restore(saved_data=crate::project_data::FixedZmuvAlongAxisWidgetSavedData)]
 pub struct FixedZmuvAlongAxisWidget{
     pub axis_widget: StagingString<modelrdf::axes::NonBatchAxisId>,
     pub mean_and_std_widget: StagingVec<SimpleFixedZmuvWidget, MeanAndStdItemConfig>,
-    #[restore_on_update]
+    #[restore(on_update)]
     pub parsed: Result<preproc::FixedZmuvAlongAxis>,
 }
 
@@ -157,6 +159,7 @@ impl StatefulWidget for FixedZmuvAlongAxisWidget{
 // //////////////////////////
 
 #[derive(Default, Restore)]
+#[restore(saved_data=crate::project_data::FixedZmuvWidgetSavedData)]
 pub struct FixedZmuvWidget{
     pub mode_widget: SearchAndPickWidget<ZmuvWidgetMode, false>,
     pub simple_widget: SimpleFixedZmuvWidget,

@@ -15,7 +15,7 @@ use super::staging_string::StagingString;
 use super::util::group_frame;
 use super::{Restore, StatefulWidget, ValueWidget};
 use super::{axis_size_widget::AnyAxisSizeWidget, staging_num::StagingNum};
-use crate::project_data::ChannelNamesModeRawData;
+use crate::project_data::ChannelNamesModeSavedData;
 use crate::result::{GuiError, Result};
 
 pub fn axis_id_label(ui: &mut egui::Ui){
@@ -38,6 +38,7 @@ pub fn axis_description_label(ui: &mut egui::Ui) -> egui::Response{
 }
 
 #[derive(Default, Restore)]
+#[restore(saved_data=crate::project_data::BatchAxisWidgetSavedData)]
 pub struct BatchAxisWidget {
     pub description_widget: StagingString<BoundedString<0, 128>>,
     pub staging_allow_auto_size: bool,
@@ -104,22 +105,23 @@ pub enum ChannelNamesMode {
 }
 
 impl Restore for ChannelNamesMode{
-    type RawData = ChannelNamesModeRawData;
-    fn dump(&self) -> Self::RawData {
+    type SavedData = ChannelNamesModeSavedData;
+    fn dump(&self) -> Self::SavedData {
         match self{
-            Self::Explicit => Self::RawData::Explicit,
-            Self::Pattern => Self::RawData::Pattern,
+            Self::Explicit => Self::SavedData::Explicit,
+            Self::Pattern => Self::SavedData::Pattern,
         }
     }
-    fn restore(&mut self, raw: Self::RawData) {
-        *self = match raw{
-            Self::RawData::Explicit => Self::Explicit,
-            Self::RawData::Pattern => Self::Pattern,
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        *self = match saved_data{
+            Self::SavedData::Explicit => Self::Explicit,
+            Self::SavedData::Pattern => Self::Pattern,
         }
     }
 }
 
 #[derive(Default, Restore)]
+#[restore(saved_data=crate::project_data::ChannelAxisWidgetSavedData)]
 pub struct ChannelAxisWidget {
     pub description_widget: StagingString<BoundedString<0, 128>>,
 
@@ -245,6 +247,7 @@ impl StatefulWidget for ChannelAxisWidget{
 }
 
 #[derive(Default, Restore)]
+#[restore(saved_data=crate::project_data::IndexAxisWidgetSavedData)]
 pub struct IndexAxisWidget {
     pub description_widget: StagingString<BoundedString<0, 128>>,
     pub size_widget: AnyAxisSizeWidget,

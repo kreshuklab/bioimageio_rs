@@ -1,4 +1,4 @@
-use crate::project_data::CollapsibleWidgetRawData;
+use crate::project_data::CollapsibleWidgetSavedData;
 
 use super::{Restore, StatefulWidget, ValueWidget};
 
@@ -13,18 +13,18 @@ pub struct CollapsibleWidget<W>{
 }
 
 impl<W: Restore> Restore for CollapsibleWidget<W>{
-    type RawData = CollapsibleWidgetRawData<W>;
+    type SavedData = CollapsibleWidgetSavedData<W>;
 
-    fn dump(&self) -> Self::RawData {
-        CollapsibleWidgetRawData{
+    fn dump(&self) -> Self::SavedData {
+        CollapsibleWidgetSavedData{
             is_closed: self.is_closed,
             inner: self.inner.dump()
         }
     }
 
-    fn restore(&mut self, raw: Self::RawData) {
-        self.is_closed.restore(raw.is_closed);
-        self.inner.restore(raw.inner)
+    fn restore(&mut self, saved_data: Self::SavedData) {
+        self.is_closed.restore(saved_data.is_closed);
+        self.inner.restore(saved_data.inner)
     }
 }
 
