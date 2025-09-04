@@ -11,3 +11,7 @@ This project is split into multiple sub-crates crates:
 - [bioimg_runtime](bioimg_spec/README.md) - runtime utilities for saving, loading and validating models.
 
 - [bioimg_zoo](bioimg_zoo/README.md) - utilities for interacting with the [bioimage.io model zoo](https://bioimage.io/)
+
+- [task__build_webapp](task__build_webapp/README.md) - An executable trait that can be run to generate the model builder GUI as a web app
+
+- [hooks_executable/](hooks_executable/README.md) - An executable crate that  implements git hooks for the project
