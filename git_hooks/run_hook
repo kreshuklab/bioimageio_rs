@@ -1,0 +1,7 @@
+#!/bin/sh
+
+set -eux -o pipefail
+
+# run the hooks_executable crate passsing in the hook path so it can switch
+# logic based on the hook name
+cargo run -p hooks_executable -q -- "$0"
