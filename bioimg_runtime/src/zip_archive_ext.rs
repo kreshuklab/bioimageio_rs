@@ -1,8 +1,6 @@
 use std::{fmt::{Debug, Display}, io::{Read, Seek}, path::{Path, PathBuf}, sync::{Arc, Mutex}};
 
 use bioimg_spec::rdf;
-// use zip::{read::ZipFile, ZipArchive};
-
 
 pub trait SeekReadSend: Seek + Read + Send{}
 impl<T: Seek + Read + Send> SeekReadSend for T{}

@@ -14,7 +14,7 @@ fn test_model_upload(){
     }
 
     fn send_reader<R: std::io::Read>(req: http::Request<R>) -> Result<http::Response<Vec<u8>>, String>{
-        println!("Requesting {}", req.uri().to_string().yellow());
+        eprintln!("Requesting {}", req.uri().to_string().yellow());
         let (http_parts, body) = req.into_parts();
         let request: ureq::Request = http_parts.into();
         let resp: http::Response<Vec<u8>> = request.send(body)
@@ -34,7 +34,7 @@ fn test_model_upload(){
             .into();
         if !resp.status().is_success(){
             let payload = String::from_utf8_lossy(resp.body());
-            println!("Error!!\n{}", payload.red());
+            eprintln!("Error!!\n{}", payload.red());
             return Err(format!("Request failed with result {}\n{payload}", resp.status()))
         }
         Ok(resp)
@@ -46,11 +46,11 @@ fn test_model_upload(){
     let expecting_browser_interaction = start.try_advance(&response).expect("Could not advance to login in progress");
 
     let (login_url, auth_in_progress) = expecting_browser_interaction.advance(Seconds(3600));
-    println!("Login here: {login_url}");
+    eprintln!("Login here: {login_url}");
 
     let resp = send_bytes(auth_in_progress.as_ref().clone()).expect("Could not fetch token?");
     let user_token = auth_in_progress.try_advance(&resp).unwrap();
-    println!("Here's the user token: {user_token:?}");
+    eprintln!("Here's the user token: {user_token:?}");
 
     let collection_config: CollectionConfig = {
         let req = CollectionConfig::request();
@@ -72,7 +72,7 @@ fn test_model_upload(){
     let presigned_url = {
         let resp_signed_url = send_bytes(client.presigned_url_request(&nickname, Seconds(3600), ClientMethod::PutObject)).unwrap();
         let url = client.parse_presigned_url_resp(&resp_signed_url).unwrap();
-        println!("==>> And this is the signed url for PUT: {url}. Now lets try putting something in it");
+        eprintln!("==>> And this is the signed url for PUT: {url}. Now lets try putting something in it");
         url
     };
 
@@ -80,19 +80,19 @@ fn test_model_upload(){
         let put_req = client.write_to_bucket_request(&presigned_url, std::io::Cursor::new(b"This is just a bunch of test bytes"));
         let resp = send_reader(put_req).unwrap();
         let upload_resp_str = String::from_utf8(resp.into_body()).unwrap();
-        println!("==>> And here's the response: {upload_resp_str}")
+        eprintln!("==>> And here's the response: {upload_resp_str}")
     }
 
     {
         let resp_signed_url = send_bytes(client.presigned_url_request(&nickname, Seconds(3600), ClientMethod::GetObject)).unwrap();
         let presigned_url = client.parse_presigned_url_resp(&resp_signed_url).unwrap();
-        println!("==>> And this is the signed GET url: {presigned_url}");
+        eprintln!("==>> And this is the signed GET url: {presigned_url}");
 
-        println!("Trying to stage it....");
+        eprintln!("Trying to stage it....");
         let req = client.stage_model_request(&nickname, &presigned_url);
         let resp = send_bytes(req).unwrap();
         let resp_str = String::from_utf8(resp.into_body()).unwrap();
-        println!("==>> And here's the STAGING response: {resp_str}")
+        eprintln!("==>> And here's the STAGING response: {resp_str}")
     }
 
 }
