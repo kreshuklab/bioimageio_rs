@@ -1,3 +1,16 @@
+//! !!! This crate is deprecated. It implements the API for the old zoo !!!
+//!
+//! Communication logic with the model zoo is encoded as a type-state-machine,
+//! where each type expresses a particular state of communication. Users of
+//! the library are expected to perform the web requests whose specifications
+//! are obtained from those type-states and feed in the results back into the
+//! type-states, which will then inform the user if the request succeeded and
+//! produce the next state.
+//!
+//! The reasoning behind is is to unify the communication logic in a way that
+//! is not reliant on sync or async styles of requesting. You can check example
+//! usage of the library in the tests cases of this crate.
+
 use std::num::ParseIntError;
 
 use bioimg_spec::rdf::HttpUrl;

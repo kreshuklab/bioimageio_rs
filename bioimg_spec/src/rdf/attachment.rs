@@ -6,9 +6,3 @@ use super::file_reference::FileReference;
 pub struct Attachments{
     files: Option<Vec<FileReference>>,
 }
-
-#[test]
-fn test_attachment_serialization(){
-
-
-}

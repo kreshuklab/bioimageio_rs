@@ -2,6 +2,8 @@ use crate::project_data::CollapsibleWidgetSavedData;
 
 use super::{Restore, StatefulWidget, ValueWidget};
 
+/// Widgets that can be represented in a compact form can implement this trait.
+/// Usually used in headers of collapsible widgets
 pub trait SummarizableWidget{
     fn summarize(&mut self, ui: &mut egui::Ui, id: egui::Id);
 }

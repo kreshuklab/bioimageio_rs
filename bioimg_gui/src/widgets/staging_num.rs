@@ -6,6 +6,7 @@ use crate::result::{GuiError, Result};
 
 use super::{error_display::show_if_error, Restore, StatefulWidget, ValueWidget};
 
+/// A number widget that tries to convert the user's input ('Raw') into a 'Parsed'
 pub struct StagingNum<Raw, Parsed> {
     pub raw: Raw,
     pub parsed: Result<Parsed>,

@@ -10,6 +10,7 @@ pub enum InputLines {
     Multiline,
 }
 
+/// A text field that tries to parse the user's input into a T
 #[derive(Debug)]
 pub struct StagingString<T> {
     pub raw: String,

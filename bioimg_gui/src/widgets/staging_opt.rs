@@ -1,5 +1,10 @@
 use super::{collapsible_widget::SummarizableWidget, util::group_frame, Restore, StatefulWidget, ValueWidget};
 
+/// A container widget that represents an Optional value. It makes it explicit
+/// that the current value is "None" by drawing nothing of the inner value
+/// widget (which is clearer than, say, an empty text field).
+/// Use the DRAW_FRAME const param to determine if a frame should be drawn
+/// around the internal widget.
 #[derive(Clone, Debug)]
 pub struct StagingOpt<Stg, const DRAW_FRAME: bool = true>(pub Option<Stg>);
 
